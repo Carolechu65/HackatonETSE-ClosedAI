@@ -1,4 +1,5 @@
 import { calendarRoutes } from '../calendar/routes.ts';
+import { receiptRoutes, type ReceiptConfig } from '../receipts/routes.ts';
 import { expenseRoutes } from '../expenses/routes.ts';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { DomainError } from '../../../src/domain/errors.ts';
@@ -31,6 +32,8 @@ export type BuildAppOptions = {
   logger?: boolean;
   agentProvider?: AgentProvider;
   calendarFetch?: typeof fetch;
+  receiptConfig?: ReceiptConfig;
+  receiptFetch?: typeof fetch;
 };
 
 function authHeader(request: FastifyRequest): string | string[] | undefined {
@@ -315,6 +318,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});
   app.post('/v1/agent/draft',async request=>{const actor=requireAuth(db,request);agentLimiter.check(`agent:${actor.uid}`);const body=asRecord(request.body);if(Object.keys(body).some(key=>!['groupId','text','conversationId'].includes(key)))throw new DomainError('INVALID_ARGUMENT','Campos del asistente inválidos.');const result=await proposeAlarm(db,actor,{groupId:body.groupId,text:body.text,...(body.conversationId?{sessionId:body.conversationId}:{})},config.agent,options.agentProvider);requireAuth(db,request);if(result.status==='needs_clarification')return {conversationId:result.sessionId,status:result.status,question:result.question,missingFields:result.missingFields};return {conversationId:result.sessionId,status:'draft',draft:{title:result.draft.title,recipientUids:result.draft.recipientUids,timeSpec:result.draft.timeSpec,mode:result.draft.mode,...(result.draft.taskId?{taskId:result.draft.taskId}:{})},requiresSenderReview:true,requiresRecipientConsent:true};});
   expenseRoutes(app, db);
+  receiptRoutes(app, db, options.receiptConfig === undefined ? (process.env.ALARMAT_OCR_URL && process.env.ALARMAT_OCR_TOKEN ? {url:process.env.ALARMAT_OCR_URL,token:process.env.ALARMAT_OCR_TOKEN} : null) : options.receiptConfig, options.receiptFetch);
   calendarRoutes(app, db, config.calendar, options.calendarFetch);
   return app;
 }

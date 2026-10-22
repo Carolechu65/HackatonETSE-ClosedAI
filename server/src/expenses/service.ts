@@ -1,3 +1,4 @@
+import { allocateExpense, type ExpenseSplit } from '../../../src/features/expenses/split.ts';
 import { DomainError } from '../../../src/domain/errors.ts';
 import { parseLocalDate } from '../../../src/domain/time.ts';
 import { requireActiveMembership, isActiveMember } from '../groups/service.ts';
@@ -18,10 +19,11 @@ export type SharedExpense = {
   version: number;
   createdAtEpochMs: number;
   dueDate?: string;
+  receiptId?:string; purchasedOn?:string; merchant?:string; category?:string; notes?:string; split?:ExpenseSplit;
 };
 type ExpenseRow = {
   id: string; group_id: string; title: string; amount_cents: number;
-  paid_by_uid: string; version: number; created_at_epoch_ms: number; due_date: string | null;
+  paid_by_uid: string; version: number; created_at_epoch_ms: number; due_date: string | null; receipt_id:string|null; purchased_on:string|null; merchant:string|null; category:string|null; notes:string|null; split_json:string|null;
 };
 function expenseDto(db: Db, row: ExpenseRow): SharedExpense {
   const participants = db.prepare(
@@ -33,6 +35,12 @@ function expenseDto(db: Db, row: ExpenseRow): SharedExpense {
     settledUids: participants.filter(p => p.settled_at_epoch_ms !== null).map(p => p.uid),
     shares: participants.map(p => ({ uid: p.uid, amountCents: p.share_cents })),
     version: row.version, createdAtEpochMs: row.created_at_epoch_ms,
+    ...(row.receipt_id?{receiptId:row.receipt_id}:{}),
+    ...(row.purchased_on?{purchasedOn:row.purchased_on}:{}),
+    ...(row.merchant?{merchant:row.merchant}:{}),
+    ...(row.category?{category:row.category}:{}),
+    ...(row.notes?{notes:row.notes}:{}),
+    ...(row.split_json?{split:JSON.parse(row.split_json) as ExpenseSplit}:{}),
     ...(row.due_date ? { dueDate: row.due_date } : {}),
   };
 }
@@ -67,7 +75,7 @@ export function listExpenses(db: Db, actorUid: string, groupId: string): { curre
 }
 export function createExpense(db: Db, actorUid: string, groupId: string, raw: unknown, now = Date.now()): SharedExpense {
   const data = asRecord(raw);
-  assertNoExtraKeys(data, ['operationId', 'title', 'amountCents', 'participantUids', 'dueDate']);
+  assertNoExtraKeys(data, ['operationId', 'title', 'amountCents', 'participantUids', 'dueDate','receiptId','purchasedOn','merchant','category','notes','split']);
   return db.transaction(() => {
     requireActiveMembership(db, groupId, actorUid);
     return operation(db, actorUid, 'createExpense', { ...data, groupId }, now, () => {
@@ -84,13 +92,14 @@ export function createExpense(db: Db, actorUid: string, groupId: string, raw: un
         throw new DomainError('INVALID_ARGUMENT', 'Los participantes deben ser únicos.');
       if (participants.some(uid => !isActiveMember(db, groupId, uid)))
         throw new DomainError('INVALID_ARGUMENT', 'Todos los participantes deben pertenecer al piso.');
+      const details = expenseDetails(db,groupId,actorUid,data);
+      const shares = allocation(amountCents,participants,data.split);
       const id = generateId('expense');
       db.prepare('INSERT INTO shared_expenses(id,group_id,title,amount_cents,paid_by_uid,created_at_epoch_ms,due_date) VALUES(?,?,?,?,?,?,?)')
         .run(id, groupId, title, amountCents, actorUid, now, dueDate);
-      const base = Math.floor(amountCents / participants.length), remainder = amountCents % participants.length;
+      db.prepare('UPDATE shared_expenses SET receipt_id=?,purchased_on=?,merchant=?,category=?,notes=?,split_json=? WHERE id=?').run(details.receiptId,details.purchasedOn,details.merchant,details.category,details.notes,details.split,id);
       const insert = db.prepare('INSERT INTO expense_participants(expense_id,uid,share_cents,settled_at_epoch_ms) VALUES(?,?,?,?)');
-      participants.forEach((uid, index) => {
-        const share = base + (index < remainder ? 1 : 0);
+      shares.forEach(({uid,amountCents:share}) => {
         insert.run(id, uid, share, uid === actorUid || share === 0 ? now : null);
       });
       return expenseDto(db, findExpense(db, groupId, id));
@@ -116,6 +125,52 @@ export function settleExpense(db: Db, actorUid: string, groupId: string, expense
         db.prepare('UPDATE shared_expenses SET version=version+1 WHERE id=?').run(expenseId);
       }
       return expenseDto(db, findExpense(db, groupId, expenseId));
+    });
+  })();
+}
+
+function allocation(total:number,participants:string[],raw:unknown){
+  try{return allocateExpense(total,participants,raw===undefined?undefined:raw as ExpenseSplit);}catch(e){throw new DomainError('INVALID_ARGUMENT',e instanceof Error?e.message:'Reparto no válido.');}
+}
+function expenseDetails(db:Db,groupId:string,actorUid:string,data:Record<string,unknown>,existingId?:string){
+  const optional=(key:string,max:number)=>data[key]===undefined?null:readString(data[key],key,{max});
+  const purchasedOn=optional('purchasedOn',10);
+  if(purchasedOn&&!parseLocalDate(purchasedOn))throw new DomainError('INVALID_ARGUMENT','Fecha de compra no válida.');
+  const receiptId=data.receiptId===undefined?null:readIdentifier(data.receiptId,'receiptId');
+  if(receiptId){
+    const receipt=db.prepare('SELECT actor_uid FROM expense_receipts WHERE id=? AND group_id=?').get(receiptId,groupId) as {actor_uid:string}|undefined;
+    if(!receipt||receipt.actor_uid!==actorUid)throw new DomainError('NOT_FOUND','Ticket no encontrado.');
+    const used=db.prepare('SELECT id FROM shared_expenses WHERE receipt_id=?').get(receiptId) as {id:string}|undefined;
+    if(used&&used.id!==existingId)throw new DomainError('VERSION_CONFLICT','Este ticket ya tiene un gasto registrado.');
+  }
+  return {receiptId,purchasedOn,merchant:optional('merchant',120),category:optional('category',60),notes:optional('notes',2000),split:data.split===undefined?null:JSON.stringify(data.split)};
+}
+export function updateExpense(db:Db,actorUid:string,groupId:string,expenseId:string,raw:unknown,now=Date.now()):SharedExpense{
+  const data=asRecord(raw);
+  assertNoExtraKeys(data,['operationId','expectedVersion','title','amountCents','participantUids','dueDate','receiptId','purchasedOn','merchant','category','notes','split']);
+  return db.transaction(()=>{
+    requireActiveMembership(db,groupId,actorUid);
+    const row=findExpense(db,groupId,expenseId);
+    if(row.paid_by_uid!==actorUid)throw new DomainError('FORBIDDEN','Solo quien registró el gasto puede editarlo.');
+    return operation(db,actorUid,'updateExpense',{...data,groupId,expenseId},now,()=>{
+      if(row.version!==readPositiveInt(data.expectedVersion,'expectedVersion'))throw new DomainError('VERSION_CONFLICT','El gasto ha cambiado.');
+      const paid=db.prepare('SELECT 1 FROM expense_participants WHERE expense_id=? AND uid<>? AND share_cents>0 AND settled_at_epoch_ms IS NOT NULL').get(expenseId,actorUid);
+      if(paid)throw new DomainError('VERSION_CONFLICT','Ya hay cuotas liquidadas. El gasto conserva su reparto.');
+      const title=readString(data.title,'title',{max:120});const total=readPositiveInt(data.amountCents,'amountCents');
+      if(total>100000000||!Array.isArray(data.participantUids)||data.participantUids.length<1||data.participantUids.length>500)throw new DomainError('INVALID_ARGUMENT','Importe o participantes no válidos.');
+      const participants=data.participantUids.map(uid=>readIdentifier(uid,'participantUids')).sort();
+      if(participants.some(uid=>!isActiveMember(db,groupId,uid)))throw new DomainError('INVALID_ARGUMENT','Participante no activo.');
+      const shares=allocation(total,participants,data.split);
+      const details=expenseDetails(db,groupId,actorUid,data,expenseId);
+      if(data.dueDate!==undefined&&!parseLocalDate(data.dueDate))throw new DomainError('INVALID_ARGUMENT','Fecha límite no válida.');
+      // A linked original remains attached throughout edits.
+      if(row.receipt_id&&details.receiptId!==row.receipt_id)throw new DomainError('INVALID_ARGUMENT','Conserva el ticket original del gasto.');
+      db.prepare('INSERT INTO expense_revisions VALUES(?,?,?,?,?)').run(expenseId,row.version,actorUid,JSON.stringify(expenseDto(db,row)),now);
+      db.prepare('UPDATE shared_expenses SET title=?,amount_cents=?,due_date=?,receipt_id=?,purchased_on=?,merchant=?,category=?,notes=?,split_json=?,version=version+1 WHERE id=?').run(title,total,data.dueDate??null,details.receiptId,details.purchasedOn,details.merchant,details.category,details.notes,details.split,expenseId);
+      db.prepare('DELETE FROM expense_participants WHERE expense_id=?').run(expenseId);
+      const insert=db.prepare('INSERT INTO expense_participants VALUES(?,?,?,?)');
+      for(const share of shares)insert.run(expenseId,share.uid,share.amountCents,share.uid===actorUid||share.amountCents===0?now:null);
+      return expenseDto(db,findExpense(db,groupId,expenseId));
     });
   })();
 }

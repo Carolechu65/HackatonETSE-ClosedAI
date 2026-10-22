@@ -4,6 +4,8 @@ import { colors, typography } from './theme.ts';
 
 export type TextFieldProps = {
   value: string;
+  editable?: boolean;
+  multiline?: boolean;
   onChangeText: (value: string) => void;
   placeholder: string;
   onSubmitEditing?: () => void;
@@ -18,6 +20,8 @@ export type TextFieldProps = {
 /** Campo de texto sin caja: solo una línea inferior de 1 px (guía §6.3). */
 export function TextField({
   value,
+  editable = true,
+  multiline = false,
   onChangeText,
   placeholder,
   onSubmitEditing,
@@ -31,6 +35,8 @@ export function TextField({
     <TextInput
       accessibilityLabel={accessibilityLabel ?? placeholder}
       value={value}
+      editable={editable}
+      multiline={multiline}
       onChangeText={onChangeText}
       onSubmitEditing={onSubmitEditing}
       placeholder={placeholder}

@@ -84,7 +84,7 @@ export class HttpClient {
     }
     let encoded: string | undefined;
     try { encoded = body === undefined ? undefined : JSON.stringify(body); } catch { throw remoteError('INVALID_ARGUMENT'); }
-    if (encoded && new TextEncoder().encode(encoded).byteLength > this.maxBytes) throw remoteError('INVALID_ARGUMENT');
+    if (encoded && new TextEncoder().encode(encoded).byteLength > (method === 'POST' && /^\/v1\/groups\/[^/]+\/receipts$/.test(path) ? 12 * 1024 * 1024 : this.maxBytes)) throw remoteError('INVALID_ARGUMENT');
     const controller = new AbortController();
     let rejectCancellation: (error: DomainError) => void = () => undefined;
     const cancelled = new Promise<never>((_, reject) => { rejectCancellation = reject; });
