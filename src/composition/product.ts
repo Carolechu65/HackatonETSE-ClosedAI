@@ -1,3 +1,4 @@
+import type { FinanceClient } from '../features/expenses/client.ts';
 import type { CalendarClient } from '../features/calendar/client.ts';
 import type { AlarmRequestDocument, RecipientDocument, ScheduleDocument, CreateAlarmRequestPayload, RespondToAlarmPayload } from '../domain/contracts/types.ts';
 import type { HouseholdTask, TaskDraft } from '../features/tasks/model.ts';
@@ -40,6 +41,7 @@ export type ProductState = {
 };
 export interface ProductClient {
   calendar: CalendarClient;
+  finance: FinanceClient;
   getSnapshot(): ProductState;
   subscribe(listener: () => void): () => void;
   initialize(): Promise<void>;

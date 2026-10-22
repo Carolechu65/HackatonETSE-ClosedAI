@@ -1,1 +1,1 @@
-export { GroupScreen as default } from '../../src/features/groups/GroupScreen.tsx';
+export { ProductGroup as default } from '../../src/features/productP1/Group.tsx';

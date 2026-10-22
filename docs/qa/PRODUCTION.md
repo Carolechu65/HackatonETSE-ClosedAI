@@ -12,14 +12,16 @@ La publicación autorizada corresponde exclusivamente a
 | P5 Datos | SecureStore, SQLite/outbox de alarmas, versiones, ACK/reintentos, sesión y transporte HTTPS con prefijo. | Las tareas aún requieren conexión. |
 | P6 Tareas/widget | Tareas reales con descripción/categoría, completar/cancelar y aviso vinculado; widget del piso elegido con antigüedad real de lectura y enlaces autorizados. | Instalar y refrescar widget en launcher real sigue siendo prueba física. |
 
-Se mantienen fuera del núcleo de los prompts P1–P6: finanzas, huchas, rotaciones,
+La pestaña Gastos registra importes EUR, reparto igual con redondeo exacto y
+liquidación de la cuota propia; no realiza transferencias. Se mantienen fuera
+del núcleo de los prompts P1–P6: huchas, rotaciones,
 intercambios, recurrencia propia de tareas y widgets financieros. La recurrencia
 semanal de avisos se reconcilia al abrir la aplicación; no se promete una serie
 indefinida con la app permanentemente detenida.
 
 ## Pruebas antes de publicar
 
-Comprobación final de la integración: **234 pruebas app/datos y 63 API aprobadas**,
+Comprobación final de la integración: **240 pruebas app/datos y 70 API aprobadas**,
 una prueba externa omitida por defecto y ejecutada por separado con éxito.
 El fallo de acceso bajo `/alarmat/api` se detectó en navegador y se corrigió con
 regresiones de transporte (14 pruebas dirigidas, incluyendo las nuevas).
@@ -43,3 +45,12 @@ Los callbacks normales de Lois conservan307 y su destino. Caddy requiere una
 expresión explícita para el prefijo: `query state=alarmat_*` sería literal.
 Las46 unidades de servicio preexistentes siguen activas y no falta ningún puerto
 de aplicación de la muestra inicial.
+
+## Interfaz P1 restaurada
+
+Las referencias visuales autorizadas son `76d21a9` y `13e09b4` de
+`P1-Esqueleto`. Producción reutiliza su tipografía, notas y barra inferior
+Tablón/Gastos/Tareas/Piso, conectadas con cuentas, tareas y gastos reales.
+Los formularios avanzados, alarmas, asistente, calendario y permisos siguen
+accesibles desde esas pantallas. Se verifican las cuatro pestañas a360,390
+y430px. Los datos de ejemplo permanecen identificados como demostración.

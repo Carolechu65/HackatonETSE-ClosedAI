@@ -1,3 +1,4 @@
+import { createFinanceClient } from '../features/expenses/client.ts';
 import { createCalendarClient } from '../features/calendar/client.ts';
 import type { CreateAlarmRequestPayload, RespondToAlarmPayload, AlarmCommand } from '../domain/contracts/types.ts';
 import { parseAlarmRequestDocument, parseRecipientDocument, parseScheduleDocument, parseCreateAlarmRequest, parseRespondToAlarm } from '../domain/contracts/validate.ts';
@@ -110,9 +111,16 @@ export function createProductController(backendFactory: () => Promise<ProductBac
     return flight;
   }
   return {
+    finance: createFinanceClient(async (path, method, body) => {
+      if (!state.session || isDemo()) throw new DomainError('UNAUTHENTICATED', 'Entra con tu cuenta para gestionar gastos reales.');
+      const expected = generation; const api = await ensureBackend();
+      assertGeneration(expected);
+      const result = await api.request(path, method, body); assertGeneration(expected); return result;
+    }),
     calendar: createCalendarClient(async (path, method, body) => {
       if (!state.session || isDemo()) throw new DomainError('UNAUTHENTICATED', 'Entra con tu cuenta para conectar tu calendario.');
       const expected = generation; const api = await ensureBackend();
+      assertGeneration(expected);
       const result = await api.request(path, method, body); assertGeneration(expected); return result;
     }),
     getSnapshot: () => state,

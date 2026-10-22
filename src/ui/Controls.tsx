@@ -12,7 +12,7 @@ export function Field({ label, hint, ...props }: TextInputProps & { label: strin
 export function Action({ children, onPress, disabled, selected, style, label }: { children: ReactNode; onPress: () => void; disabled?: boolean; selected?: boolean; style?: StyleProp<ViewStyle>; label?: string }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, selected: !!selected }} onPress={onPress} disabled={disabled}
     style={({ pressed }) => [styles.action, selected && styles.selected, pressed && { opacity: 0.65 }, disabled && { opacity: 0.45 }, style]}>
-    <Text style={[typography.bodyOnDoor, selected && { color: colors.onAvatar }]}>{children}</Text>
+    <Text style={[typography.bodyOnDoor, { textAlign: 'center', flexShrink: 1 }, selected && { color: colors.onAvatar }]}>{children}</Text>
   </Pressable>;
 }
 export function Choice({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
@@ -42,11 +42,11 @@ export function useAction() {
   return { busy, error, run, setError };
 }
 const styles = StyleSheet.create({
-  fieldWrap: { gap: 8, marginVertical: 6 },
-  input: { ...typography.field, borderBottomWidth: 1, borderBottomColor: colors.noteLine, paddingVertical: 10, minHeight: 48, outlineWidth: 0 },
+  fieldWrap: { minWidth: 0, gap: 8, marginVertical: 6 },
+  input: { ...typography.field, fontSize: 16, lineHeight: 24, borderBottomWidth: 1, borderBottomColor: colors.noteLine, paddingVertical: 10, minHeight: 48, outlineWidth: 0 },
   action: { minHeight: layout.minTouchTarget, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderColor: colors.ln, borderWidth: 1, borderRadius: 2 },
   selected: { backgroundColor: colors.ntx },
-  choice: { minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: colors.noteLine, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 2 },
+  choice: { minHeight: 48, maxWidth: '100%', justifyContent: 'center', borderWidth: 1, borderColor: colors.noteLine, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 2 },
   choiceSelected: { backgroundColor: colors.ntx },
   avatar: { borderWidth: 1, borderColor: colors.ntx, alignItems: 'center', justifyContent: 'center', backgroundColor: paper[4] },
   message: { padding: 12, borderRadius: 2 },

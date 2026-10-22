@@ -1,2 +1,1 @@
-import { BoardScreen } from '../src/features/alarms/BoardScreen.tsx';
-export default function HomeRoute() { return <BoardScreen />; }
+export { ProductBoard as default } from '../src/features/productP1/Board.tsx';

@@ -1,1 +1,1 @@
-export { TasksScreen as default } from '../src/features/tasks/TasksScreen.tsx';
+export { ProductTasks as default } from '../src/features/productP1/Tasks.tsx';

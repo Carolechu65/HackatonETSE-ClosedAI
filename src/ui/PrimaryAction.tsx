@@ -24,7 +24,7 @@ export function PrimaryAction({ label, onPress, disabled = false, style }: Prima
         style,
       ]}
     >
-      <Text style={typography.button}>{label}</Text>
+      <Text style={[typography.button, { textAlign: 'center' }]}>{label}</Text>
     </Pressable>
   );
 }

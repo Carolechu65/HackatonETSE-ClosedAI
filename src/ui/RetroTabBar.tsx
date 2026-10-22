@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from './Icon.tsx';
 import { colors, typography } from './theme.ts';
+import { USE_NATIVE_DRIVER } from './animation.ts';
 
 const TAB_META: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Tablón', icon: 'home' },
@@ -66,7 +67,7 @@ function TabItem({
   useEffect(() => {
     Animated.spring(progress, {
       toValue: focused ? 1 : 0,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 28,
       bounciness: 7,
     }).start();
@@ -119,6 +120,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     minWidth: 64,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingTop: 2,
   },
   underline: {

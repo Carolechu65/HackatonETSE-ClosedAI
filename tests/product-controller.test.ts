@@ -77,3 +77,21 @@ test('failed native cleanup keeps an explicit retry path and blocks another logi
   failCleanup = false; await client.signOut(); assert.equal(client.getSnapshot().cleanupPending, false);
   assert.equal(client.getSnapshot().session, null);
 });
+
+for (const feature of ['finance', 'calendar'] as const) {
+ test(`${feature} cannot send a request after logout starts while awaiting backend`, async () => {
+  const sent: string[] = [];
+  const api: ProductBackend = {
+   initialize: async () => {}, authenticate: async () => {}, logout: async () => {}, userId: () => 'real-user',
+   request: async path => { sent.push(path); if(path === '/v1/groups') return {groups: []}; if(path === '/v1/auth/me') return {user: {uid:'real-user',displayName:'Ana'}}; throw new Error('Private request must be blocked before transport'); },
+   reconcile: async () => {}, submit: async () => { throw new Error('unused'); }, decorate: alarms => alarms,
+   pending: () => 0, subscribe: () => () => {}, makePrimaryDevice: async () => '', requestPermissions: async () => '',
+  };
+  const client = createProductController(async () => api);
+  await client.signIn({email:'a@example.test',password:'unused'},false); sent.length=0;
+  const request = feature === 'finance' ? client.finance.list('group-1') : client.calendar.status();
+  const rejected = assert.rejects(request, /sesión o el piso ha cambiado/);
+  await client.signOut(); await rejected;
+  assert.deepEqual(sent, []);
+ });
+}
