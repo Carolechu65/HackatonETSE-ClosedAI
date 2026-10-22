@@ -1,6 +1,6 @@
 # Expo y Android: prácticas para alarmaT
 
-**Verificación: 22 de octubre de 2026. Estado: prototipo P4 implementado; pendiente compilar y validar en dispositivo.** Las fuentes oficiales sustentan capacidades y restricciones; las decisiones de arquitectura son propuestas para este hackathon. El runtime ya incluye store nativo, AlarmManager, receptor, sonido, detener/posponer y recuperación; la evidencia física sigue en [QA](qa/ALARM_RUNTIME.md).
+**Verificación: 22 de octubre de 2026. Estado: runtime P4 compilado y APK debug ensamblado; pendiente validación física.** Las fuentes oficiales sustentan capacidades y restricciones; las decisiones de arquitectura son propuestas para este hackathon. El runtime ya incluye store nativo, AlarmManager, receptor, sonido, detener/posponer y recuperación, integrado con las tareas de `main`; la evidencia física sigue en [QA](qa/ALARM_RUNTIME.md).
 
 ## 1. Stack elegido y motivo
 

@@ -42,7 +42,7 @@ class AlarmFiredReceiver : BroadcastReceiver() {
             updatedAtEpochMs = now,
           )
         }
-        AlarmNotifications.showReminder(context, occurrence)
+        AlarmNotifications.showReminder(context, occurrence, silent = true)
       }
       else -> startAlarmService(context, store, key, occurrence, now)
     }

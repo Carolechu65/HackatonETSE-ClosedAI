@@ -44,14 +44,16 @@ No se declara `USE_EXACT_ALARM` ni se piden permisos de superposición/accesibil
 
 ## Uso desde la app
 
-La pantalla [`AlarmRuntimeLabScreen`](../../../src/features/alarms/AlarmRuntimeLabScreen.tsx) (ruta `/alarm-runtime`, enlace «Alarma real» en la cabecera) permite:
+El runtime se consume desde las tareas de `src/features/skeleton`. La pantalla **Tareas** permite:
 
-- ver capacidades y conceder permisos;
-- programar una alarma real a 10 s, 30 s o 1 min;
-- detenerla o posponerla 5 minutos;
-- inspeccionar el store nativo y ejecutar la reconciliación.
+- añadir una tarea con hora o día (`21:00`, `mañana`, `lunes`, `hoy`);
+- elegir prioridad (baja, normal, alta): el aviso se adelanta 0, 5 o 10 minutos;
+- tocar «Aviso» para programar una alarma real;
+- silenciar el aviso con el icono de campana (modo `NOTIFICATION`);
+- detener o posponer desde la notificación o la pantalla de alarma;
+- ver el estado `Programada`, `Permiso`, `Reintentar` o `Detener` en la propia fila.
 
-Es un banco de pruebas: no crea propuestas ni escribe en Firebase.
+Completar o quitar una tarea cancela su alarma antes de actualizar la lista. El Tablón muestra el aviso de la próxima tarea y permite programarlo o silenciarlo. La app no crea propuestas remotas ni escribe en la API desde este flujo: es un primer corte local sobre el esqueleto de `main`.
 
 ## Compilar y probar
 
@@ -61,14 +63,12 @@ npx expo prebuild --platform android --clean
 npm run android
 ```
 
-Si `npm ci` falla por el conflicto de peers preexistente entre `react@19.3.0` y `react-dom@19.3.1`, usar `npm ci --legacy-peer-deps`; no cambia el lockfile.
-
 `npm run export:android` solo comprueba JavaScript: no compila Kotlin ni valida sonido. Requiere una development build; Expo Go no carga módulos locales. Verificado en esta rama: `tsc --noEmit`, `expo export --platform android`, `:app:compileDebugKotlin` y `:app:assembleDebug`.
 
 Prueba mínima en un Android físico:
 
 1. Conceder alarmas exactas y notificaciones.
-2. Programar a 30 s, bloquear la pantalla y cerrar la app desde recientes.
+2. Añadir una tarea con hora 2 minutos en el futuro (prioridad baja para que no se adelante), tocar «Aviso», bloquear la pantalla y cerrar la app desde recientes.
 3. Verificar sonido, notificación visible y pantalla de alarma.
 4. Detener desde la notificación; repetir y posponer 5 min.
 5. Reiniciar el móvil, desbloquear y comprobar que una alarma futura sigue programada.
@@ -78,6 +78,8 @@ Prueba mínima en un Android físico:
 
 - **No validado en hardware**: Kotlin y el APK debug compilan, pero falta ejecutar la matriz de [QA](../../docs/qa/ALARM_RUNTIME.md) en teléfonos reales.
 - **Force-stop**: Android cancela `PendingIntent`; no se promete resistencia. Es un caso distinto de matar el proceso.
+- **Tareas en memoria**: la lista del esqueleto sigue viviendo en memoria; las alarmas sí persisten en el store nativo y se reflejan al reabrir para las tareas iniciales. P5 sustituirá la lista por SQLite.
+- **Formulario mínimo**: título, hora/día y prioridad son editables; descripción, duración estimada y responsable están modelados para el detalle de tarea, pero todavía no tienen formulario.
 - **Direct Boot**: el store usa almacenamiento protegido por credenciales; no hay alarmas antes del primer desbloqueo.
 - **Recurrencia**: no implementada. El contrato P0 semanal requiere materializar la siguiente ocurrencia antes de disparar.
 - **Recordatorios estándar**: `expo-notifications` no está instalado; el modo `NOTIFICATION` del runtime publica un aviso sin sonido sostenido. `src/platform/notifications` no finge programarlos.

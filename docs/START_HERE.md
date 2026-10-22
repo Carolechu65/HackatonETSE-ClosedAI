@@ -1,6 +1,6 @@
 # Empezar a implementar alarmaT
 
-Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. Ningún botón de demo activa alarmas reales.
+Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. La pestaña Tareas ya programa alarmas locales reales en development build Android; la demo en web/Expo Go muestra que no están disponibles en lugar de fingir una programación.
 
 ## Arranque
 
@@ -56,7 +56,7 @@ Validación registrada en la entrega A01: `npm ci` limpio con Node 22/26, TypeSc
 | P1 · Base y contratos | `package.json`, `app.config.ts`, `src/domain/`, `contracts/`, `src/ui/` | Build reproducible, contratos v1, tipos/puertos, fixtures, Clock y composición. |
 | P2 · Pantallas | `app/index.tsx`, `src/features/alarms/AlarmInboxScreen.tsx`, `src/features/auth/`, `groups/` | Formulario de propuesta y sesión real; sustituir datos de ejemplo. |
 | P3 · Backend SQLite/VPS y agente | [Prompt P3](prompts/03_SQLITE_VPS_AGENT.md); migrar `functions/` a `server/src/` y crear migraciones SQL | API propia, sesiones, autorización/transacciones; borrador y aclarificación del agente. |
-| P4 · Alarmas Android | `src/platform/alarms/index.ts`, `modules/alarm-runtime/` | Programar, sonar y detener una alarma consentida sin JS vivo. |
+| P4 · Alarmas Android | `src/platform/alarms/index.ts`, `modules/alarm-runtime/`, `src/features/tasks/` | Alarmas ligadas a tareas: prioridad, hora, sonido, detener/posponer y recuperación. Runtime compilado; falta validación física. |
 | P5 · Datos y sincronización | `src/data/alarmRepository.ts`, `src/platform/sync/outbox.ts`, `src/bootstrap/index.ts` | SQLite local + API HTTP + SecureStore; conservar pendientes y conciliar versiones. |
 | P6 · Widget, tareas e integración | `src/widgets/snapshot.ts`, `src/features/tasks/TaskPreview.tsx` | Widget Android mínimo con deep link y tarea vinculada; prueba entre dos móviles. |
 
@@ -95,7 +95,7 @@ No importar adaptadores concretos desde las pantallas: usar `src/composition/ind
 
 - **Cliente remoto:** P5 implementará HTTP, sesión en SecureStore, sincronización por cursor y push Expo opcional. No instalar RNFirebase para el nuevo backend.
 - **Backend:** las funciones antiguas siguen devolviendo `unimplemented`; las Rules antiguas deniegan todo. P3 debe reemplazarlas por API HTTP, sesiones propias, migraciones SQLite y autorización probada; después retirará el legado con P1. No hay servidor SQLite ejecutable todavía.
-- **Alarma sonora:** el módulo nativo declara sus capacidades como no disponibles y rechaza programar/cancelar. La interfaz TypeScript funciona como punto de conexión.
+- **Alarma sonora:** el runtime nativo ya programa, suena, detiene, pospone y recupera. La pestaña Tareas lo conecta con prioridad y hora de la tarea. Queda validar permisos, sonido y recuperación en un teléfono físico con la matriz de [QA](qa/ALARM_RUNTIME.md).
 - **Widgets:** hay una proyección pura; no se registra todavía un widget en el launcher. P6 instala/configura expo-widgets y valida el runtime aislado.
 - **Agente:** existe su punto de entrada y contrato de borrador/clarificación; falta conectar un modelo, herramientas autorizadas y confirmación humana.
 - **Automatizaciones:** el outbox es un contrato inicial; recurrencia, reintentos y cancelaciones por tareas están pendientes.

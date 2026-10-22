@@ -5,7 +5,8 @@ import type { ExpoConfig } from 'expo/config';
  *
  * Marca «Nevera Retro»: fuente vectorial en `assets/brand/*.svg`; los PNG se
  * regeneran con `node scripts/brand/render.mjs` (requiere rsvg-convert).
- * El icono activo es la campana; la alternativa `clock` está generada.
+ * El icono activo es la campana; las alternativas `clock` y `checkbox` están
+ * generadas.
  */
 const config: ExpoConfig = {
   name: 'alarmaT',

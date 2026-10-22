@@ -9,9 +9,12 @@ import {
   unsettledTotalCents,
 } from '../../src/features/skeleton/model.ts';
 import { useSkeleton } from '../../src/features/skeleton/store.tsx';
+import { alarmChipLabel, alarmDetail } from '../../src/features/tasks/taskTime.ts';
+import { useTaskAlarms } from '../../src/features/tasks/useTaskAlarms.ts';
 import {
   AnimatedIn,
   Checkbox,
+  Chip,
   Note,
   Screen,
   ScreenHeader,
@@ -22,7 +25,8 @@ import {
 /** Tablón: lo que hay que saber hoy, sin scroll y con la próxima tarea accionable. */
 export default function TablonRoute() {
   const router = useRouter();
-  const { state, actions } = useSkeleton();
+  const { state } = useSkeleton();
+  const alarms = useTaskAlarms();
   const pending = pendingTasks(state);
   const done = completedTaskCount(state);
   const next = nextTask(state);
@@ -46,12 +50,26 @@ export default function TablonRoute() {
             <View style={styles.nextRow}>
               <Checkbox
                 checked={false}
-                onToggle={() => actions.toggleTask(next.id)}
+                onToggle={() => void alarms.toggleTask(next)}
                 accessibilityLabel={`Marcar ${next.title} como hecha`}
               />
               <View style={styles.nextText}>
-                <Text style={typography.support}>Te lo propuso Luis</Text>
-                <Text style={typography.labelOnNote}>Aceptada · activación pendiente</Text>
+                <Text style={typography.support}>{alarmDetail(next)}</Text>
+                <View style={styles.nextActions}>
+                  <Chip
+                    label={alarmChipLabel(next)}
+                    selected={next.alarmStatus === 'scheduled' || next.alarmStatus === 'fired'}
+                    onPress={() => void alarms.toggleAlarm(next)}
+                    accessibilityLabel={`${alarmChipLabel(next)}: ${next.title}`}
+                  />
+                  {next.alarmEnabled ? (
+                    <Chip
+                      label={next.alarmMode === 'NOTIFICATION' ? 'Silenciosa' : 'Con sonido'}
+                      onPress={() => void alarms.toggleMute(next)}
+                      accessibilityLabel="Cambiar sonido del aviso"
+                    />
+                  ) : null}
+                </View>
               </View>
             </View>
           ) : (
@@ -93,7 +111,7 @@ export default function TablonRoute() {
       </AnimatedIn>
 
       <Text style={[styles.caption, tabularNums]}>
-        {done} de {state.tasks.length} tareas · {formatEuros(owed)} pendientes
+        {alarms.message ?? `${done} de ${state.tasks.length} tareas · ${formatEuros(owed)} pendientes`}
       </Text>
     </Screen>
   );
@@ -113,6 +131,13 @@ const styles = StyleSheet.create({
   nextText: {
     flex: 1,
     gap: 2,
+  },
+  nextActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
   },
   board: {
     flexDirection: 'row',

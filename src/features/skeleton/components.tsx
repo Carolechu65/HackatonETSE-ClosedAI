@@ -10,6 +10,7 @@ import {
   typography,
 } from '../../ui/index.ts';
 import { formatEuros, type Expense, type Task } from './model.ts';
+import { alarmChipLabel, taskMetaLabel } from '../tasks/taskTime.ts';
 
 /** Barra de progreso de 6 px (guía §5.6) que crece al cambiar de valor. */
 export function ProgressBar({ value, total }: { value: number; total: number }) {
@@ -44,10 +45,16 @@ export function TaskRow({
   task,
   onToggle,
   onRemove,
+  onToggleAlarm,
+  onToggleMute,
+  busy = false,
 }: {
   task: Task;
   onToggle: () => void;
   onRemove: () => void;
+  onToggleAlarm?: () => void;
+  onToggleMute?: () => void;
+  busy?: boolean;
 }) {
   const exit = useRef(new Animated.Value(0)).current;
 
@@ -61,6 +68,10 @@ export function TaskRow({
       if (finished) onRemove();
     });
   };
+
+  const alarmSelected = task.alarmStatus === 'scheduled'
+    || task.alarmStatus === 'scheduling'
+    || task.alarmStatus === 'fired';
 
   return (
     <Animated.View
@@ -82,8 +93,31 @@ export function TaskRow({
       />
       <View style={styles.rowText}>
         <Text style={[typography.body, task.done && styles.done]} numberOfLines={1}>{task.title}</Text>
-        <Text style={typography.labelOnNote}>{task.time}</Text>
+        <Text style={typography.labelOnNote}>{taskMetaLabel(task)}</Text>
       </View>
+      {!task.done ? (
+        <Chip
+          label={alarmChipLabel(task)}
+          selected={alarmSelected}
+          onPress={busy ? undefined : onToggleAlarm}
+          accessibilityLabel={`${alarmChipLabel(task)}: ${task.title}`}
+        />
+      ) : null}
+      {!busy && !task.done && task.alarmEnabled && onToggleMute ? (
+        <PressableScale
+          onPress={onToggleMute}
+          accessibilityLabel={task.alarmMode === 'NOTIFICATION'
+            ? `Activar sonido para ${task.title}`
+            : `Silenciar aviso de ${task.title}`}
+          style={styles.alarmMode}
+        >
+          <Icon
+            name={task.alarmMode === 'NOTIFICATION' ? 'bell-off' : 'bell'}
+            size={14}
+            color={colors.noteLabel}
+          />
+        </PressableScale>
+      ) : null}
       <PressableScale onPress={remove} accessibilityLabel={`Quitar ${task.title}`} style={styles.delete}>
         <Icon name="x" size={16} color={colors.noteLabel} />
       </PressableScale>
@@ -150,6 +184,12 @@ const styles = StyleSheet.create({
   },
   delete: {
     width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alarmMode: {
+    width: 24,
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',

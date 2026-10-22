@@ -4,12 +4,20 @@ import {
   skeletonReducer,
   type Preferences,
   type SkeletonState,
+  type TaskAlarmPatch,
+  type TaskPriority,
 } from './model.ts';
 
+type AddTaskOptions = {
+  time?: string;
+  priority?: TaskPriority;
+};
+
 type SkeletonActions = {
-  addTask(title: string): void;
+  addTask(title: string, options?: AddTaskOptions): void;
   toggleTask(id: string): void;
   removeTask(id: string): void;
+  setTaskAlarm(id: string, patch: TaskAlarmPatch): void;
   addExpense(title: string, amountCents: number): void;
   toggleExpenseSettled(id: string): void;
   removeExpense(id: string): void;
@@ -31,9 +39,10 @@ const SkeletonContext = createContext<SkeletonContextValue | null>(null);
 export function SkeletonProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(skeletonReducer, initialSkeletonState);
   const actions = useMemo<SkeletonActions>(() => ({
-    addTask: (title) => dispatch({ type: 'task/add', title }),
+    addTask: (title, options) => dispatch({ type: 'task/add', title, ...options }),
     toggleTask: (id) => dispatch({ type: 'task/toggle', id }),
     removeTask: (id) => dispatch({ type: 'task/remove', id }),
+    setTaskAlarm: (id, patch) => dispatch({ type: 'task/setAlarm', id, patch }),
     addExpense: (title, amountCents) => dispatch({ type: 'expense/add', title, amountCents }),
     toggleExpenseSettled: (id) => dispatch({ type: 'expense/toggleSettled', id }),
     removeExpense: (id) => dispatch({ type: 'expense/remove', id }),

@@ -45,8 +45,21 @@ object AlarmNotifications {
       setShowBadge(true)
     }
 
+    val silentChannel = NotificationChannel(
+      AlarmContract.CHANNEL_SILENT,
+      "Avisos silenciosos",
+      NotificationManager.IMPORTANCE_DEFAULT,
+    ).apply {
+      description = "Recordatorios de tareas silenciados por el usuario"
+      setSound(null, null)
+      enableVibration(false)
+      lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+      setShowBadge(true)
+    }
+
     manager.createNotificationChannel(alarmChannel)
     manager.createNotificationChannel(reminderChannel)
+    manager.createNotificationChannel(silentChannel)
   }
 
   fun buildAlarmNotification(context: Context, occurrence: AlarmOccurrence): Notification {
@@ -83,7 +96,7 @@ object AlarmNotifications {
     return builder.build()
   }
 
-  fun showReminder(context: Context, occurrence: AlarmOccurrence) {
+  fun showReminder(context: Context, occurrence: AlarmOccurrence, silent: Boolean = false) {
     ensureChannels(context)
     val key = occurrence.key
     val openIntent = AlarmContract.activityPendingIntent(context, key)
@@ -95,21 +108,23 @@ object AlarmNotifications {
       AlarmContract.DEFAULT_SNOOZE_MINUTES,
     )
     val time = DateFormat.getTimeFormat(context).format(Date(occurrence.effectiveAtEpochMs))
+    val channel = if (silent) AlarmContract.CHANNEL_SILENT else AlarmContract.CHANNEL_REMINDER
 
-    val notification = NotificationCompat.Builder(context, AlarmContract.CHANNEL_REMINDER)
+    val builder = NotificationCompat.Builder(context, channel)
       .setSmallIcon(R.drawable.ic_alarm_runtime)
       .setContentTitle(occurrence.title.ifBlank { "Recordatorio" })
       .setContentText("Recordatorio de las $time")
       .setCategory(NotificationCompat.CATEGORY_EVENT)
-      .setPriority(NotificationCompat.PRIORITY_HIGH)
+      .setPriority(if (silent) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_HIGH)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setContentIntent(openIntent)
       .setAutoCancel(true)
       .addAction(0, "Detener", stopIntent)
       .addAction(0, "Posponer ${AlarmContract.DEFAULT_SNOOZE_MINUTES} min", snoozeIntent)
-      .build()
 
-    notify(context, key, notification)
+    if (silent) builder.setSilent(true)
+
+    notify(context, key, builder.build())
   }
 
   fun notify(context: Context, key: String, notification: Notification) {

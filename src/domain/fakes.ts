@@ -123,6 +123,7 @@ export type FakeAlarmRuntimeOptions = {
   exactAlarms?: boolean;
   audibleAlarms?: boolean;
   notifications?: boolean;
+  fullScreenIntent?: boolean;
   reason?: string;
   /** Simula falta de permiso al programar una alarma audible. */
   permissionMissing?: boolean;
@@ -167,6 +168,45 @@ export function createFakeAlarmRuntime(options: FakeAlarmRuntimeOptions = {}): F
       if (stored) occurrences.set(occurrenceKey(key), { ...stored, status: 'CANCELLED' });
       return { status: 'CANCELLED', key };
     },
+    async stop(key: OccurrenceKey): Promise<boolean> {
+      calls.push('stop');
+      const stored = occurrences.get(occurrenceKey(key));
+      if (!stored) return false;
+      occurrences.set(occurrenceKey(key), { ...stored, status: 'FIRED' });
+      return true;
+    },
+    async snooze(key: OccurrenceKey, minutes = 5) {
+      calls.push('snooze');
+      const stored = occurrences.get(occurrenceKey(key));
+      if (!stored) return { status: 'FAILED' as const, reason: 'E_NOT_FOUND' };
+      const effectiveAtEpochMs = Date.now() + Math.max(1, minutes) * 60_000;
+      occurrences.set(occurrenceKey(key), {
+        ...stored,
+        spec: { ...stored.spec, effectiveAtEpochMs },
+        status: 'SCHEDULED',
+      });
+      return { status: 'SCHEDULED' as const, scheduledAtEpochMs: effectiveAtEpochMs };
+    },
+    async reconcile() {
+      calls.push('reconcile');
+      return { rescheduled: 0, expired: 0, failed: 0 };
+    },
+    async requestExactAlarmPermission(): Promise<boolean> {
+      calls.push('requestExactAlarmPermission');
+      return available;
+    },
+    async requestNotificationPermission(): Promise<boolean> {
+      calls.push('requestNotificationPermission');
+      return available;
+    },
+    async openNotificationSettings(): Promise<boolean> {
+      calls.push('openNotificationSettings');
+      return available;
+    },
+    async openFullScreenIntentSettings(): Promise<boolean> {
+      calls.push('openFullScreenIntentSettings');
+      return available;
+    },
     async getSnapshot(): Promise<RuntimeSnapshot> {
       return {
         available,
@@ -180,6 +220,7 @@ export function createFakeAlarmRuntime(options: FakeAlarmRuntimeOptions = {}): F
         exactAlarms: available && (options.exactAlarms ?? true),
         audibleAlarms: available && (options.audibleAlarms ?? true),
         notifications: available && (options.notifications ?? true),
+        fullScreenIntent: available && (options.fullScreenIntent ?? true),
       };
       if (options.reason) capabilities.reason = options.reason;
       return capabilities;

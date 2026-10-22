@@ -57,6 +57,35 @@ test('la próxima tarea es una pendiente', () => {
   assert.equal(pendingTasks(allDone).length, 2);
 });
 
+test('añadir una tarea con hora y prioridad', () => {
+  const state = skeletonReducer(fresh(), {
+    type: 'task/add',
+    title: 'Regar plantas',
+    time: 'lunes',
+    priority: 'high',
+  });
+  const task = state.tasks[0];
+  assert.ok(task);
+  assert.equal(task.time, 'lunes');
+  assert.equal(task.priority, 'high');
+  assert.equal(task.alarmStatus, 'off');
+});
+
+test('el estado de alarma se actualiza y se apaga al completar la tarea', () => {
+  const scheduled = skeletonReducer(fresh(), {
+    type: 'task/setAlarm',
+    id: 'task-1',
+    patch: { alarmEnabled: true, alarmStatus: 'scheduled', dueAt: '2026-10-22T21:00:00.000Z' },
+  });
+  assert.equal(scheduled.tasks[0]?.alarmStatus, 'scheduled');
+
+  const done = skeletonReducer(scheduled, { type: 'task/toggle', id: 'task-1' });
+  assert.equal(done.tasks[0]?.done, true);
+  assert.equal(done.tasks[0]?.alarmEnabled, false);
+  assert.equal(done.tasks[0]?.alarmStatus, 'off');
+  assert.equal(done.tasks[0]?.alarmReason, null);
+});
+
 test('los gastos se añaden en céntimos y se liquidan', () => {
   const state = skeletonReducer(fresh(), { type: 'expense/add', title: 'Gasolina', amountCents: 1234 });
   const expense = state.expenses[0]!;

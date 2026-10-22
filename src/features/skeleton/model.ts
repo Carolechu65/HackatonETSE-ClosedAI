@@ -6,12 +6,38 @@
  * presenta como sincronizado ni como alarma programada.
  */
 
+export type TaskPriority = 'low' | 'normal' | 'high';
+
+export type TaskAlarmStatus =
+  | 'off'
+  | 'scheduling'
+  | 'scheduled'
+  | 'pending_permission'
+  | 'failed'
+  | 'fired';
+
 export type Task = {
   id: string;
   title: string;
   time: string;
   done: boolean;
+  description: string;
+  priority: TaskPriority;
+  estimatedMinutes: number | null;
+  assigneeId: string | null;
+  /** Estado local de la alarma; el runtime nativo conserva el estado autoritativo. */
+  alarmEnabled: boolean;
+  alarmMode: 'ALARM' | 'NOTIFICATION';
+  alarmStatus: TaskAlarmStatus;
+  alarmReason: string | null;
+  /** Fecha/hora límite resuelta; se guarda para cancelar con la misma identidad. */
+  dueAt: string | null;
 };
+
+export type TaskAlarmPatch = Partial<Pick<
+  Task,
+  'alarmEnabled' | 'alarmMode' | 'alarmStatus' | 'alarmReason' | 'dueAt'
+>>;
 
 export type Expense = {
   id: string;
@@ -42,10 +68,66 @@ export type SkeletonState = {
 
 export const initialSkeletonState: SkeletonState = {
   tasks: [
-    { id: 'task-1', title: 'Sacar la basura', time: '21:00', done: false },
-    { id: 'task-2', title: 'Fregar los platos', time: '22:00', done: false },
-    { id: 'task-3', title: 'Comprar detergente', time: 'mañana', done: false },
-    { id: 'task-4', title: 'Bajar el cartón', time: 'lunes', done: true },
+    {
+      id: 'task-1',
+      title: 'Sacar la basura',
+      time: '21:00',
+      done: false,
+      description: 'Bajar el contenedor orgánico antes de que cierre.',
+      priority: 'high',
+      estimatedMinutes: 10,
+      assigneeId: 'member-1',
+      alarmEnabled: false,
+      alarmMode: 'ALARM',
+      alarmStatus: 'off',
+      alarmReason: null,
+      dueAt: null,
+    },
+    {
+      id: 'task-2',
+      title: 'Fregar los platos',
+      time: '22:00',
+      done: false,
+      description: 'Dejar la cocina recogida antes de dormir.',
+      priority: 'normal',
+      estimatedMinutes: 15,
+      assigneeId: 'member-2',
+      alarmEnabled: false,
+      alarmMode: 'ALARM',
+      alarmStatus: 'off',
+      alarmReason: null,
+      dueAt: null,
+    },
+    {
+      id: 'task-3',
+      title: 'Comprar detergente',
+      time: 'mañana',
+      done: false,
+      description: 'Aprovechar la vuelta de la compra.',
+      priority: 'low',
+      estimatedMinutes: 20,
+      assigneeId: 'member-3',
+      alarmEnabled: false,
+      alarmMode: 'ALARM',
+      alarmStatus: 'off',
+      alarmReason: null,
+      dueAt: null,
+    },
+    {
+      id: 'task-4',
+      title: 'Bajar el cartón',
+      time: 'lunes',
+      done: true,
+      description: 'Ya bajado esta semana.',
+      priority: 'normal',
+      estimatedMinutes: 10,
+      assigneeId: 'member-4',
+      alarmEnabled: false,
+      alarmMode: 'ALARM',
+      alarmStatus: 'off',
+      alarmReason: null,
+      dueAt: null,
+    },
   ],
   expenses: [
     { id: 'expense-1', title: 'Factura de la luz', amountCents: 8420, settled: false },
@@ -63,9 +145,10 @@ export const initialSkeletonState: SkeletonState = {
 };
 
 export type SkeletonAction =
-  | { type: 'task/add'; title: string }
+  | { type: 'task/add'; title: string; time?: string; priority?: TaskPriority }
   | { type: 'task/toggle'; id: string }
   | { type: 'task/remove'; id: string }
+  | { type: 'task/setAlarm'; id: string; patch: TaskAlarmPatch }
   | { type: 'expense/add'; title: string; amountCents: number }
   | { type: 'expense/toggleSettled'; id: string }
   | { type: 'expense/remove'; id: string }
@@ -81,19 +164,52 @@ export function skeletonReducer(state: SkeletonState, action: SkeletonAction): S
       const title = action.title.trim().slice(0, MAX_TITLE_LENGTH);
       if (title.length === 0) return state;
       if (state.tasks.length >= MAX_TASKS) return state;
+      const time = action.time?.trim().slice(0, 30) || 'hoy';
       return {
         ...state,
         nextId: state.nextId + 1,
-        tasks: [{ id: `task-${state.nextId}`, title, time: 'hoy', done: false }, ...state.tasks],
+        tasks: [{
+          id: `task-${state.nextId}`,
+          title,
+          time,
+          done: false,
+          description: '',
+          priority: action.priority ?? 'normal',
+          estimatedMinutes: null,
+          assigneeId: null,
+          alarmEnabled: false,
+          alarmMode: 'ALARM',
+          alarmStatus: 'off',
+          alarmReason: null,
+          dueAt: null,
+        }, ...state.tasks],
       };
     }
     case 'task/toggle':
       return {
         ...state,
-        tasks: state.tasks.map((task) => (task.id === action.id ? { ...task, done: !task.done } : task)),
+        tasks: state.tasks.map((task) => {
+          if (task.id !== action.id) return task;
+          const done = !task.done;
+          const alarmStatus: TaskAlarmStatus = done ? 'off' : task.alarmStatus;
+          return {
+            ...task,
+            done,
+            alarmEnabled: done ? false : task.alarmEnabled,
+            alarmStatus,
+            alarmReason: done ? null : task.alarmReason,
+          };
+        }),
       };
     case 'task/remove':
       return { ...state, tasks: state.tasks.filter((task) => task.id !== action.id) };
+    case 'task/setAlarm':
+      return {
+        ...state,
+        tasks: state.tasks.map((task) => (
+          task.id === action.id ? { ...task, ...action.patch } : task
+        )),
+      };
     case 'expense/add': {
       const title = action.title.trim().slice(0, MAX_TITLE_LENGTH);
       if (title.length === 0 || action.amountCents <= 0) return state;

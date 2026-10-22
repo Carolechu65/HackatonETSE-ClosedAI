@@ -21,6 +21,7 @@ object AlarmContract {
 
   const val CHANNEL_ALARM = "alarm_runtime_alarm_v1"
   const val CHANNEL_REMINDER = "alarm_runtime_reminder_v1"
+  const val CHANNEL_SILENT = "alarm_runtime_silent_v1"
 
   const val DEFAULT_SNOOZE_MINUTES = 5
   const val MAX_ALARM_DURATION_MS = 10 * 60 * 1000L

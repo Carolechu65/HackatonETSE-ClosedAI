@@ -163,5 +163,5 @@ El cuerpo `AppError` manda cuando trae un `code` v1; un proxy sin JSON se normal
 | `src/domain/alarms.ts` (`AlarmSummary`) | Proyección de UI; no incluye versiones ni dispositivo. | No usarla como contrato de seguridad ni como estado de servidor. |
 | `src/data/alarmRepository.ts` (`demoAlarm`) | Repository en memoria; aceptar solo cambia la proyección. | P5 lo sustituye por `expo-sqlite` + API HTTPS mediante `fetch`, siguiendo `AlarmRepository`; sesión coordinada con P2. |
 | `app.config.ts` | Configuración de aplicación, sin un backend VPS operativo. | P1/P2/P5 configuran URL pública HTTPS y SecureStore; jamás credenciales SQLite en el móvil. Credenciales FCM solo si se activa push Android opcional. |
-| `modules/alarm-runtime` | Declara capacidades no disponibles y rechaza programar. | P4 implementa; `OccurrenceKey` sigue la forma de `src/domain/ids.ts`; no depende de Firebase ni del VPS al sonar. |
+| `modules/alarm-runtime` | Implementa store nativo, AlarmManager, sonido, detener/posponer y recuperación; las tareas de `src/features/tasks` programan avisos. | P4 mantiene `OccurrenceKey` según `src/domain/ids.ts`; el runtime no depende de Firebase ni del VPS para sonar. |
 
