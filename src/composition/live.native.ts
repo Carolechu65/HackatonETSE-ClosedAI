@@ -75,14 +75,18 @@ export async function createLiveBackend(): Promise<ProductBackend> {
   const listeners = new Set<() => void>(); const notify = () => { for (const listener of listeners) listener(); };
   client.subscribe(() => {
     unsubscribeRepository?.(); const repository = client.getRepository();
-    if (!repository) { snapshot = null; void assignments.clear().catch(() => undefined); notify(); return; }
+    if (!repository) { snapshot = null; void assignments.clear(client.view().accountOwner ?? undefined).catch(() => undefined); notify(); return; }
     unsubscribeRepository = repository.subscribe(value => { snapshot = value; notify(); });
   });
   let registeredUserId: string | null = null;
   const registerInstallation = async () => { const userId = client.view().session!.userId; await client.request('/v1/devices', 'POST', { deviceId: deviceIdForUser(client.view().session!.userId), platform: Platform.OS === 'android' ? 'android' : 'ios' }); registeredUserId = userId; };
   return {
     cleanupPending: () => client.view().cleanupPending,
-    async initialize() { await client.initialize(); await assignments.configure(); }, userId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
+    async initialize() {
+      await client.initialize();
+      if (client.view().session?.authenticated) await assignments.configure();
+      else await assignments.clear(client.view().accountOwner ?? undefined);
+    }, userId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
     async authenticate(input, register) { await (register ? client.register(input) : client.login(input)); await registerInstallation(); await assignments.configure(); },
     async logout() { const userId = client.view().session?.userId ?? null; await Promise.all([client.logout(), assignments.clear(userId)]); registeredUserId = null; },
     request: (path, method, body) => client.request(path, method, body),
