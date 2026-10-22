@@ -26,7 +26,7 @@ Imprimir a PDF: `Ctrl/Cmd + P` (una diapositiva por página, sin barra ni notas)
 
 ## Contenido
 
-12 diapositivas: problema, idea, producto (4 menús), interacción, guion de demo, arquitectura (API propia + SQLite), estados/versiones, estado real (hecho y pendiente), sistema visual, equipo y cierre.
+8 diapositivas: portada, problema, idea, los cuatro menús, interacción, arquitectura (API propia + SQLite), estado real (hecho y pendiente) y cierre.
 
 Criterio editorial: **nada se presenta como terminado sin evidencia**. Las capturas salen de la app real; los datos de la UI son de ejemplo.
 
