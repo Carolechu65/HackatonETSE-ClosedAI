@@ -472,11 +472,12 @@ code {
   flex-direction: column;
   gap: 8px;
   max-width: 620px;
-  font-size: 13.5px;
+  font-size: 14.5px;
+  color: var(--tx);
 }
 
 .bullets li::marker { color: var(--ac); }
-.bullets--tight { font-size: 12.5px; gap: 6px; }
+.bullets--tight { font-size: 13px; gap: 6px; }
 
 /* ---------- Guion ---------- */
 
@@ -554,6 +555,47 @@ code {
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+
+/* ---------- Agente ---------- */
+
+.agent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: 38px;
+  align-items: center;
+  max-width: 1140px;
+}
+
+.agent-copy { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+.agent-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 4px;
+  min-width: 0;
+}
+
+.bubble {
+  position: relative;
+  max-width: 94%;
+  padding: 18px 14px 12px;
+  border-radius: 2px;
+  color: var(--ntx);
+  box-shadow: var(--note-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bubble p { margin: 0; }
+.bubble strong { font-family: var(--display); font-weight: 400; }
+
+.bubble--user { background: var(--paper-4); align-self: flex-end; transform: rotate(1deg); }
+.bubble--agent { background: var(--paper-2); align-self: flex-start; transform: rotate(-0.8deg); }
+.bubble--hint { background: var(--paper-1); align-self: center; max-width: 82%; transform: rotate(0.6deg); }
+
+.agent-chat .magnet { top: -8px; }
 
 /* ---------- Tecnologías ---------- */
 
@@ -845,6 +887,9 @@ body.show-notes .notes p:last-child { margin-bottom: 0; }
   .note-title { font-size: 19px; }
   .body, .bullets, .script-row { font-size: 12px; }
   .menu-grid { gap: 10px; }
+  .agent { gap: 22px; }
+  .agent-chat { gap: 10px; }
+  .bubble { padding: 14px 12px 10px; }
   .tech-sheet { padding: 26px 20px 18px; }
   .tech-grid { gap: 16px; }
   .tech img { width: 32px; height: 32px; }
@@ -869,7 +914,8 @@ body.show-notes .notes p:last-child { margin-bottom: 0; }
 
 @media (max-width: 900px) {
   .slide { padding: 28px 22px 96px; }
-  .grid--2, .grid--3, .team, .states, .split { grid-template-columns: 1fr; }
+  .grid--2, .grid--3, .team, .states, .split, .agent { grid-template-columns: 1fr; }
+  .bubble--user { align-self: flex-start; }
   .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tech-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .flow { flex-direction: column; }
