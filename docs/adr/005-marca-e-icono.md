@@ -1,4 +1,4 @@
-# ADR-004 · Marca, icono y splash
+# ADR-005 · Marca, icono y splash
 
 **Fecha:** 2026-10-22 · **Owner:** P1 · **Estado:** aceptado
 
@@ -26,4 +26,5 @@ Se valoraron dos conceptos:
 - Cualquier cambio de logo exige `npm run brand:render` y reconstruir la build nativa: el icono y el splash no se actualizan con Fast Refresh.
 - No hay icono monochrome para iconos temáticos de Android: el hueco del check necesitaría una máscara propia. Se pospone.
 - El icono legacy (iOS) no se ha probado en dispositivo; Android es la plataforma del hackathon.
-- El splash usa la misma puerta con `imageWidth: 220`; no se ha validado el arranque en frío en un móvil físico, solo la generación del recurso y la compilación del APK.
+- El splash usa la misma puerta con `imageWidth: 220`; no se ha validado el arranque en frío en un móvil físico.
+- Verificado en emulador Pixel 10 (API 37): el APK instala, el lanzador de desarrollo muestra el icono de la campana y la app arranca con las fuentes y el tablón de Nevera Retro. Queda el teléfono físico y el arranque en frío.

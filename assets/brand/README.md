@@ -7,7 +7,7 @@ Dos propuestas de icono, ambas vectoriales y con la paleta de [Nevera Retro](../
 | **Campanita** (activa) | `bell.svg` | `icon.png`, `adaptive-icon.png`, `splash-icon.png` |
 | **Despertador** (alternativa) | `clock.svg` | `clock-icon.png`, `clock-adaptive-icon.png`, `clock-splash-icon.png` |
 
-La marca: una campana (o un despertador de doble campana) con una **T mayúscula girada −42°** que se lee como tick. El asta de la T es el brazo corto del check, la mitad derecha de la barra el brazo largo y el resto de la barra queda como pie en el vértice. Decisión y alternativas en [ADR-004](../../docs/adr/004-marca-e-icono.md). Sin degradados, sin texto y sin más colores que los de la guía.
+La marca: una campana (o un despertador de doble campana) con una **T mayúscula girada −42°** que se lee como tick. El asta de la T es el brazo corto del check, la mitad derecha de la barra el brazo largo y el resto de la barra queda como pie en el vértice. Decisión y alternativas en [ADR-005](../../docs/adr/005-marca-e-icono.md). Sin degradados, sin texto y sin más colores que los de la guía.
 
 ## Paleta
 
@@ -52,4 +52,5 @@ En `app.config.ts`, cambia las tres rutas a `clock-icon.png`, `clock-adaptive-ic
 
 - No hay versión monochrome para iconos temáticos de Android: el check es un hueco y exige máscara propia. Se añade si la demo lo necesita.
 - El icono legacy (iOS) no se ha probado en dispositivo; Android es la plataforma del hackathon.
+- El adaptive icon se verificó instalado en el emulador Pixel 10 (API 37): aparece en el lanzador de desarrollo. El splash no se ha validado en un arranque en frío.
 - Los PNG están versionados para que nadie necesite `rsvg-convert` para compilar la app.

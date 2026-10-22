@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/session.schema.json",
+  "title": "Sesión y usuario público v1",
+  "description": "Respuestas de /v1/auth/*. El token es opaco, se guarda en SecureStore y nunca aparece en URLs, logs ni SQL local.",
+  "$defs": {
+    "publicUser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uid", "email"],
+      "properties": {
+        "uid": { "$ref": "./common.schema.json#/$defs/uid" },
+        "email": {
+          "type": "string",
+          "maxLength": 254,
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token", "expiresAtEpochMs"],
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 256
+        },
+        "expiresAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" }
+      }
+    },
+    "authResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session", "user"],
+      "properties": {
+        "session": { "$ref": "#/$defs/session" },
+        "user": { "$ref": "#/$defs/publicUser" }
+      }
+    },
+    "meResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user"],
+      "properties": {
+        "user": { "$ref": "#/$defs/publicUser" }
+      }
+    }
+  }
+}

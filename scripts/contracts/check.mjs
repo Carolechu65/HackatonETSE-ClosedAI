@@ -67,11 +67,13 @@ for (const entry of manifest.documents) {
 
 // 3. Casos inválidos por forma.
 for (const entry of manifest.invalid) {
-  const operation = await readFixture(entry.file);
-  if (entry.payloadSchema) {
-    await expectInvalid(operation.payload, entry.payloadSchema, `${entry.id} (payload)`);
+  const fixture = await readFixture(entry.file);
+  if (entry.schema) {
+    await expectInvalid(fixture, entry.schema, `${entry.id} (documento)`);
+  } else if (entry.payloadSchema) {
+    await expectInvalid(fixture.payload, entry.payloadSchema, `${entry.id} (payload)`);
   } else {
-    await expectInvalid(operation, manifest.envelopeSchema, `${entry.id} (sobre)`);
+    await expectInvalid(fixture, manifest.envelopeSchema, `${entry.id} (sobre)`);
   }
 }
 
