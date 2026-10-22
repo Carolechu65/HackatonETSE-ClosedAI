@@ -4,6 +4,7 @@ import type { ProductAlarm } from './product.ts';
 /** One session and one transport, implemented by the P5 adapters. */
 export interface ProductBackend {
   initialize(): Promise<void>;
+  cleanupPending?(): boolean;
   userId(): string | null;
   authenticate(input: { email: string; password: string; displayName?: string }, register: boolean): Promise<void>;
   logout(): Promise<void>;

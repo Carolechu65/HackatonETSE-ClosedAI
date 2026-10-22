@@ -1,5 +1,7 @@
 # P6 · Tareas vinculadas
 
+> Actualización: la composición real ya está integrada. Véase [recorrido y evidencia](../../../docs/qa/PRODUCT_INTEGRATION.md). Las notas de entrega inicial siguientes conservan contexto histórico.
+
 Estado: modelo, puertos, UI y ruta `/task/[taskId]` en código. Repositorio real (P5) y
 operaciones (P3) pendientes; la demo usa un fake en memoria y lo etiqueta.
 

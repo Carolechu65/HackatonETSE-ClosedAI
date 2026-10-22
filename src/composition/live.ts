@@ -17,7 +17,7 @@ export async function createLiveBackend(): Promise<ProductBackend> {
   return {
     initialize: async () => {}, userId: () => sessions.view()?.authenticated ? sessions.view()!.userId : null,
     async authenticate(input, register) { await (register ? auth.register(input) : auth.login(input)); },
-    async logout() { try { await auth.logoutRemote(); } finally { await sessions.clear(); } },
+    async logout() { try { if (sessions.view()?.authenticated) await auth.logoutRemote(); } finally { await sessions.clear(); } },
     request: (path, method = 'GET', body) => http.authenticatedJson(path, method, body),
     submit: command => gateway.execute(operationNameOf(command), command),
     reconcile: async () => {}, decorate: alarms => alarms, pending: () => 0,

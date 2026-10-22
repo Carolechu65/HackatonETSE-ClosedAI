@@ -2,9 +2,9 @@
 
 Nombre propuesto del producto: **alarmaT**. Repositorio: **HackatonETSE-ClosedAI**. App Android para proponer alarmas y notificaciones a otras personas y permitirles aceptar, rechazar o elegir otra hora. Widgets y tareas acompañan ese núcleo; gastos e huchas son módulos secundarios.
 
-**Estado:** listado de alcance previsto; todas las funcionalidades están pendientes de implementación. Arquitectura y decisiones tecnológicas en [README.md](README.md).
+**Estado:** alcance previsto. La implementación integrada y sus límites están documentados en [el registro P1–P6](docs/qa/PRODUCT_INTEGRATION.md); las casillas aún no certifican aceptación física. Arquitectura y decisiones tecnológicas en [README.md](README.md).
 
-**Tecnología acordada:** Expo, React Native, TypeScript, Expo Router y expo-widgets; API HTTPS propia Node.js/Fastify con SQLite en el VPS y autenticación propia. expo-sqlite conserva datos locales del móvil; expo-notifications gestiona avisos. Push remoto opcional mediante Expo Push Service (FCM como transporte Android), sin Firebase Auth/Firestore/Functions ni RNFirebase. El runtime nativo mantiene las alarmas sonoras. La migración del código del backend sigue pendiente.
+**Tecnología acordada:** Expo, React Native, TypeScript, Expo Router y expo-widgets; API HTTPS propia Node.js/Fastify con SQLite en el VPS y autenticación propia. expo-sqlite conserva datos locales del móvil; expo-notifications gestiona avisos. Push remoto opcional mediante Expo Push Service (FCM como transporte Android), sin Firebase Auth/Firestore/Functions ni RNFirebase. El runtime nativo mantiene las alarmas sonoras. La API SQLite está en `server/`; el código Firebase se conserva como legado.
 
 ## Prioridades
 

@@ -242,6 +242,23 @@ export async function proposeAlarm(
     conversation,
   };
 
+  // This is an authorization/context guard, not a simulated model response.
+  // A household with only its owner has no eligible recipients by contract.
+  if (context.members.length === 0) {
+    const clarification = {
+      question: 'Invita a otra persona al piso para proponerle un recordatorio. Cada destinatario decide si lo acepta.',
+      missingFields: ['recipient'],
+    };
+    db.prepare('UPDATE agent_sessions SET collected_json = ?, updated_at_epoch_ms = ? WHERE id = ?')
+      .run(JSON.stringify({ conversation, lastClarification: clarification }), nowEpochMs, session.id);
+    return {
+      sessionId: session.id,
+      provider: 'context-validation',
+      status: 'needs_clarification',
+      ...clarification,
+    };
+  }
+
   let feedback: string | undefined;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let raw: unknown;

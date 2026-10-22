@@ -388,9 +388,11 @@ test('un ACK antiguo no revive una cancelación y el epoch viejo no programa', a
     });
     assert.equal(schedules.json().schedules[0].status, 'CANCELLED');
 
+    // Re-selecting the same primary is idempotent; an actual switch advances epoch.
+    const replacement = await registerDevice(ctx.app, recipient);
     await ctx.app.inject({
       method: 'POST',
-      url: `/v1/devices/${device.deviceId}/primary`,
+      url: `/v1/devices/${replacement.deviceId}/primary`,
       headers: auth(recipient.token),
     });
     const oldEpoch = await reportSchedule(ctx, recipient.token, groupId, requestId, {

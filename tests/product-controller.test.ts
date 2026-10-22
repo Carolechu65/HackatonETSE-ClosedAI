@@ -43,3 +43,37 @@ test('a late remote group response cannot replace the demo session', async () =>
   await assert.rejects(refresh); assert.equal(client.getSnapshot().session?.mode, 'demo');
   assert.equal(client.getSnapshot().groupId, 'demo-casa');
 });
+
+test('switching to demo waits for and cleans a late login without replacing the demo', async () => {
+  let userId: string | null = null; let release!: () => void; let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const api: ProductBackend = {
+    initialize: async () => {}, userId: () => userId,
+    authenticate: async () => { entered(); await new Promise<void>(resolve => { release = resolve; }); userId = 'real-user'; },
+    logout: async () => { userId = null; }, request: async () => { throw new Error('stale login must not load groups'); },
+    submit: async () => { throw new Error('unused'); }, reconcile: async () => {}, decorate: alarms => alarms,
+    pending: () => 0, subscribe: () => () => {}, requestPermissions: async () => '', makePrimaryDevice: async () => '',
+  };
+  const client = createProductController(async () => api);
+  const login = client.signIn({ email: 'test@example.test', password: 'unused' }, false);
+  const rejected = assert.rejects(login); await started;
+  const switchToDemo = client.startDemo(); release(); await rejected; await switchToDemo;
+  assert.equal(client.getSnapshot().session?.mode, 'demo'); assert.equal(userId, null);
+});
+
+test('failed native cleanup keeps an explicit retry path and blocks another login', async () => {
+  let failCleanup = true;
+  const api: ProductBackend = {
+    initialize: async () => {}, userId: () => 'real-user', authenticate: async () => {},
+    logout: async () => { if (failCleanup) throw new Error('widget unavailable'); },
+    request: async path => path === '/v1/groups' ? { groups: [] } : { user: { uid: 'real-user', displayName: 'Ana' } },
+    submit: async () => { throw new Error('unused'); }, reconcile: async () => {}, decorate: alarms => alarms,
+    pending: () => 0, subscribe: () => () => {}, requestPermissions: async () => '', makePrimaryDevice: async () => '',
+  };
+  const client = createProductController(async () => api);
+  await client.signIn({ email: 'test@example.test', password: 'unused' }, false);
+  await assert.rejects(client.signOut()); assert.equal(client.getSnapshot().cleanupPending, true);
+  await assert.rejects(client.signIn({ email: 'other@example.test', password: 'unused' }, false));
+  failCleanup = false; await client.signOut(); assert.equal(client.getSnapshot().cleanupPending, false);
+  assert.equal(client.getSnapshot().session, null);
+});

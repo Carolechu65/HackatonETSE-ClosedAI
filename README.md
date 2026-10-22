@@ -4,9 +4,9 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 > Nombre propuesto de la app: **alarmaT**. Repositorio: **HackatonETSE-ClosedAI**. Aplicación Android para proponer alarmas y notificaciones a otras personas, que pueden aceptarlas, rechazarlas o elegir otra hora antes de activarlas en su móvil.
 
-**Estado: estructura inicial y cambio de arquitectura documentado.** El backend objetivo es una API propia con SQLite en el VPS. El código de `functions/` y la configuración `firebase/` siguen siendo el scaffold anterior, pendiente de migración por P3 a `server/`. La app, widgets y alarmas reales todavía requieren integración. Este cambio de documentación no despliega ni migra datos.
+**Estado: integración P1–P6 disponible.** La interfaz Nevera Retro conecta sesión, pisos, propuestas, tareas y asistente con la API Fastify/SQLite de `server/`. Android conecta SecureStore, SQLite/outbox, runtimes y widget. La demo sigue claramente separada. [Recorrido, ejecución, evidencia y límites](docs/qa/PRODUCT_INTEGRATION.md).
 
-**Entrega P5:** [datos y sincronización](src/data/README.md) incorpora SQLite local, outbox, HTTPS/SecureStore y reconciliación probados con SQLite real y adaptadores de prueba. La demo de pantalla sigue en memoria hasta integrar API, contratos HTTP y runtime Android reales.
+`functions/` y `firebase/` se conservan como legado; la CI actual valida `server/`. El sonido, launcher y comportamiento físico requieren validar la development build en Android.
 
 **Empieza aquí:** [guía de arranque y reparto por persona](docs/START_HERE.md). Incluye comandos reales y el primer archivo que debe modificar cada responsable.
 
@@ -27,7 +27,7 @@ Alarmas compartidas, bajo el control de quien las recibe.
 - Este README: alcance, decisiones técnicas, arquitectura, criterios de aceptación y plan de desarrollo.
 - [LICENSE](LICENSE): licencia MIT del repositorio.
 
-El listado de funcionalidades es la referencia de alcance. Una casilla sin marcar significa que está pendiente de implementación. El MVP cubre el flujo esencial; las ampliaciones se desarrollarán después de validar ese recorrido.
+El listado de funcionalidades es la referencia de alcance. Las casillas conservan el alcance planificado; el registro de integración distingue código implementado de validación física pendiente. El MVP cubre el flujo esencial; las ampliaciones se desarrollarán después de validar ese recorrido.
 
 ## La idea
 

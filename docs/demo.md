@@ -1,5 +1,7 @@
 # P6 · Demo e integración
 
+> Actualización: la composición real ya está integrada. Véase [recorrido y evidencia](qa/PRODUCT_INTEGRATION.md). Las notas de entrega inicial siguientes conservan contexto histórico.
+
 Guion de tres minutos y registro de evidencia. **Nada de este documento afirma que la
 alarma suene**: la compilación y la prueba física están pendientes y se marcan como tal.
 

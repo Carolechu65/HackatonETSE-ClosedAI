@@ -1,3 +1,4 @@
+import { NotificationNavigation } from '../src/composition/NotificationNavigation';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
@@ -8,8 +9,8 @@ import { colors, useNeveraFonts } from '../src/ui/index.ts';
 
 /**
  * Layout raíz (P1): puerta de nevera de fondo, tipografías del estilo y estado
- * compartido del esqueleto. Las rutas delegan en `app/(tabs)`; aquí no hay reglas
- * de negocio ni llamadas a Firebase.
+ * compartido del producto. Las rutas delegan en features; la composición
+ * mantiene una única sesión y repositorio.
  */
 export default function RootLayout() {
   const { loaded } = useNeveraFonts();
@@ -20,12 +21,15 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <View style={{ flex: 1, backgroundColor: colors.wall }}>
           {loaded ? (
+            <>
             <Stack
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: colors.wall },
               }}
             />
+            <NotificationNavigation />
+            </>
           ) : null}
         </View>
       </ProductProvider>

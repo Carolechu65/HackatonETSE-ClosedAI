@@ -96,6 +96,14 @@ test('P5 + API SQLite: consent, lost ACK/replay, sender visibility, task withdra
     assert.ok(reportRequests >= 2, 'ACK was retried over HTTP');
     assert.equal((remote.prepare('SELECT count(*) AS n FROM device_schedules').get() as { n: number }).n, 1);
     assert.ok(repository.getSnapshot().operations.filter((op: { lane: string }) => op.lane === 'ACK').every((op: { state: string }) => op.state === 'CONFIRMED'));
+    remote.prepare('UPDATE alarm_projection_cursors SET expires_at_epoch_ms=? WHERE user_id=?').run(Date.now()-1, recipient.userId);
+    await repository.reconcile();
+    assert.equal(runtime.calls.filter((call: string) => call === 'schedule').length, 1, 'expired cursor restarts without rearming');
+    remote.prepare('DELETE FROM alarm_projection_cursors WHERE user_id=?').run(recipient.userId);
+    await repository.reconcile();
+    assert.equal(runtime.calls.filter((call: string) => call === 'schedule').length, 1, 'pruned cursor restarts without rearming');
+    assert.equal(repository.getSnapshot().alarms[0].scheduling, 'SCHEDULED');
+    assert.ok(repository.getSnapshot().operations.filter((op: { lane: string }) => op.lane === 'ACK').every((op: { state: string }) => op.state === 'CONFIRMED'), 'cursor reset preserves confirmed outbox');
     const sent = await call('GET', `/v1/groups/${group.id}/alarms`, undefined, sender.token);
     assert.equal(sent.alarms[0].recipient.decision, 'ACCEPTED');
     assert.equal(sent.alarms[0].schedules[0].status, 'SCHEDULED', 'sender only sees programming after server ACK');

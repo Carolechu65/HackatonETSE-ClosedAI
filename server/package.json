@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server/src/index.js",
-    "dev": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/index.ts",
+    "dev": "node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/index.ts",
     "migrate": "node dist/server/src/migrate-cli.js",
     "test": "npm run build && node --test \"dist/server/test/*.test.js\"",
     "backup": "node scripts/backup.mjs",

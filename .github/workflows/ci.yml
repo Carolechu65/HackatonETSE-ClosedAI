@@ -43,3 +43,6 @@ jobs:
 
       - name: Empaquetar JavaScript Android
         run: npm run export:android
+
+      - name: Empaquetar consola web
+        run: npm run export:web

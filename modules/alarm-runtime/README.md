@@ -4,7 +4,7 @@ Se integra el prototipo de `origin/dAlarmas` con una revisión de cancelación, 
 
 ## Composición
 
-- `createCombinedAlarmRuntime()` en `src/platform/alarms/combined.ts` es el puerto de P5. Encauza `ALARM` al módulo nativo y `NOTIFICATION` a Expo Notifications. Nunca etiqueta AlarmManager como `EXPO_NOTIFICATIONS`.
+- La composición real (`src/composition/live.native.ts`) entrega a P5 dos runtimes separados: `createAlarmRuntime()` para `ALARM` y `createNotificationRuntime()` para `NOTIFICATION`. El reconciliador de P5 coordina cancelaciones y cambios de modalidad. Cada acuse conserva su mecanismo real: `ALARM_RUNTIME` o `EXPO_NOTIFICATIONS`.
 - `createAlarmRuntime()` expone además controles nativos para el laboratorio: detener, posponer, reconciliar y abrir ajustes. `AlarmRuntime` conserva sus cuatro métodos originales; los controles están en `NativeAlarmControls`.
 - `createNotifications()` en `src/platform/notifications/native.ts` presenta/retira propuestas con identificadores estables. No acepta alarmas ni instala listeners remotos. P5 conserva la recepción de push y la recuperación de estado autorizado.
 - Los permisos se solicitan exclusivamente desde una acción de UI: `createNotifications().requestPermission()` espera el resultado de Expo; `alarmRuntime.requestExactAlarmPermission()` abre ajustes y **no significa permiso concedido**. Volver a consultar capacidades al reanudar. Los métodos nativos que abren un diálogo devuelven que lo han abierto, no un consentimiento concedido.

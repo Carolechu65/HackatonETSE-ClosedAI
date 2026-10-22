@@ -15,7 +15,8 @@
     "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix server run build && npm --prefix server test",
     "export:android": "expo export --platform android",
     "web": "expo start --web",
-    "brand:render": "node scripts/brand/render.mjs"
+    "brand:render": "node scripts/brand/render.mjs",
+    "export:web": "expo export --platform web"
   },
   "dependencies": {
     "@expo-google-fonts/dm-mono": "^0.4.2",

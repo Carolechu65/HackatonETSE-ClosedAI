@@ -1,6 +1,6 @@
 # Empezar a implementar alarmaT
 
-Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. La demo no activa alarmas; el banco /alarm-runtime sí permite pruebas nativas explícitas.
+La composición del producto está en `src/composition/`, la API vigente en `server/` y la entrada real en `app/index.tsx`. El esqueleto anterior se conserva en `/preview`. [Estado integrado y evidencia](qa/PRODUCT_INTEGRATION.md). El banco `/alarm-runtime` permite pruebas nativas explícitas.
 
 ## Arranque
 
@@ -9,11 +9,11 @@ La app utiliza Expo SDK 58 y requiere Node 22.13 o posterior de la rama 22 (`.nv
 ```sh
 nvm use
 npm ci
-npm --prefix functions ci
+npm --prefix server ci
 npm run check
 ```
 
-`npm run check` encadena TypeScript, contratos, tests y la compilación del scaffold antiguo de `functions/`. Se conserva este comando porque el código aún no se ha migrado: **no verifica el futuro servidor SQLite**. P1/P3 actualizarán scripts y CI al crear `server/`. Comandos actuales:
+`npm run check` encadena TypeScript, contratos, tests anidados de app/datos y build/tests de la API SQLite. No comprueba sonido físico. Comandos actuales:
 
 ```sh
 npm run typecheck        # app + tests

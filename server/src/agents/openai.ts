@@ -44,7 +44,8 @@ export class OpenAiCompatibleProvider implements AgentProvider {
             model: this.options.model,
             messages,
             temperature: 0.2,
-            max_tokens: 800,
+            max_tokens: 900,
+            ...(this.options.model === 'deepseek/deepseek-v4.1-flash' && new URL(this.endpoint).hostname === 'openrouter.ai' ? {reasoning:{effort:'none'}} : {}),
             response_format: { type: 'json_object' },
           }),
           signal: AbortSignal.timeout(this.options.timeoutMs),
@@ -93,6 +94,7 @@ Devuelve únicamente JSON con una de estas formas:
 2) {"type":"draft","title":"...","recipientUids":["uid"],"timeSpec":{"timeZone":"IANA","localDate":"YYYY-MM-DD","localTime":"HH:MM","effectiveAtEpochMs":123},"mode":"ALARM|NOTIFICATION","reason":"..."}
 
 Reglas:
+- Habla con el usuario usando nombres de personas, nunca le pidas un UID ni identificadores técnicos. Esta app permite proponer avisos a otras personas; el emisor no puede ser su propio destinatario.
 - Usa solo UIDs de los miembros del contexto. Si el destinatario es ambiguo o inexistente, pide aclaración.
 - No inventes hora, fecha ni disponibilidad. Si falta un dato, pide aclaración y no devuelvas draft.
 - "cuando vuelva" no implica ubicación ni calendario: pide una hora concreta.

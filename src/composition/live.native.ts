@@ -15,17 +15,18 @@ export async function createLiveBackend(): Promise<ProductBackend> {
   let deviceId = await SecureStore.getItemAsync('alarmat.installation.v1');
   if (!deviceId) { deviceId = createIdGenerator().next('device'); await SecureStore.setItemAsync('alarmat.installation.v1', deviceId); }
   const deviceIdForUser = (userId: string) => `${deviceId}.${userId}`;
+  const checkPublication = (result: ReturnType<typeof clearWidget>) => { if (!result.published && result.reason === 'native_error') throw new Error('No se pudo limpiar o actualizar el widget del dispositivo. Vuelve a intentarlo.'); };
   const runtime = createAlarmRuntime(); const notificationRuntime = createNotificationRuntime();
   const client = await startMobileServices({
     baseUrl: apiBaseUrlFromEnv({ allowLocalHttp: __DEV__ }), allowLocalHttp: __DEV__, codec: productWireCodec, deviceId, deviceIdForUser, runtime, notificationRuntime,
     async publishWidget(snapshot) {
-      if (!snapshot) { clearWidget(Date.now()); return; }
-      const group = snapshot.groups[0]; if (!group) { clearWidget(Date.now()); return; }
+      if (!snapshot) { checkPublication(clearWidget(Date.now())); return; }
+      const group = snapshot.groups[0]; if (!group) { checkPublication(clearWidget(Date.now())); return; }
       const scope = { userId: snapshot.userId, groupId: group.groupId };
       const widget: WidgetSnapshot = { schemaVersion: WIDGET_SNAPSHOT_SCHEMA_VERSION, scope, generatedAtEpochMs: snapshot.generatedAtEpochMs,
         nextAlarm: group.nextAlarm ? { requestId: group.nextAlarm.requestId, occurrenceId: group.nextAlarm.occurrenceId, title: group.nextAlarm.title, scheduledAtEpochMs: group.nextAlarm.effectiveAtEpochMs, mode: group.nextAlarm.mode } : null,
         counts: { pendingProposals: group.pendingProposals, pendingActivations: group.pendingActivation, withdrawalPending: group.cancelPending } };
-      syncWidgetForSession(widget, scope, Date.now());
+      checkPublication(syncWidgetForSession(widget, scope, Date.now()));
     },
   });
   let snapshot: DataSnapshot | null = null; let unsubscribeRepository: (() => void) | undefined;
@@ -35,14 +36,16 @@ export async function createLiveBackend(): Promise<ProductBackend> {
     if (!repository) { snapshot = null; notify(); return; }
     unsubscribeRepository = repository.subscribe(value => { snapshot = value; notify(); });
   });
-  const registerInstallation = async () => { await client.request('/v1/devices', 'POST', { deviceId: deviceIdForUser(client.view().session!.userId), platform: Platform.OS === 'android' ? 'android' : 'ios' }); };
+  let registeredUserId: string | null = null;
+  const registerInstallation = async () => { const userId = client.view().session!.userId; await client.request('/v1/devices', 'POST', { deviceId: deviceIdForUser(client.view().session!.userId), platform: Platform.OS === 'android' ? 'android' : 'ios' }); registeredUserId = userId; };
   return {
-    initialize: () => client.initialize(), userId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
+    cleanupPending: () => client.view().cleanupPending,
+    async initialize() { await client.initialize(); }, userId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
     async authenticate(input, register) { await (register ? client.register(input) : client.login(input)); await registerInstallation(); },
-    async logout() { await client.logout(); },
+    async logout() { await client.logout(); registeredUserId = null; },
     request: (path, method, body) => client.request(path, method, body),
     async submit(command) { const repository = client.getRepository(); if (!repository) throw new Error('Inicia sesión para continuar.'); return repository.submit(command); },
-    async reconcile() { await client.sync.reconcile(); },
+    async reconcile() { if (client.view().session?.authenticated && registeredUserId !== client.view().session?.userId) await registerInstallation(); await client.sync.reconcile(); },
     decorate(alarms) {
       return alarms.map(alarm => {
         const view = snapshot?.alarms.find(item => item.alarm.requestId === alarm.requestId && item.alarm.recipient.uid === snapshot?.userId);
@@ -68,7 +71,8 @@ export async function createLiveBackend(): Promise<ProductBackend> {
       let capabilities = await runtime.getCapabilities();
       if (!capabilities.exactAlarms) { await runtime.requestExactAlarmPermission(); capabilities = await runtime.getCapabilities(); }
       await client.sync.reconcile();
-      return capabilities.exactAlarms && capabilities.notifications ? 'Permisos disponibles. Los avisos aceptados se activarán al sincronizar.' : 'Aún falta algún permiso. Revisa alarmas exactas y notificaciones en los ajustes de Android.';
+      const notificationCapabilities = await notificationRuntime.getCapabilities();
+      return capabilities.exactAlarms && capabilities.notifications && notificationCapabilities.notifications ? 'Permisos disponibles. Los avisos aceptados se activarán al sincronizar.' : 'Aún falta algún permiso. Revisa alarmas exactas y notificaciones en los ajustes de Android.';
     },
   };
 }

@@ -176,9 +176,24 @@ export class PersistentAlarmRepository implements AlarmRepository {
       await this.outbox.flush();
       this.assertCurrent();
       let cursor = (await store.syncState(userId)).cursor;
+      let restartedExpiredCursor = false;
       let complete = false;
       for (let count = 0; count < 20; count++) {
-        const page = validateSyncPage(await gateway.sync(cursor), userId, cursor);
+        let remotePage;
+        try { remotePage = await gateway.sync(cursor); }
+        catch (error) {
+          // A projection cursor expires independently of consent and the local outbox.
+          // Replay the authoritative feed once; applyPage deduplicates old events and
+          // still applies later revocations. Never infer revocation from missing rows.
+          if (!restartedExpiredCursor && cursor !== null && error instanceof DomainError && error.code === 'EXPIRED') {
+            this.assertCurrent();
+            cursor = null;
+            restartedExpiredCursor = true;
+            continue;
+          }
+          throw error;
+        }
+        const page = validateSyncPage(remotePage, userId, cursor);
         this.assertCurrent();
         await store.applyPage(userId, page);
         cursor = page.nextCursor;

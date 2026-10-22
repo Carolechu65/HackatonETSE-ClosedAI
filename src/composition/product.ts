@@ -25,6 +25,7 @@ export type AssistantReply = {
 };
 export type ProductState = {
   ready: boolean;
+  cleanupPending?: boolean;
   session: { userId: string; displayName: string; mode: 'demo' | 'live' } | null;
   groups: Group[];
   groupId: string | null;

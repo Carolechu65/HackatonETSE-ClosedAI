@@ -31,6 +31,7 @@ test('invalid dates, past times, removed members and closed tasks cannot be subm
     { localDate: '2026-02-30' }, { localDate: '2026-02-28' },
     { localTime: '24:01' }, { timeZone: 'Invented/Zone' },
   ]) assert.throws(() => alarmPayload({ ...form, ...change }, context));
+  assert.throws(() => alarmPayload(form, { ...context, actorUid: 'ana' }), /otra persona/);
 });
 
 test('one logical operation retains its ID on retry while payload and group changes are distinct', () => {

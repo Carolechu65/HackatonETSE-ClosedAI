@@ -37,8 +37,9 @@ export function LoginScreen() {
         <Field label="Contraseña" value={password} onChangeText={setPassword} placeholder="Tu contraseña" secureTextEntry={!show} autoComplete={register ? 'new-password' : 'current-password'} hint={register ? 'Usa al menos 10 caracteres.' : undefined} onSubmitEditing={() => { if (!busy) void run(() => client.signIn({ email: email.trim(), password, displayName: name.trim() }, register)); }} />
         <Action onPress={() => setShow(!show)} style={{ alignSelf: 'flex-end', borderWidth: 0 }}>{show ? 'Ocultar contraseña' : 'Mostrar contraseña'}</Action>
       </Sheet>
-      <Message text={error} error />
-      <PrimaryAction label={busy ? 'Un momento…' : register ? 'Crear mi cuenta' : 'Entrar en casa →'} disabled={busy || !email.trim() || !password || (register && !name.trim())} onPress={() => void run(() => client.signIn({ email: email.trim(), password, displayName: name.trim() }, register))} />
+      <Message text={error ?? state.error} error />
+      {state.cleanupPending ? <Action disabled={busy} onPress={() => void run(() => client.signOut())}>Reintentar cierre y limpiar avisos</Action> : null}
+      <PrimaryAction label={busy ? 'Un momento…' : register ? 'Crear mi cuenta' : 'Entrar en casa →'} disabled={busy || state.cleanupPending || !email.trim() || !password || (register && !name.trim())} onPress={() => void run(() => client.signIn({ email: email.trim(), password, displayName: name.trim() }, register))} />
       <Action onPress={() => setRegister(!register)} disabled={busy} style={{ borderWidth: 0 }}>{register ? 'Ya tengo cuenta · Entrar' : '¿Es tu primera vez? Crea una cuenta'}</Action>
       <View style={{ borderTopWidth: 1, borderColor: colors.ln, paddingTop: 18, gap: 12 }}><Text style={typography.support}>¿Quieres echar un vistazo primero?</Text><Action onPress={() => void run(() => client.startDemo())} disabled={busy}>Abrir la casa de ejemplo →</Action><Text style={typography.support}>Una demostración sin registro ni alarmas reales.</Text></View>
     </View></View>

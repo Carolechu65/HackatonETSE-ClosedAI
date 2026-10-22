@@ -9,10 +9,11 @@ export type AlarmForm = {
   timeZone: string; mode: Mode; weekly: boolean; taskId: string; untilEpochMs?: number;
 };
 export function alarmPayload(form: AlarmForm, context: {
-  groupId: string; memberIds: readonly string[]; openTaskIds: readonly string[]; nowEpochMs: number;
+  groupId: string; memberIds: readonly string[]; openTaskIds: readonly string[]; nowEpochMs: number; actorUid?: string;
 }): CreateAlarmRequestPayload {
   if (!form.title.trim()) throw new Error('Escribe un título para el aviso.');
   if (!form.recipientUids.length) throw new Error('Elige al menos una persona.');
+  if (context.actorUid && form.recipientUids.includes(context.actorUid)) throw new Error('Propón el aviso a otra persona del piso. Cada destinatario decide si lo activa.');
   if (form.recipientUids.some(id => !context.memberIds.includes(id))) throw new Error('Una persona ya no pertenece a este piso. Revisa los destinatarios.');
   if (form.taskId && !context.openTaskIds.includes(form.taskId)) throw new Error('La tarea ya no está pendiente. Elige otra tarea o un aviso independiente.');
   const timeSpec = createTimeSpec({ timeZone: form.timeZone.trim(), localDate: form.localDate.trim(), localTime: form.localTime.trim() });

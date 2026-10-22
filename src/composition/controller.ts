@@ -43,6 +43,7 @@ export function createProductController(backendFactory: () => Promise<ProductBac
   let state: ProductState = { ...initialProductState };
   const listeners = new Set<() => void>(); const ids = createIdGenerator();
   let backend: ProductBackend | undefined; let backendPromise: Promise<ProductBackend> | undefined; let initialization: Promise<void> | undefined;
+  let authentication: Promise<void> | undefined;
   let generation = 0; let flight: Promise<void> | undefined;
   const appliedDemoOperations = new Map<string, { payload: string; result: string | null }>();
   const set = (patch: Partial<ProductState>) => { state = { ...state, ...patch }; for (const listener of listeners) listener(); };
@@ -116,24 +117,40 @@ export function createProductController(backendFactory: () => Promise<ProductBac
           if (!process.env.EXPO_PUBLIC_API_URL) return;
           const api = await ensureBackend(); await api.initialize();
           api.subscribe(() => { if (!isDemo() && state.session) { if (!api.userId()) set({ session: null, alarms: [], tasks: [], members: [], groups: [], groupId: null }); else set({ alarms: api.decorate(state.alarms), pending: api.pending() }); } });
-          if (api.userId()) await refresh();
+          if (api.cleanupPending?.()) set({ cleanupPending: true, error: 'El cierre anterior está pendiente. Reintenta retirar los avisos y limpiar el widget.' });
+          else if (api.userId()) await refresh();
         } catch (error) { set({ error: error instanceof Error ? error.message : 'No se pudo restaurar la sesión.' }); }
         finally { set({ ready: true }); }
       })(); return initialization;
     },
-    async signIn(input, register) {
-      ++generation; set({ error: null });
-      const api = await ensureBackend(); await api.initialize(); await api.authenticate(input, register);
-      set({ session: { userId: api.userId()!, displayName: input.displayName || 'Tú', mode: 'live' }, groups: [], groupId: null, alarms: [], tasks: [], members: [], ready: true });
-      await refresh();
+    signIn(input, register) {
+      if (state.cleanupPending) return Promise.reject(new Error('Reintenta el cierre anterior antes de entrar con otra cuenta.'));
+      const expected = ++generation; set({ error: null });
+      const pending = (async () => {
+        const api = await ensureBackend(); await api.initialize(); assertGeneration(expected);
+        await api.authenticate(input, register); assertGeneration(expected);
+        set({ session: { userId: api.userId()!, displayName: input.displayName || 'Tú', mode: 'live' }, groups: [], groupId: null, alarms: [], tasks: [], members: [], ready: true });
+        await refresh();
+      })();
+      authentication = pending;
+      return pending.finally(() => { if (authentication === pending) authentication = undefined; });
     },
     async startDemo() {
-      if (backend?.userId()) await backend.logout(); ++generation; appliedDemoOperations.clear(); set(demoProductState());
+      ++generation;
+      await authentication?.catch(() => undefined);
+      await initialization?.catch(() => undefined);
+      if (backend?.userId() || backend?.cleanupPending?.()) await backend!.logout();
+      appliedDemoOperations.clear(); set({ ...demoProductState(), cleanupPending: false });
     },
     async signOut() {
       ++generation;
+      await authentication?.catch(() => undefined);
       try { if (!isDemo() && backend) await backend.logout(); }
-      finally { appliedDemoOperations.clear(); set({ ...initialProductState, ready: true }); }
+      catch (error) {
+        set({ ...initialProductState, ready: true, cleanupPending: true, error: 'El cierre está pendiente. Reintenta retirar los avisos y limpiar el widget antes de cambiar de cuenta.' });
+        throw error;
+      }
+      appliedDemoOperations.clear(); set({ ...initialProductState, ready: true, cleanupPending: false });
     },
     refresh,
     async selectGroup(id) {

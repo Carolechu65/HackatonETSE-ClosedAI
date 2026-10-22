@@ -24,7 +24,8 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
   const [sent, setSent] = useState(false);
   const update = <K extends keyof AlarmForm>(key: K, value: AlarmForm[K]) => setForm(previous => ({ ...previous, [key]: value }));
   const tasks = state.tasks.filter(task => task.groupId === state.groupId && task.status === 'pending');
-  const context = { groupId: state.groupId ?? '', memberIds: state.members.map(m => m.userId), openTaskIds: tasks.map(t => t.id), nowEpochMs: Date.now() };
+  const recipients = state.members.filter(member => member.userId !== state.session?.userId);
+  const context = { groupId: state.groupId ?? '', memberIds: recipients.map(m => m.userId), actorUid: state.session?.userId, openTaskIds: tasks.map(t => t.id), nowEpochMs: Date.now() };
   let preview: CreateAlarmRequestPayload | null = null;
   try { preview = alarmPayload(form, context); } catch { /* Errors appear on explicit submission, not before typing. */ }
   const submit = () => {
@@ -47,8 +48,8 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
         <Field label="¿Qué hay que recordar?" value={form.title} maxLength={120} onChangeText={v => update('title', v)} editable={!action.busy} placeholder="Sacar la basura" />
         <Field label="Una nota, si hace falta" value={form.note} maxLength={500} onChangeText={v => update('note', v)} multiline editable={!action.busy} placeholder="La recogida pasa a las nueve." />
         <Text style={typography.labelOnNote}>PARA QUIÉN</Text>
-        <View style={styles.choices}>{state.members.map(member => <Choice key={member.userId} label={member.displayName + (member.userId === state.session?.userId ? ' · tú' : '')} selected={form.recipientUids.includes(member.userId)} onPress={() => { if (!action.busy) update('recipientUids', form.recipientUids.includes(member.userId) ? form.recipientUids.filter(id => id !== member.userId) : [...form.recipientUids, member.userId]); }} />)}</View>
-        {!state.members.length ? <Text style={typography.support}>No hay miembros disponibles. Revisa tu piso antes de enviar.</Text> : null}
+        <View style={styles.choices}>{recipients.map(member => <Choice key={member.userId} label={member.displayName} selected={form.recipientUids.includes(member.userId)} onPress={() => { if (!action.busy) update('recipientUids', form.recipientUids.includes(member.userId) ? form.recipientUids.filter(id => id !== member.userId) : [...form.recipientUids, member.userId]); }} />)}</View>
+        {!recipients.length ? <><Text style={typography.support}>Invita a otra persona al piso para proponerle un aviso. Cada destinatario decide después si lo activa.</Text><Action onPress={() => router.push('/group')}>Invitar a un compañero →</Action></> : null}
         <View style={styles.fields}><View style={styles.grow}><Field label="Fecha · AAAA-MM-DD" value={form.localDate} onChangeText={v => update('localDate', v)} editable={!action.busy} placeholder="2026-10-24" autoCapitalize="none" /></View><View style={styles.grow}><Field label="Hora · HH:mm" value={form.localTime} onChangeText={v => update('localTime', v)} editable={!action.busy} placeholder="20:30" /></View></View>
         <Field label="Zona horaria" value={form.timeZone} onChangeText={v => update('timeZone', v)} editable={!action.busy} autoCapitalize="none" autoCorrect={false} hint="Ejemplo: Europe/Madrid. La vista previa muestra la hora resuelta, incluido el cambio de hora." />
         <Text style={typography.labelOnNote}>CÓMO AVISAR</Text>
@@ -62,7 +63,7 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
       </Sheet>
       {preview ? <Message text={`${preview.title} · ${formatDateTimeInZone(preview.timeSpec.effectiveAtEpochMs, preview.timeSpec.timeZone)} (${preview.timeSpec.timeZone}) · ${preview.recipientUids.length} persona${preview.recipientUids.length === 1 ? '' : 's'}${preview.recurrence ? ' · cada semana' : ''}.`} /> : null}
       <Message text={action.error} error />
-      <PrimaryAction label={action.busy ? 'Enviando propuesta…' : 'Enviar propuesta'} disabled={action.busy || !state.groupId} onPress={submit} />
+      <PrimaryAction label={action.busy ? 'Enviando propuesta…' : 'Enviar propuesta'} disabled={action.busy || !state.groupId || !recipients.length} onPress={submit} />
       {onCancel ? <Action disabled={action.busy} onPress={onCancel}>Volver a la conversación</Action> : null}
       </>}
     </View>
