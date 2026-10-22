@@ -1,20 +1,29 @@
 import { useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useProduct } from '../../composition/ProductProvider.tsx';
 import { AppShell, BackLink } from '../../ui/AppShell.tsx';
 import { Action, Choice, Field, Message, useAction } from '../../ui/Controls.tsx';
+import { Checkbox } from '../../ui/Checkbox.tsx';
 import { Note } from '../../ui/Note.tsx';
 import { Sheet } from '../../ui/Sheet.tsx';
 import { PrimaryAction } from '../../ui/PrimaryAction.tsx';
 import { colors, typography } from '../../ui/theme.ts';
 import { createTimeSpec, formatDateTimeInZone } from '../../domain/time.ts';
 import { createIdGenerator } from '../../domain/ids.ts';
-import { describeTaskDue } from './model.ts';
+import { describeTaskDue, type HouseholdTask } from './model.ts';
 const ids = createIdGenerator();
 
 export function TasksScreen() {
-  const { state, memberName, group } = useProduct(); const [mine, setMine] = useState(false);
+  const { state, client, memberName, group } = useProduct(); const [mine, setMine] = useState(false);
+  const action = useAction(); const operations = useRef<Record<string, string>>({});
+  const toggle = (task: HouseholdTask) => {
+    if (action.busy || task.status === 'cancelled') return;
+    const status = task.status === 'completed' ? 'pending' : 'completed';
+    const key = `${task.groupId}:${task.id}:${task.version}:${status}`;
+    operations.current[key] ??= ids.next('op');
+    void action.run(() => client.updateTask(task, status, operations.current[key]!));
+  };
   const [status, setStatus] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('pending');
   const [category, setCategory] = useState('');
   const categories = [...new Set(state.tasks.filter(task => task.groupId === state.groupId).map(task => task.category).filter((item): item is string => !!item))];
@@ -23,7 +32,8 @@ export function TasksScreen() {
     <View style={{ flexDirection: 'row', gap: 12 }}><Choice label="Todo el piso" selected={!mine} onPress={() => setMine(false)} /><Choice label="Las mías" selected={mine} onPress={() => setMine(true)} /></View>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>{([['pending', 'Pendientes'], ['completed', 'Hechas'], ['cancelled', 'Canceladas'], ['all', 'Historial completo']] as const).map(([value, label]) => <Choice key={value} label={label} selected={status === value} onPress={() => setStatus(value)} />)}</View>
     {categories.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}><Choice label="Todas las categorías" selected={!category} onPress={() => setCategory('')} />{categories.map(value => <Choice key={value} label={value} selected={category === value} onPress={() => setCategory(value)} />)}</View> : null}
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 24 }}>{tasks.map((task, index) => <Pressable key={task.id} accessibilityRole="link" onPress={() => router.push(`/task/${task.id}`)} style={{ flexBasis: 270, flexGrow: 1, maxWidth: 500 }}><Note index={index} label={task.status === 'completed' ? 'HECHO · GRACIAS' : task.status === 'cancelled' ? 'CANCELADA' : 'POR HACER'} title={task.title} style={{ padding: 24, minHeight: 180, gap: 18 }}><Text style={typography.body}>{task.assigneeUid ? memberName(task.assigneeUid) : 'Sin asignar'}</Text>{task.category ? <Text style={typography.labelOnNote}>{task.category}</Text> : null}<Text style={typography.support}>{describeTaskDue(task, Date.now(), group?.timeZone ?? 'Europe/Madrid')}</Text><Text style={typography.support}>Ver tarea →</Text></Note></Pressable>)}</View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 24 }}>{tasks.map((task, index) => <View key={task.id} style={{ flexBasis: 270, flexGrow: 1, maxWidth: 500 }}><Note index={index} label={task.status === 'completed' ? 'HECHO · GRACIAS' : task.status === 'cancelled' ? 'CANCELADA' : 'POR HACER'} title={task.title} style={{ padding: 24, minHeight: 180, gap: 18 }}><Text style={typography.body}>{task.assigneeUid ? memberName(task.assigneeUid) : 'Sin asignar'}</Text>{task.category ? <Text style={typography.labelOnNote}>{task.category}</Text> : null}<Text style={typography.support}>{describeTaskDue(task, Date.now(), group?.timeZone ?? 'Europe/Madrid')}</Text><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>{task.status !== 'cancelled' ? <Checkbox checked={task.status === 'completed'} onToggle={() => toggle(task)} accessibilityLabel={`Marcar ${task.title} como ${task.status === 'completed' ? 'pendiente' : 'hecha'}`} /> : null}<Action onPress={() => router.push(`/task/${task.id}`)}>Ver tarea →</Action></View></Note></View>)}</View>
+    <Message text={action.error} error />
     {!tasks.length ? <Note title="Nada pendiente por aquí." index={1}><Text style={typography.body}>Añade una tarea y elegid quién se ocupa. Un recordatorio se propone por separado.</Text></Note> : null}
   </AppShell>;
 }
@@ -55,7 +65,7 @@ export function TaskCreateScreen() {
 export function TaskProductDetail({ taskId }: { taskId: string }) {
   const { state, client, memberName, group } = useProduct(); const { busy, error, run } = useAction();
   const task = state.tasks.find(item => item.id === taskId && item.groupId === state.groupId); const operations = useRef<Record<string, string>>({});
-  const update = async (status: 'completed' | 'cancelled') => { if (!task) return; const key = `${task.id}:${task.version}:${status}`; operations.current[key] ??= ids.next('op'); await client.updateTask(task, status, operations.current[key]); };
+  const update = async (status: 'pending' | 'completed' | 'cancelled') => { if (!task) return; const key = `${task.id}:${task.version}:${status}`; operations.current[key] ??= ids.next('op'); await client.updateTask(task, status, operations.current[key]); };
   return <AppShell title="La tarea" eyebrow="CADA COSA, A SU TIEMPO"><BackLink to="/tasks" label="Volver a tareas" />
     {!task ? <Note title="Esta nota no está disponible." index={4}><Text style={typography.body}>Puede pertenecer a otro piso o haberse retirado. Comprueba tu cuenta.</Text></Note> : <View style={{ maxWidth: 700, width: '100%', gap: 18 }}>
       <Sheet style={{ padding: 28, gap: 24 }}><Text style={typography.labelOnNote}>{task.status === 'completed' ? 'COMPLETADA' : task.status === 'cancelled' ? 'CANCELADA' : 'POR HACER'}</Text><Text style={[typography.detailTitle, { lineHeight: 50 }]}>{task.title}</Text>{task.description ? <Text style={typography.body}>{task.description}</Text> : null}{task.category ? <Text style={typography.labelOnNote}>{task.category}</Text> : null}<Text style={typography.body}>Se ocupa: {task.assigneeUid ? memberName(task.assigneeUid) : 'Todavía por decidir'}</Text><Text style={typography.body}>{describeTaskDue(task, Date.now(), group?.timeZone ?? 'Europe/Madrid')}</Text>{task.activateAtEpochMs ? <Text style={typography.support}>Activación: {formatDateTimeInZone(task.activateAtEpochMs, group?.timeZone ?? 'Europe/Madrid')}</Text> : null}
@@ -64,6 +74,7 @@ export function TaskProductDetail({ taskId }: { taskId: string }) {
         <Text style={typography.support}>{task.status === 'pending' ? 'Detener o posponer una alarma no completa esta tarea.' : 'Los avisos vinculados se retiran cuando cada dispositivo recibe el cambio.'}</Text>
       </Sheet><Message text={error} error />
       {state.session?.mode === 'live' && task.status === 'pending' ? <Action onPress={() => router.push({ pathname: '/calendar', params: { taskId: task.id } })}>Llevar esta tarea a mi Google Calendar</Action> : null}
+      {task.status === 'completed' ? <PrimaryAction label={busy ? 'Guardando…' : 'Marcar como pendiente'} disabled={busy} onPress={() => void run(() => update('pending'))} /> : null}
       {task.status === 'pending' ? <><PrimaryAction label={busy ? 'Guardando…' : 'Marcar como hecha'} disabled={busy} onPress={() => void run(() => update('completed'))} /><Action disabled={busy} onPress={() => router.push({ pathname: '/alarm/new', params: { taskId: task.id } })}>Proponer un recordatorio para esta tarea</Action><Action disabled={busy} onPress={() => void run(() => update('cancelled'))}>Cancelar tarea</Action></> : null}
     </View>}
   </AppShell>;

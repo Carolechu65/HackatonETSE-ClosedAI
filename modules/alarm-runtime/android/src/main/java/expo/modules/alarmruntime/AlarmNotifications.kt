@@ -53,18 +53,19 @@ object AlarmNotifications {
     ensureChannels(context)
     val key = occurrence.key
     val openIntent = AlarmContract.activityPendingIntent(context, key)
+    val snoozeMinutes = if (occurrence.taskId != null) AlarmPolicy.TASK_REPEAT_MINUTES else AlarmContract.DEFAULT_SNOOZE_MINUTES
     val stopIntent = AlarmContract.actionPendingIntent(context, AlarmContract.ACTION_STOP, key)
     val snoozeIntent = AlarmContract.actionPendingIntent(
       context,
       AlarmContract.ACTION_SNOOZE,
       key,
-      AlarmContract.DEFAULT_SNOOZE_MINUTES,
+      snoozeMinutes,
     )
 
     val builder = NotificationCompat.Builder(context, AlarmContract.CHANNEL_ALARM)
       .setSmallIcon(R.drawable.ic_alarm_runtime)
       .setContentTitle(occurrence.title.ifBlank { "Alarma" })
-      .setContentText("Alarma · toca para abrir")
+      .setContentText(if (occurrence.taskId != null) "Tarea pendiente · recordatorio cada 10 min" else "Alarma · toca para abrir")
       .setCategory(NotificationCompat.CATEGORY_ALARM)
       .setPriority(NotificationCompat.PRIORITY_MAX)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -73,8 +74,8 @@ object AlarmNotifications {
       .setOngoing(true)
       .setAutoCancel(false)
       .setContentIntent(openIntent)
-      .addAction(0, "Detener", stopIntent)
-      .addAction(0, "Posponer ${AlarmContract.DEFAULT_SNOOZE_MINUTES} min", snoozeIntent)
+      .addAction(0, if (occurrence.taskId != null) "Recordar en 10 min" else "Detener", stopIntent)
+      .addAction(0, "Posponer $snoozeMinutes min", snoozeIntent)
 
     if (canUseFullScreenIntent(context)) {
       builder.setFullScreenIntent(openIntent, true)

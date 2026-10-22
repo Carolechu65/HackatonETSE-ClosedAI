@@ -57,7 +57,7 @@ export interface ProductClient {
   respond(alarm: ProductAlarm, payload: RespondToAlarmPayload, operationId: string): Promise<void>;
   withdraw(alarm: ProductAlarm, operationId: string): Promise<void>;
   createTask(draft: TaskDraft, operationId: string): Promise<string>;
-  updateTask(task: HouseholdTask, status: 'completed' | 'cancelled', operationId: string): Promise<void>;
+  updateTask(task: HouseholdTask, status: 'pending' | 'completed' | 'cancelled', operationId: string): Promise<void>;
   askAssistant(text: string, conversationId?: string): Promise<AssistantReply>;
   makePrimaryDevice(): Promise<string>;
   requestPermissions(): Promise<string>;

@@ -1,5 +1,5 @@
-import { DomainError } from '../../../src/domain/errors.ts';
-import { isPast } from '../../../src/domain/time.ts';
+import { addDays, createTimeSpec, formatLocalDate, isPast, MINUTE_MS, parseLocalDate, wallClockInZone } from '../../../src/domain/time.ts';
+import type { TimeSpec } from '../../../src/domain/contracts/types.ts';
 import type { AgentContext, AgentProvider, AgentDraft } from './types.ts';
 
 /**
@@ -15,7 +15,9 @@ export class DeterministicAgentProvider implements AgentProvider {
   async next(context: AgentContext): Promise<unknown> {
     const text = context.conversation.join('\n');
     const lower = text.toLowerCase();
+    const selfRequested = /\b(?:ponme|ponerme|recu[eé]rdame|recordarme|av[ií]same|avisarme)\b|para m[ií](?=\s|[.,!?]|$)/i.test(text);
     const matches = context.members.filter((member) => {
+      if (selfRequested && member.uid === context.actorUid) return true;
       const name = member.displayName.toLowerCase();
       return new RegExp(`(^|[^a-záéíóúñ])${escapeRegExp(name)}([^a-záéíóúñ]|$)`, 'i').test(lower);
     });
@@ -36,51 +38,44 @@ export class DeterministicAgentProvider implements AgentProvider {
     }
     const recipient = matches[0]!;
 
-    const timeMatch = /(?:a las|sobre las|las)\s+(\d{1,2}):(\d{2})/i.exec(text);
-    if (!timeMatch) {
-      return {
-        type: 'clarification',
-        question: `¿A qué hora quieres proponer el aviso para ${recipient.displayName}?`,
-        missingFields: ['time'],
-      };
+    const relative = /\bdentro de\s+(\d+)\s*(minutos?|min|horas?|h)\b/i.exec(text);
+    let timeSpec: TimeSpec;
+    if (relative) {
+      const minutes = Number(relative[1]) * (/^h/i.test(relative[2]!) ? 60 : 1);
+      if (!Number.isSafeInteger(minutes) || minutes < 1 || minutes > 525600) {
+        return { type: 'clarification', question: '¿Dentro de cuántos minutos quieres el aviso? Indica un plazo entre un minuto y un año.', missingFields: ['time'] };
+      }
+      const target = Math.ceil((context.nowEpochMs + minutes * MINUTE_MS) / MINUTE_MS) * MINUTE_MS;
+      timeSpec = createTimeSpec({ ...wallClockInZone(target, context.timeZone), timeZone: context.timeZone });
+      // The contract chooses the first occurrence of a repeated DST wall time.
+      // Ask rather than silently move a relative alarm to the wrong occurrence.
+      if (timeSpec.effectiveAtEpochMs !== target) {
+        return { type: 'clarification', question: 'Ese plazo cae en una hora repetida por el cambio horario. Elige otra hora para el aviso.', missingFields: ['time'] };
+      }
+    } else {
+      const timeMatch = /(?:a las|sobre las|las)\s*(\d{1,2})(?::(\d{2})|\s*h\b)/i.exec(text);
+      if (!timeMatch) {
+        return { type: 'clarification', question: `¿A qué hora quieres proponer el aviso para ${recipient.displayName}?`, missingFields: ['time'] };
+      }
+      const localTime = `${timeMatch[1]!.padStart(2, '0')}:${timeMatch[2] ?? '00'}`;
+      if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(localTime)) {
+        return { type: 'clarification', question: 'La hora indicada no es válida. ¿Puedes repetirla en formato HH:MM?', missingFields: ['time'] };
+      }
+      const localDate = resolveDate(lower, context.timeZone, context.nowEpochMs);
+      if (!localDate) {
+        return { type: 'clarification', question: '¿Para qué día quieres proponer el aviso? Indica una fecha (YYYY-MM-DD) o di hoy/mañana.', missingFields: ['date'] };
+      }
+      try {
+        timeSpec = createTimeSpec({ localDate, localTime, timeZone: context.timeZone });
+      } catch {
+        return { type: 'clarification', question: 'No he podido resolver esa fecha y hora en la zona del piso. ¿Puedes concretarla?', missingFields: ['date', 'time'] };
+      }
     }
-    const localTime = `${timeMatch[1]!.padStart(2, '0')}:${timeMatch[2]!}`;
-    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(localTime)) {
-      return {
-        type: 'clarification',
-        question: 'La hora indicada no es válida. ¿Puedes repetirla en formato HH:MM?',
-        missingFields: ['time'],
-      };
-    }
-
-    const localDate = resolveDate(lower, context.timeZone, context.nowEpochMs);
-    if (!localDate) {
-      return {
-        type: 'clarification',
-        question: '¿Para qué día quieres proponer el aviso? Indica una fecha (YYYY-MM-DD) o di hoy/mañana.',
-        missingFields: ['date'],
-      };
-    }
-
-    let effectiveAtEpochMs: number;
-    try {
-      effectiveAtEpochMs = wallClockToEpochMs(localDate, localTime, context.timeZone);
-    } catch {
-      return {
-        type: 'clarification',
-        question: 'No he podido resolver esa fecha y hora en la zona del piso. ¿Puedes concretarla?',
-        missingFields: ['date', 'time'],
-      };
-    }
-    if (isPast(effectiveAtEpochMs, context.nowEpochMs)) {
-      return {
-        type: 'clarification',
-        question: 'Esa hora ya pasó. ¿Para qué día y hora futuros quieres proponer el aviso?',
-        missingFields: ['date', 'time'],
-      };
+    if (isPast(timeSpec.effectiveAtEpochMs, context.nowEpochMs)) {
+      return { type: 'clarification', question: 'Esa hora ya pasó. ¿Para qué día y hora futuros quieres proponer el aviso?', missingFields: ['date', 'time'] };
     }
 
-    const title = extractTitle(text, localTime, recipient.displayName).slice(0, 120);
+    const title = extractTitle(text, recipient.displayName).slice(0, 120);
     if (!title) {
       return {
         type: 'clarification',
@@ -89,17 +84,14 @@ export class DeterministicAgentProvider implements AgentProvider {
       };
     }
     const mode = /notificaci[oó]n|recordatorio/i.test(text) ? 'NOTIFICATION' : 'ALARM';
+    const matchingTasks = context.tasks.filter(task => task.status === 'PENDING' && lower.includes(task.title.toLowerCase()));
     const draft: AgentDraft = {
       type: 'draft',
       title,
       recipientUids: [recipient.uid],
-      timeSpec: {
-        timeZone: context.timeZone,
-        localDate,
-        localTime,
-        effectiveAtEpochMs,
-      },
+      timeSpec,
       mode,
+      ...(matchingTasks.length === 1 ? { taskId: matchingTasks[0]!.id } : {}),
       reason: 'Borrador generado por el adapter determinista de demo; requiere revisión y consentimiento.',
     };
     return draft;
@@ -112,69 +104,24 @@ function escapeRegExp(value: string): string {
 
 function resolveDate(lower: string, timeZone: string, nowEpochMs: number): string | null {
   const explicit = /(\d{4}-\d{2}-\d{2})/.exec(lower);
-  if (explicit) {
-    const parsed = new Date(`${explicit[1]}T00:00:00Z`);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return explicit[1]!;
-  }
-  if (/\bpasado\s+mañana\b/.test(lower)) return localDateInZone(nowEpochMs + 2 * 86_400_000, timeZone);
-  if (/\bmañana\b/.test(lower)) return localDateInZone(nowEpochMs + 86_400_000, timeZone);
-  if (/\bhoy\b/.test(lower)) return localDateInZone(nowEpochMs, timeZone);
+  if (explicit) return parseLocalDate(explicit[1]) ? explicit[1]! : null;
+  const today = parseLocalDate(wallClockInZone(nowEpochMs, timeZone).localDate)!;
+  if (/\bpasado\s+mañana\b/.test(lower)) return formatLocalDate(addDays(today, 2));
+  if (/\bmañana\b/.test(lower)) return formatLocalDate(addDays(today, 1));
+  if (/\bhoy\b/.test(lower)) return formatLocalDate(today);
   return null;
 }
 
-function localDateInZone(epochMs: number, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date(epochMs));
-  const year = parts.find((part) => part.type === 'year')?.value;
-  const month = parts.find((part) => part.type === 'month')?.value;
-  const day = parts.find((part) => part.type === 'day')?.value;
-  if (!year || !month || !day) throw new DomainError('INVALID_ARGUMENT', 'No se pudo resolver la fecha local.');
-  return `${year}-${month}-${day}`;
-}
-
-function wallClockToEpochMs(localDate: string, localTime: string, timeZone: string): number {
-  const [year, month, day] = localDate.split('-').map(Number);
-  const [hour, minute] = localTime.split(':').map(Number);
-  if (!year || !month || !day || hour === undefined || minute === undefined) {
-    throw new DomainError('INVALID_ARGUMENT', 'Fecha u hora inválida.');
-  }
-  let guess = Date.UTC(year, month - 1, day, hour, minute);
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(new Date(guess));
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    const actual = Date.UTC(
-      Number(values.year),
-      Number(values.month) - 1,
-      Number(values.day),
-      Number(values.hour),
-      Number(values.minute),
-    );
-    const desired = Date.UTC(year, month - 1, day, hour, minute);
-    const delta = desired - actual;
-    if (delta === 0) return guess;
-    guess += delta;
-  }
-  return guess;
-}
-
-function extractTitle(text: string, localTime: string, memberName: string): string {
-  let title = text
+function extractTitle(text: string, memberName: string): string {
+  return text
     .replace(/^.*?recu[eé]rdale\s+(a|al)\s+/i, '')
-    .replace(new RegExp(`^${escapeRegExp(memberName)}\\s*[:,-]?\\s*`, 'i'), '');
-  title = title
-    .replace(/\b(pasado\s+mañana|mañana|hoy)\b/gi, ' ')
-    .replace(new RegExp(`\\b(?:a\\s+las|sobre\\s+las|las)\\s+${escapeRegExp(localTime)}\\b`, 'gi'), ' ')
+    .replace(/^(?:ponme|ponerme|recu[eé]rdame|recordarme|av[ií]same|avisarme)\s+/i, '')
+    .replace(new RegExp(`^${escapeRegExp(memberName)}\\s*[:,-]?\\s*`, 'i'), '')
+    .replace(/\b(?:pasado\s+mañana|mañana|hoy)\b/gi, ' ')
+    .replace(/\b(?:a\s+las|sobre\s+las|las)\s*\d{1,2}(?::\d{2}|\s*h\b)/gi, ' ')
+    .replace(/\bdentro de\s+\d+\s*(?:minutos?|min|horas?|h)\b/gi, ' ')
     .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
     .replace(/\s+/g, ' ')
+    .replace(/\bpara\s*$/i, '')
     .replace(/^[,.;:\s]+|[,.;:\s]+$/g, '');
-  return title;
 }

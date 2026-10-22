@@ -2,7 +2,7 @@ import { createFinanceClient } from '../features/expenses/client.ts';
 import { createCalendarClient } from '../features/calendar/client.ts';
 import type { CreateAlarmRequestPayload, RespondToAlarmPayload, AlarmCommand } from '../domain/contracts/types.ts';
 import { parseAlarmRequestDocument, parseRecipientDocument, parseScheduleDocument, parseCreateAlarmRequest, parseRespondToAlarm } from '../domain/contracts/validate.ts';
-import { createTask, completeTask, cancelTask, validateTaskDraft, type HouseholdTask, type TaskDraft } from '../features/tasks/model.ts';
+import { createTask, completeTask, cancelTask, reopenTask, validateTaskDraft, type HouseholdTask, type TaskDraft } from '../features/tasks/model.ts';
 import { createIdGenerator } from '../domain/ids.ts';
 import { isValidTimeZone } from '../domain/time.ts';
 import { DomainError } from '../domain/errors.ts';
@@ -224,9 +224,12 @@ export function createProductController(backendFactory: () => Promise<ProductBac
       const groupId = requireGroup(); if (task.groupId !== groupId) throw new Error('La tarea no pertenece al piso actual.');
       if (isDemo()) {
         const payload = { taskId: task.id, version: task.version, status }; if (replay(operationId, payload)) return;
-        const mutate = status === 'completed' ? completeTask : cancelTask;
-        const updated = mutate(task, { actorUid: state.session!.userId, members: state.members.map(member => ({ uid: member.userId, status: 'active' })), nowEpochMs: Date.now() }).task;
-        set({ tasks: state.tasks.map(item => item.id === task.id ? updated : item), alarms: state.alarms.map(alarm => alarm.request.taskId === task.id ? { ...alarm, request: { ...alarm.request, status: 'WITHDRAWN' }, schedules: [] } : alarm) }); remember(operationId, payload); return;
+        const current = state.tasks.find(item => item.id === task.id && item.groupId === groupId);
+        if (!current) throw new DomainError('NOT_FOUND', 'La tarea no existe.');
+        if (current.version !== task.version) throw new DomainError('VERSION_CONFLICT', 'La tarea cambió en otro dispositivo.');
+        const mutate = status === 'completed' ? completeTask : status === 'pending' ? reopenTask : cancelTask;
+        const updated = mutate(current, { actorUid: state.session!.userId, members: state.members.map(member => ({ uid: member.userId, status: 'active' })), nowEpochMs: Date.now() }).task;
+        set({ tasks: state.tasks.map(item => item.id === task.id ? updated : item), alarms: status === 'pending' ? state.alarms : state.alarms.map(alarm => alarm.request.taskId === task.id ? { ...alarm, request: { ...alarm.request, status: 'WITHDRAWN' }, schedules: [] } : alarm) }); remember(operationId, payload); return;
       }
       const expected = generation; const api = await ensureBackend(); await api.request(`/v1/groups/${groupId}/tasks/${task.id}`, 'POST', { status, expectedVersion: task.version, operationId }); assertGeneration(expected); await refresh();
     },

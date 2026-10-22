@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useProduct } from '../../composition/ProductProvider.tsx';
-import { alarmStatus, currentRecipient, type ProductAlarm } from '../../composition/product.ts';
+import { alarmStatus, currentRecipient, recipientAlarmStatus, type ProductAlarm } from '../../composition/product.ts';
 import { AppShell } from '../../ui/AppShell.tsx';
 import { Action, Avatar, Message, useAction } from '../../ui/Controls.tsx';
 import { Note } from '../../ui/Note.tsx';
@@ -33,7 +33,7 @@ export function BoardScreen({ alarmsOnly = false }: { alarmsOnly?: boolean }) {
             {tasks.length ? tasks.slice(0, 4).map(task => <Pressable key={task.id} accessibilityRole="link" onPress={() => router.push(`/task/${task.id}`)} style={styles.taskRow}><View style={styles.checkbox} /><Text style={[typography.body, { flex: 1 }]}>{task.title}</Text><Text style={typography.support}>{task.assigneeUid ? memberName(task.assigneeUid) : 'Sin asignar'}</Text></Pressable>) : <Text style={typography.body}>Nada pendiente. La nevera respira.</Text>}
             <Action onPress={() => router.push('/tasks')} style={{ alignSelf: 'flex-start', borderWidth: 0, paddingHorizontal: 0 }}>Ver las tareas del piso →</Action>
           </Note> : null}
-          {filter !== 'Tareas' ? <View style={styles.grid}>{filtered.map((alarm, index) => <AlarmNote key={alarm.requestId} alarm={alarm} index={index + 1} userId={userId} author={memberName(alarm.request.creatorUid)} />)}</View> : null}
+          {filter !== 'Tareas' ? <View style={styles.grid}>{filtered.map((alarm, index) => <AlarmNote key={alarm.requestId} alarm={alarm} index={index + 1} userId={userId} memberName={memberName} detailed={alarmsOnly} sent={filter === 'Enviadas'} />)}</View> : null}
           {filter !== 'Tareas' && !filtered.length ? <Note index={1} label="SIN PRISAS" title="No hay avisos aquí."><Text style={typography.body}>Las nuevas propuestas aparecerán en este espacio. Puedes empezar con una para alguien de casa.</Text></Note> : null}
           {!alarmsOnly ? <Note index={5} label="UN COMPAÑERO MÁS" title="Dilo como lo dirías en casa." style={styles.largeNote}><Text style={typography.body}>«Recuérdale a Dani sacar la basura mañana». El asistente te ayuda a preparar la propuesta y pregunta si falta algo.</Text><Action onPress={() => router.push('/assistant')} style={{ alignSelf: 'flex-start', borderWidth: 0, paddingHorizontal: 0 }}>Hablar con el asistente →</Action></Note> : null}
         </View>
@@ -47,13 +47,34 @@ export function BoardScreen({ alarmsOnly = false }: { alarmsOnly?: boolean }) {
     </>}
   </AppShell>;
 }
-function AlarmNote({ alarm, index, userId, author }: { alarm: ProductAlarm; index: number; userId: string; author: string }) {
+function AlarmNote({ alarm, index, userId, memberName, detailed, sent }: { alarm: ProductAlarm; index: number; userId: string; memberName: (uid: string) => string; detailed: boolean; sent: boolean }) {
   const status = alarmStatus(alarm, userId);
-  const time = currentRecipient(alarm, userId)?.chosenTimeSpec ?? alarm.request.timeSpec;
-  return <Pressable accessibilityRole="link" accessibilityLabel={`${alarm.request.title}. ${status.title}. Ver detalle`} onPress={() => router.push(`/alarm/${alarm.requestId}`)} style={styles.gridItem}>
-    <Note index={index} label={`${alarm.request.mode === 'ALARM' ? 'ALARMA' : 'RECORDATORIO'} · ${author}`} title={alarm.request.title} style={{ minHeight: 220, padding: 20, gap: 14 }}>
-      <Text style={[typography.amount, { fontSize: 34, lineHeight: 38 }]}>{time.localTime}</Text><Text style={typography.support}>{formatDateTimeInZone(time.effectiveAtEpochMs, time.timeZone)}{alarm.request.recurrence ? ' · semanal' : ''}</Text>
-      <View style={styles.status}><Text style={typography.labelOnNote}>{status.title}</Text><Text style={typography.body}>↗</Text></View>
+  const time = (sent ? undefined : currentRecipient(alarm, userId)?.chosenTimeSpec) ?? alarm.request.timeSpec;
+  const recipients = alarm.request.recipientUids.map(memberName).join(', ');
+  const statusTitle = alarm.request.status === 'WITHDRAWN' ? 'Propuesta retirada' : alarm.request.status === 'EXPIRED' ? 'Propuesta vencida' : status.title;
+  return <Pressable accessibilityRole="link" accessibilityLabel={`${alarm.request.title}. Para ${recipients}. ${formatDateTimeInZone(time.effectiveAtEpochMs, time.timeZone)}. ${statusTitle}. Ver detalle`} onPress={() => router.push(`/alarm/${alarm.requestId}`)} style={styles.gridItem}>
+    <Note index={index} label={`${alarm.request.mode === 'ALARM' ? 'ALARMA SONORA' : 'NOTIFICACIÓN'} · DE ${memberName(alarm.request.creatorUid)}`} title={alarm.request.title} style={{ minHeight: 220, padding: 20, gap: 14 }}>
+      <Text style={typography.body}>Para {recipients}</Text>
+      {detailed && alarm.request.note ? <Text style={typography.support}>{alarm.request.note}</Text> : null}
+      <View style={{ gap: 4 }}>
+        {sent ? <Text style={typography.labelOnNote}>HORA PROPUESTA</Text> : null}
+        <Text style={[typography.amount, { fontSize: 34, lineHeight: 38 }]}>{time.localTime}</Text>
+        <Text style={typography.support}>{formatDateTimeInZone(time.effectiveAtEpochMs, time.timeZone)} · {time.timeZone}{alarm.request.recurrence ? ' · semanal' : ''}</Text>
+        {detailed ? <Text style={typography.support}>Enviada el {formatDateTimeInZone(alarm.request.createdAtEpochMs, time.timeZone)} · {time.timeZone}</Text> : null}
+      </View>
+      {detailed ? <View style={styles.recipients}>{alarm.request.recipientUids.map(uid => {
+        const recipient = currentRecipient(alarm, uid);
+        const responseStatus = recipient && recipientAlarmStatus(alarm, recipient, userId);
+        const chosen = recipient?.chosenTimeSpec;
+        const differentTime = chosen && (chosen.effectiveAtEpochMs !== alarm.request.timeSpec.effectiveAtEpochMs || chosen.timeZone !== alarm.request.timeSpec.timeZone);
+        return <View key={uid} style={styles.recipient}>
+          <Text style={typography.labelOnNote}>{memberName(uid)}{uid === userId ? ' · Tú' : ''}</Text>
+          <Text style={typography.support}>{responseStatus ? `${responseStatus.decision} · ${responseStatus.reception}` : 'Respuesta y recepción sin confirmar'}</Text>
+          <Text style={typography.support}>{responseStatus?.execution ?? 'Sin programación confirmada'}</Text>
+          {differentTime ? <Text style={typography.support}>Hora elegida: {formatDateTimeInZone(chosen.effectiveAtEpochMs, chosen.timeZone)} · {chosen.timeZone}</Text> : null}
+        </View>;
+      })}</View> : null}
+      <View style={styles.status}><Text style={[typography.labelOnNote, { flex: 1 }]}>{statusTitle}</Text><Text style={typography.support}>Ver detalle ↗</Text></View>
     </Note>
   </Pressable>;
 }
@@ -61,6 +82,7 @@ const styles = StyleSheet.create({
   add: { backgroundColor: colors.ac, borderColor: colors.ac }, subline: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, borderBottomWidth: 1, borderColor: colors.ln }, filter: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', paddingHorizontal: 2 },
   columns: { gap: 24 }, grid: { gap: 20 }, gridItem: { width: '100%', minWidth: 0 },
+  recipients: { gap: 12, borderTopWidth: 1, borderColor: colors.noteLine, paddingTop: 12 }, recipient: { gap: 4 },
   largeNote: { padding: 24, gap: 12 }, taskRow: { minHeight: 48, borderTopWidth: 1, borderColor: colors.noteLine, flexDirection: 'row', alignItems: 'center', gap: 12 }, checkbox: { height: 13, width: 13, borderWidth: 1, borderColor: colors.ntx, borderRadius: 2 },
   aside: { width: '100%', gap: 24 }, household: { borderTopWidth: 1, borderColor: colors.ln, paddingTop: 24, gap: 18 }, legend: { borderTopWidth: 1, borderColor: colors.ln, paddingTop: 24, gap: 12 }, status: { marginTop: 'auto', paddingTop: 12, borderTopWidth: 1, borderColor: colors.noteLine, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
 });

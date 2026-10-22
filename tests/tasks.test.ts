@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   cancelTask,
   completeTask,
+  reopenTask,
   createTask,
   describeTaskCardState,
   describeTaskDue,
@@ -282,4 +283,29 @@ test('task due labels identify an elapsed time today and avoid overdue claims fo
   const task = seedTask({ dueAtEpochMs: NOW - 60_000 });
   assert.match(describeTaskDue(task, NOW, TZ), /^Venció hoy/);
   assert.match(describeTaskDue({ ...task, status: 'completed' }, NOW, TZ), /^Fecha límite: 2026-10-22/);
+});
+
+
+test('tareas: desmarcar restaura pendiente, borra la finalización y permite completarla otra vez', () => {
+  const input = { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW };
+  const original = seedTask();
+  const done = completeTask(original, input).task;
+  const reopened = reopenTask(done, input);
+  assert.deepEqual(reopened.task, { ...original, version: 5 });
+  assert.equal(reopened.invalidatesLinkedAlarms, false);
+  assert.equal(reopenTask(reopened.task, input).changed, false);
+  assert.equal(completeTask(reopened.task, input).task.version, 6);
+  assert.throws(() => reopenTask(done, { ...input, actorUid: 'u-baja' }), (error: unknown) => isDomainError(error) && error.code === 'FORBIDDEN');
+  assert.throws(() => reopenTask(seedTask({ status: 'cancelled' }), input), (error: unknown) => isDomainError(error) && error.code === 'INVALID_ARGUMENT');
+});
+
+test('tareas: reapertura en repositorio respeta versión y reintentos', async () => {
+  const repository = createDemoTaskRepository({ groupId: 'piso-4b', members: MEMBERS, actorUid: 'u-marta', tasks: [seedTask({ status: 'completed', completedByUid: 'u-luis', completedAtEpochMs: NOW })] });
+  const command = { kind: 'reopenTask' as const, operationId: 'reopen-1', groupId: 'piso-4b', taskId: 'task-1', expectedVersion: 3, reopenedAtEpochMs: NOW + 1 };
+  await repository.submit(command);
+  await repository.submit(command);
+  assert.equal(repository.tasks[0]!.status, 'pending');
+  assert.equal(repository.tasks[0]!.version, 4);
+  assert.equal(repository.tasks[0]!.completedByUid, null);
+  await assert.rejects(repository.submit({ ...command, operationId: 'reopen-stale' }), (error: unknown) => isDomainError(error) && error.code === 'VERSION_CONFLICT');
 });

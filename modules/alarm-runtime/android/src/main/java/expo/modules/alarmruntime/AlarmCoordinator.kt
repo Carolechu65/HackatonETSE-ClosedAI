@@ -19,11 +19,11 @@ object AlarmCoordinator {
         sameDevice.maxOfOrNull { it.deviceEpoch } ?: 0)) return@synchronized failed("E_STALE_VERSION")
     var occurrence = input
     if (existing != null && existing.requestVersion == input.requestVersion && existing.decisionRevision == input.decisionRevision) {
-      if (existing.title != input.title || existing.timeZone != input.timeZone || existing.mode != input.mode || existing.acceptedAtEpochMs != input.effectiveAtEpochMs)
+      if (existing.title != input.title || existing.timeZone != input.timeZone || existing.mode != input.mode || (existing.taskId != null && existing.taskId != input.taskId) || existing.acceptedAtEpochMs != input.effectiveAtEpochMs)
         return@synchronized failed("E_VERSION_PAYLOAD_CONFLICT")
       if (existing.status in setOf(AlarmOccurrence.STATUS_FIRED, AlarmOccurrence.STATUS_EXPIRED) || existing.dismissedAtEpochMs != null)
         return@synchronized failed("E_ALREADY_FINISHED")
-      occurrence = existing // Preserve native snooze, not the stale JS effective time.
+      occurrence = existing.copy(taskId = input.taskId) // Preserve native snooze, not the stale JS effective time.
     }
     if (occurrence.effectiveAtEpochMs <= System.currentTimeMillis()) return@synchronized failed("E_EXPIRED")
     sameDevice.filter { it.deviceEpoch < input.deviceEpoch || it.requestId == input.requestId && (it.requestVersion < input.requestVersion || it.decisionRevision < input.decisionRevision) }.forEach {

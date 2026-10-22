@@ -74,3 +74,77 @@ test('new request terms invalidate even a future native snooze', async t => {
   assert.equal(s.repository.widgetSnapshot().groups[0]!.nextAlarm, null);
   assert.equal(s.runtime.scheduled.length, 1);
 });
+
+
+async function taskReminderFixture(t: Parameters<typeof setup>[0]) {
+  const s = await setup(t);
+  s.server.records[0]!.request.taskId = 'task-1';
+  await s.repository.reconcile();
+  const original = s.runtime.scheduled[0]!;
+  assert.equal(original.taskId, 'task-1');
+  const entry = s.runtime.entries.get(occurrenceKey(original))!;
+  s.setNow(original.effectiveAtEpochMs + 1_000);
+  entry.status = 'FIRED'; s.runtime.revision++;
+  await s.repository.reconcile();
+  assert.equal(entry.status, 'FIRED', 'accepted ringing task remains active');
+  return { ...s, original, entry };
+}
+
+test('task reminder repeats retain accepted occurrence and stop after task withdrawal', async t => {
+  const s = await taskReminderFixture(t);
+  const future = s.original.effectiveAtEpochMs + 10 * 60_000;
+  s.entry.status = 'SCHEDULED';
+  s.entry.spec = { ...s.original, effectiveAtEpochMs: future };
+  s.entry.acceptedEffectiveAtEpochMs = s.original.effectiveAtEpochMs;
+  s.entry.scheduledAtEpochMs = future; s.entry.snoozeCount = 1; s.runtime.revision++;
+  await s.repository.reconcile();
+  assert.equal(s.runtime.cancelled.length, 0);
+  assert.equal(s.repository.getSnapshot().alarms[0]!.effectiveAtEpochMs, future);
+  s.server.records[0]!.request.status = 'WITHDRAWN';
+  await s.repository.reconcile();
+  assert.equal(s.entry.status, 'CANCELLED');
+  assert.equal(s.runtime.scheduled.length, 1);
+});
+
+test('task completion cancels a FIRED native occurrence before it can repeat', async t => {
+  const s = await taskReminderFixture(t);
+  s.server.records[0]!.request.status = 'WITHDRAWN';
+  await s.repository.reconcile();
+  assert.equal(s.entry.status, 'CANCELLED');
+  assert.equal(s.repository.getSnapshot().alarms[0]!.scheduling, 'CANCELLED');
+});
+
+test('offline disable and logout cancel a FIRED repeating task alarm', async t => {
+  const s = await taskReminderFixture(t);
+  s.server.online = false;
+  await s.repository.enqueue({ ...response('disable-task', 'DISABLED'), expectedDecisionRevision: 2 });
+  assert.equal(s.entry.status, 'CANCELLED');
+  const other = await taskReminderFixture(t);
+  await other.reconciler.cleanup();
+  assert.equal(other.entry.status, 'CANCELLED');
+});
+
+test('task metadata never makes a notification an audible repeat', async t => {
+  const s = await setup(t);
+  s.server.records[0]!.request.taskId = 'task-1';
+  s.server.records[0]!.request.mode = 'NOTIFICATION';
+  await s.repository.reconcile();
+  assert.equal(s.runtime.scheduled[0]!.mode, 'NOTIFICATION');
+  assert.equal(s.runtime.scheduled[0]!.taskId, undefined);
+});
+
+test('future task reminder metadata can upgrade without cancelling accepted execution', async t => {
+  const s = await setup(t);
+  await s.repository.reconcile();
+  s.server.records[0]!.request.taskId = 'task-1';
+  await s.repository.reconcile();
+  assert.equal(s.runtime.cancelled.length, 0);
+  assert.equal(s.runtime.scheduled.at(-1)!.taskId, 'task-1');
+});
+
+test('a pending task proposal cannot authorize a native reminder', async t => {
+  const s = await setup(t, false);
+  s.server.records[0]!.request.taskId = 'task-1';
+  await s.repository.reconcile();
+  assert.equal(s.runtime.scheduled.length, 0);
+});

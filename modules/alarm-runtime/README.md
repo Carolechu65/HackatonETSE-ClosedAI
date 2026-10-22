@@ -17,7 +17,7 @@ Una cancelación se persiste **antes** de retirar AlarmManager/audio. Un reinten
 
 La identidad usa campos con prefijos de longitud y URI propia por PendingIntent, evitando colisiones por separadores o hashes. Los receptores/componentes internos no están exportados. El receptor acepta únicamente SCHEDULING/SCHEDULED vigentes, reclama FIRED antes de arrancar sonido y rechaza duplicados, fechas futuras y entregas con más de un minuto de retraso. Los reinicios y cambios de reloj nunca hacen sonar inmediatamente las vencidas.
 
-Detener conserva CANCELLED; posponer solo funciona sobre FIRED sin descartar, con duración explícita de 1–60 minutos (acción de notificación: 5 min). La hora aceptada original se conserva para que un replay no deshaga el snooze. Ninguna acción cambia tareas. El servicio libera reproductor/wake lock al finalizar y tiene límite de 10 minutos. Si coinciden alarmas, la más reciente sustituye el sonido anterior; la anterior conserva FIRED y dismissedAt en su snapshot.
+Para alarmas sin tarea, Detener conserva CANCELLED; posponer solo funciona sobre FIRED sin descartar, con duración explícita de 1–60 minutos (acción de notificación: 5 min). La hora aceptada original se conserva para que un replay no deshaga el snooze. Ninguna acción cambia tareas. El servicio libera reproductor/wake lock al finalizar y tiene límite de 10 minutos. Si coinciden alarmas, la más reciente sustituye el sonido anterior; la anterior conserva FIRED y dismissedAt en su snapshot.
 
 ## Mecanismos y permisos
 
@@ -38,3 +38,6 @@ Fuentes oficiales consultadas: [AlarmManager y excepciones de inicio](https://de
 - El contrato recibe ocurrencias concretas, con instante UTC y zona. El runtime no inventa recurrencia semanal ni reglas DST: P5/dominio materializa las siguientes con consentimiento confirmado. Las ya materializadas sobreviven sin red; no hay generación nativa indefinida de próximas semanas.
 - No funciona antes del primer desbloqueo, con dispositivo apagado ni tras force-stop de Android. No modifica DND/volumen ni garantiza el comportamiento de todos los fabricantes.
 - No hay validación remota en Kotlin: P5 debe entregar solo comandos confirmados por servidor. El laboratorio es una prueba local explícita, nunca consentimiento de otra persona.
+
+
+Las alarmas audibles aceptadas con `taskId` repiten la misma ocurrencia cada diez minutos hasta recibir la retirada por tarea completada, desactivación o revocación. Detener/Posponer agenda diez minutos desde el toque; sin interacción suena un minuto y el siguiente turno mantiene diez minutos desde el inicio previo. La cancelación explícita se serializa con el timeout y nunca rearma `CANCELLED`. Ver política, evidencia y límites offline en `docs/qa/ALARM_RUNTIME.md`; requiere APK nueva.

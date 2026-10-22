@@ -1,4 +1,5 @@
 import { DomainError } from '../../../src/domain/errors.ts';
+import { parseLocalDate } from '../../../src/domain/time.ts';
 import { requireActiveMembership, isActiveMember } from '../groups/service.ts';
 import { canonicalJson, sha256Hex } from '../lib/crypto.ts';
 import { generateId } from '../lib/ids.ts';
@@ -16,10 +17,11 @@ export type SharedExpense = {
   shares: Array<{ uid: string; amountCents: number }>;
   version: number;
   createdAtEpochMs: number;
+  dueDate?: string;
 };
 type ExpenseRow = {
   id: string; group_id: string; title: string; amount_cents: number;
-  paid_by_uid: string; version: number; created_at_epoch_ms: number;
+  paid_by_uid: string; version: number; created_at_epoch_ms: number; due_date: string | null;
 };
 function expenseDto(db: Db, row: ExpenseRow): SharedExpense {
   const participants = db.prepare(
@@ -31,6 +33,7 @@ function expenseDto(db: Db, row: ExpenseRow): SharedExpense {
     settledUids: participants.filter(p => p.settled_at_epoch_ms !== null).map(p => p.uid),
     shares: participants.map(p => ({ uid: p.uid, amountCents: p.share_cents })),
     version: row.version, createdAtEpochMs: row.created_at_epoch_ms,
+    ...(row.due_date ? { dueDate: row.due_date } : {}),
   };
 }
 function findExpense(db: Db, groupId: string, expenseId: string): ExpenseRow {
@@ -64,23 +67,26 @@ export function listExpenses(db: Db, actorUid: string, groupId: string): { curre
 }
 export function createExpense(db: Db, actorUid: string, groupId: string, raw: unknown, now = Date.now()): SharedExpense {
   const data = asRecord(raw);
-  assertNoExtraKeys(data, ['operationId', 'title', 'amountCents', 'participantUids']);
+  assertNoExtraKeys(data, ['operationId', 'title', 'amountCents', 'participantUids', 'dueDate']);
   return db.transaction(() => {
     requireActiveMembership(db, groupId, actorUid);
     return operation(db, actorUid, 'createExpense', { ...data, groupId }, now, () => {
       const title = readString(data.title, 'title', { max: 120 });
       const amountCents = readPositiveInt(data.amountCents, 'amountCents');
+      if (data.dueDate !== undefined && !parseLocalDate(data.dueDate))
+        throw new DomainError('INVALID_ARGUMENT', 'La fecha límite debe ser una fecha válida con formato AAAA-MM-DD.');
+      const dueDate = data.dueDate === undefined ? null : data.dueDate as string;
       if (amountCents > 100000000) throw new DomainError('INVALID_ARGUMENT', 'El importe máximo es 1.000.000 EUR.');
       if (!Array.isArray(data.participantUids) || data.participantUids.length < 1 || data.participantUids.length > 500)
         throw new DomainError('INVALID_ARGUMENT', 'Selecciona entre 1 y 500 participantes.');
       const participants = data.participantUids.map(uid => readIdentifier(uid, 'participantUids')).sort();
-      if (new Set(participants).size !== participants.length || !participants.includes(actorUid))
-        throw new DomainError('INVALID_ARGUMENT', 'Participantes únicos; quien paga también debe participar.');
+      if (new Set(participants).size !== participants.length)
+        throw new DomainError('INVALID_ARGUMENT', 'Los participantes deben ser únicos.');
       if (participants.some(uid => !isActiveMember(db, groupId, uid)))
         throw new DomainError('INVALID_ARGUMENT', 'Todos los participantes deben pertenecer al piso.');
       const id = generateId('expense');
-      db.prepare('INSERT INTO shared_expenses(id,group_id,title,amount_cents,paid_by_uid,created_at_epoch_ms) VALUES(?,?,?,?,?,?)')
-        .run(id, groupId, title, amountCents, actorUid, now);
+      db.prepare('INSERT INTO shared_expenses(id,group_id,title,amount_cents,paid_by_uid,created_at_epoch_ms,due_date) VALUES(?,?,?,?,?,?,?)')
+        .run(id, groupId, title, amountCents, actorUid, now, dueDate);
       const base = Math.floor(amountCents / participants.length), remainder = amountCents % participants.length;
       const insert = db.prepare('INSERT INTO expense_participants(expense_id,uid,share_cents,settled_at_epoch_ms) VALUES(?,?,?,?)');
       participants.forEach((uid, index) => {

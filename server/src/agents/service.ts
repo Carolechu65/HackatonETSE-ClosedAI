@@ -1,11 +1,13 @@
 import { DomainError } from '../../../src/domain/errors.ts';
 import { parseCreateAlarmRequest } from '../../../src/domain/contracts/validate.ts';
 import type { TimeSpec } from '../../../src/domain/contracts/types.ts';
+import { wallClockInZone } from '../../../src/domain/time.ts';
 import type { AuthUser } from '../auth/service.ts';
 import { listMembers, requireActiveMembership } from '../groups/service.ts';
 import { generateId } from '../lib/ids.ts';
 import { readIdentifier, readString } from '../lib/validation.ts';
 import type { Db } from '../persistence/db.ts';
+import { readAlarmRequest } from '../operations/queries.ts';
 import { DeterministicAgentProvider } from './deterministic.ts';
 import { OpenAiCompatibleProvider } from './openai.ts';
 import { AgentProviderError, type AgentContext, type AgentDraft, type AgentProvider } from './types.ts';
@@ -133,7 +135,6 @@ function parseClarification(value: unknown): { question: string; missingFields: 
 function parseDraft(
   value: unknown,
   groupId: string,
-  actorUid: string,
   db: Db,
   nowEpochMs: number,
 ): AgentDraft {
@@ -154,6 +155,7 @@ function parseDraft(
         recipientUids: record.recipientUids,
         mode: record.mode,
         timeSpec: record.timeSpec,
+        ...(record.taskId !== undefined ? { taskId: record.taskId } : {}),
       },
     },
     { nowEpochMs },
@@ -167,8 +169,9 @@ function parseDraft(
       throw new DomainError('INVALID_ARGUMENT', 'El borrador incluye a alguien que no pertenece al piso.');
     }
   }
-  if (parsed.payload.recipientUids.includes(actorUid)) {
-    throw new DomainError('INVALID_ARGUMENT', 'El borrador debe proponer el aviso a otra persona, no a quien lo pide.');
+
+  if (parsed.payload.taskId !== undefined && !db.prepare("SELECT 1 FROM tasks WHERE id=? AND group_id=? AND status='PENDING'").get(parsed.payload.taskId, groupId)) {
+    throw new DomainError('INVALID_ARGUMENT', 'La tarea debe existir, estar pendiente y pertenecer al piso.');
   }
 
   const timeSpec: TimeSpec = parsed.payload.timeSpec;
@@ -178,6 +181,7 @@ function parseDraft(
     recipientUids: parsed.payload.recipientUids,
     timeSpec,
     mode: parsed.payload.mode,
+    ...(parsed.payload.taskId !== undefined ? { taskId: parsed.payload.taskId } : {}),
     reason,
   };
 }
@@ -238,7 +242,7 @@ export async function proposeAlarm(
   const tasks = db
     .prepare(
       `SELECT id, title, assigned_to, status, due_at_epoch_ms FROM tasks
-       WHERE group_id = ? ORDER BY updated_at_epoch_ms DESC LIMIT 20`,
+       WHERE group_id = ? ORDER BY CASE WHEN status='PENDING' THEN 0 ELSE 1 END,updated_at_epoch_ms DESC,id LIMIT 21`,
     )
     .all(input.groupId) as Array<{
       id: string;
@@ -248,12 +252,30 @@ export async function proposeAlarm(
       due_at_epoch_ms: number | null;
     }>;
 
+  const members = listMembers(db, actor.uid, input.groupId);
+  const memberName = (uid: string) => members.find(member => member.uid === uid)?.displayName ?? 'Antiguo miembro';
+  // Same visibility as the alarm endpoints; an owner's role does not grant access
+  // to private requests exchanged only between other household members.
+  const alarmRows = db.prepare(`SELECT ar.id FROM alarm_requests ar WHERE ar.group_id=?
+    AND (ar.creator_uid=? OR EXISTS(SELECT 1 FROM alarm_recipients r WHERE r.request_id=ar.id AND r.uid=?))
+    ORDER BY ar.updated_at_epoch_ms DESC,ar.id LIMIT 21`).all(input.groupId, actor.uid, actor.uid) as Array<{ id: string }>;
+  const alarms = alarmRows.slice(0, 20).map(({ id }) => {
+    const detail = readAlarmRequest(db, actor.uid, input.groupId, id);
+    const recipients = detail.recipients ?? (detail.recipient ? [detail.recipient] : []);
+    return { id, request: detail.request, creatorName: memberName(detail.request.creatorUid),
+      recipients: recipients.map(recipient => ({ ...recipient, displayName: memberName(recipient.uid) })) };
+  });
   const context: AgentContext = {
+    actorUid: actor.uid,
     groupId: input.groupId,
     timeZone: group.time_zone,
     nowEpochMs,
-    members: listMembers(db, actor.uid, input.groupId).filter(member=>member.uid!==actor.uid),
-    tasks: tasks.map((task) => ({
+    currentLocal: { ...wallClockInZone(nowEpochMs, group.time_zone), timeZone: group.time_zone,
+      weekday: new Intl.DateTimeFormat('es-ES', { timeZone: group.time_zone, weekday: 'long' }).format(nowEpochMs) },
+    members,
+    alarms,
+    contextLimits: { tasks: 20, alarms: 20, tasksTruncated: tasks.length > 20, alarmsTruncated: alarmRows.length > 20, alarmVisibility: 'SENT_OR_RECEIVED' },
+    tasks: tasks.slice(0, 20).map((task) => ({
       id: task.id,
       title: task.title,
       assignedTo: task.assigned_to,
@@ -265,23 +287,6 @@ export async function proposeAlarm(
 
   const lastClarification = readLastClarification(session);
   if (lastClarification) context.lastClarification = lastClarification;
-
-  // This is an authorization/context guard, not a simulated model response.
-  // A household with only its owner has no eligible recipients by contract.
-  if (context.members.length === 0) {
-    const clarification = {
-      question: 'Invita a otra persona al piso para proponerle un recordatorio. Cada destinatario decide si lo acepta.',
-      missingFields: ['recipient'],
-    };
-    db.prepare('UPDATE agent_sessions SET collected_json = ?, updated_at_epoch_ms = ? WHERE id = ?')
-      .run(JSON.stringify({ conversation, lastClarification: clarification }), nowEpochMs, session.id);
-    return {
-      sessionId: session.id,
-      provider: 'context-validation',
-      status: 'needs_clarification',
-      ...clarification,
-    };
-  }
 
   let feedback: string | undefined;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -320,7 +325,7 @@ export async function proposeAlarm(
         };
       }
       if (type === 'draft') {
-        const draft = parseDraft(raw, input.groupId, actor.uid, db, completedAtEpochMs);
+        const draft = parseDraft(raw, input.groupId, db, completedAtEpochMs);
         db.prepare("UPDATE agent_sessions SET status = 'COMPLETED', collected_json = ?, updated_at_epoch_ms = ? WHERE id = ?")
           .run(JSON.stringify({ conversation, draft }), nowEpochMs, session.id);
         return {
@@ -330,7 +335,7 @@ export async function proposeAlarm(
           draft,
           requiresSenderReview: true,
           requiresRecipientConsent: true,
-          note: 'Revisa y confirma con el formulario: crear la propuesta usa createAlarmRequest. Ana decide en otra operación.',
+          note: 'Revisa y confirma el borrador. Cada destinatario acepta su aviso por separado, también cuando es para ti.',
         };
       }
       feedback = 'La salida debe ser un objeto JSON con type clarification o draft.';

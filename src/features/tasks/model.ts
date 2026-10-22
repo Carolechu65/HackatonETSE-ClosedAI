@@ -49,7 +49,7 @@ export type TaskDraft = {
   readonly dueAtEpochMs: number | null;
 };
 
-export type TaskMutationOutcome = 'applied' | 'already_completed' | 'already_cancelled';
+export type TaskMutationOutcome = 'applied' | 'already_pending' | 'already_completed' | 'already_cancelled';
 
 export type TaskMutation = {
   readonly task: HouseholdTask;
@@ -200,6 +200,21 @@ export function completeTask(
     outcome: 'applied',
     changed: true,
     invalidatesLinkedAlarms: true,
+  };
+}
+
+/** Reabrir no restaura los avisos retirados ni su consentimiento. */
+export function reopenTask(
+  task: HouseholdTask,
+  input: { readonly actorUid: string; readonly members: readonly TaskMember[]; readonly nowEpochMs: number },
+): TaskMutation {
+  assertActiveMember(input.members, input.actorUid, 'actorUid');
+  if (!isEpochMs(input.nowEpochMs)) throw new DomainError('INVALID_ARGUMENT', 'Instante de reapertura inválido.');
+  if (task.status === 'cancelled') throw new DomainError('INVALID_ARGUMENT', 'Una tarea cancelada no se puede reabrir.');
+  if (task.status === 'pending') return { task, outcome: 'already_pending', changed: false, invalidatesLinkedAlarms: false };
+  return {
+    task: { ...task, status: 'pending', version: task.version + 1, completedByUid: null, completedAtEpochMs: null },
+    outcome: 'applied', changed: true, invalidatesLinkedAlarms: false,
   };
 }
 

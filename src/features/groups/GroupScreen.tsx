@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useProduct } from '../../composition/ProductProvider.tsx';
 import { AppShell } from '../../ui/AppShell.tsx';
 import { Action, Avatar, Field, Message, useAction } from '../../ui/Controls.tsx';
@@ -18,7 +18,7 @@ export function GroupScreen({ invitation }: { invitation?: string }) {
     <Message text={error} error />
     {group ? <>
       <Sheet style={{ maxWidth: 680, padding: 26, gap: 20 }}><Text style={typography.noteTitle}>Las personas detrás de las notas.</Text><Text style={typography.support}>{group.timeZone} · horarios del piso</Text>
-        {state.members.map(member => <View key={member.userId} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderTopWidth: 1, borderColor: colors.noteLine, paddingTop: 16 }}><Avatar name={member.displayName} selected={member.userId === state.session?.userId} /><Text style={[typography.body, { flex: 1 }]}>{member.displayName}{member.userId === state.session?.userId ? ' · tú' : ''}</Text><Text style={typography.labelOnNote}>{member.role === 'owner' ? 'CREÓ EL PISO' : 'EN CASA'}</Text></View>)}
+        {state.members.map(member => <Pressable key={member.userId} accessibilityRole="link" accessibilityLabel={`Ver avisos para ${member.displayName}`} onPress={() => router.push({ pathname: '/group/member/[userId]', params: { userId: member.userId, groupId: state.groupId ?? '' } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderTopWidth: 1, borderColor: colors.noteLine, paddingTop: 16 }}><Avatar name={member.displayName} selected={member.userId === state.session?.userId} /><Text style={[typography.body, { flex: 1 }]}>{member.displayName}{member.userId === state.session?.userId ? ' · tú' : ''}</Text><Text style={typography.labelOnNote}>{member.role === 'owner' ? 'CREÓ EL PISO' : 'EN CASA'}</Text></Pressable>)}
       </Sheet>
       <View style={{ maxWidth: 680, width: '100%' }}><PrimaryAction label={busy ? 'Preparando invitación…' : 'Invitar a alguien al piso'} disabled={busy} onPress={() => void run(async () => setCreated(await client.createInvitation()))} /></View>
       {created ? <Note index={3} label="INVITACIÓN PRIVADA" title="Una puerta abierta."><Text style={typography.body}>Comparte este código con la persona que quieras invitar. Tendrá que entrar con su propia cuenta.</Text><Text selectable style={[typography.body, { paddingVertical: 14 }]}>{created}</Text></Note> : null}

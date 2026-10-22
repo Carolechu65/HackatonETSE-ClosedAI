@@ -162,15 +162,19 @@ test('sin proveedor configurado el formulario manual sigue disponible', async ()
   }
 });
 
-test('piso con propietario único explica que falta invitar a alguien, sin pedir UID ni consultar al modelo', async () => {
+test('el proveedor recibe actorUid y permite un borrador propio en un piso de una sola persona', async () => {
   let calls = 0;
+  let seenActor = '';
   let eligible: string[] = [];
   const provider: AgentProvider = {
-    label: 'explicit-test-provider',
+    label: 'self-context-test-provider',
     async next(context) {
       calls += 1;
+      seenActor = context.actorUid;
       eligible = context.members.map(member => member.uid);
-      return { type: 'clarification', question: '¿A qué hora avisamos a Ana?', missingFields: ['time'] };
+      return { type: 'draft', title: 'Mi recordatorio', recipientUids: [context.actorUid],
+        timeSpec: { timeZone: 'Europe/Madrid', localDate: '2030-01-15', localTime: '21:00',
+          effectiveAtEpochMs: Date.UTC(2030, 0, 15, 20, 0) }, mode: 'NOTIFICATION', reason: 'Aviso propio solicitado' };
     },
   };
   const ctx = await setupTest({ agentProvider: provider });
@@ -182,17 +186,46 @@ test('piso con propietario único explica que falta invitar a alguien, sin pedir
       payload: { groupId, text: 'Recuérdame sacar la basura mañana a las 21:00 con una notificación.' },
     });
     assert.equal(response.statusCode, 200, response.body);
-    assert.equal(response.json().status, 'needs_clarification');
-    assert.match(response.json().question, /Invita a otra persona/);
-    assert.doesNotMatch(response.json().question, /UID|identificador/);
-    assert.equal(calls, 0);
+    assert.equal(response.json().status, 'draft');
+    assert.deepEqual(response.json().draft.recipientUids, [owner.uid]);
+    assert.equal(response.json().requiresSenderReview, true);
+    assert.equal(response.json().requiresRecipientConsent, true);
+    assert.equal(calls, 1);
+    assert.equal(seenActor, owner.uid);
+    assert.deepEqual(eligible, [owner.uid]);
     const ana = await registerUser(ctx.app, 'Ana');
     await inviteAndJoin(ctx.app, owner, groupId, ana);
-    const continued = await propose(ctx, owner.token, groupId, 'Recuérdale a Ana sacar la basura', response.json().conversationId);
-    assert.equal(continued.statusCode, 200, continued.body);
-    assert.equal(calls, 1);
-    assert.deepEqual(eligible, [ana.uid]);
+    const otherActor = await propose(ctx, ana.token, groupId, 'Ponme una alarma mañana a las 22h');
+    assert.equal(otherActor.statusCode, 200, otherActor.body);
+    assert.equal(seenActor, ana.uid);
+    assert.deepEqual([...eligible].sort(), [owner.uid, ana.uid].sort());
+    assert.deepEqual(otherActor.json().draft.recipientUids, [ana.uid]);
     assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM alarm_requests').get() as { n: number }).n, 0);
+    assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM alarm_recipients').get() as { n: number }).n, 0);
+  } finally { await ctx.close(); }
+});
+
+test('el chat reconoce ponerme y las22h sin crear ni aceptar el aviso antes de la revisión', async () => {
+  const ctx = await setupTest();
+  try {
+    const owner = await registerUser(ctx.app, 'Luis');
+    const groupId = await createGroup(ctx.app, owner);
+    for (const text of ['ponerme una alarma para mañana a las22h', 'Ponme una alarma mañana a las 22h', 'Recuérdame sacar la basura mañana a las 22:00']) {
+      const response = await propose(ctx, owner.token, groupId, text);
+      assert.equal(response.statusCode, 200, response.body);
+      assert.equal(response.json().status, 'draft', response.body);
+      assert.deepEqual(response.json().draft.recipientUids, [owner.uid]);
+      assert.equal(response.json().draft.timeSpec.localTime, '22:00');
+      assert.equal(response.json().draft.timeSpec.timeZone, 'Europe/Madrid');
+      assert.ok(response.json().draft.timeSpec.effectiveAtEpochMs > Date.now());
+      assert.equal(response.json().requiresSenderReview, true);
+      assert.equal(response.json().requiresRecipientConsent, true);
+    }
+    const missingTime = await propose(ctx, owner.token, groupId, 'Ponme una alarma mañana');
+    assert.equal(missingTime.json().status, 'needs_clarification');
+    assert.ok(missingTime.json().missingFields.includes('time'));
+    assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM alarm_requests').get() as { n: number }).n, 0);
+    assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM device_schedules').get() as { n: number }).n, 0);
   } finally { await ctx.close(); }
 });
 

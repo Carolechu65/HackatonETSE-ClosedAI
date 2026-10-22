@@ -24,6 +24,15 @@ export type CompleteTaskCommand = {
   readonly completedAtEpochMs: number;
 };
 
+export type ReopenTaskCommand = {
+  readonly kind: 'reopenTask';
+  readonly operationId: string;
+  readonly groupId: string;
+  readonly taskId: string;
+  readonly expectedVersion: number;
+  readonly reopenedAtEpochMs: number;
+};
+
 export type CancelTaskCommand = {
   readonly kind: 'cancelTask';
   readonly operationId: string;
@@ -38,7 +47,7 @@ export type CancelTaskCommand = {
  * esquemas `createTask`/`completeTask`/`cancelTask` y devolver `OperationReceipt`.
  * Las tareas comparten sobre idempotente con las alarmas (`operationId` + versión).
  */
-export type TaskCommand = CreateTaskCommand | CompleteTaskCommand | CancelTaskCommand;
+export type TaskCommand = CreateTaskCommand | CompleteTaskCommand | ReopenTaskCommand | CancelTaskCommand;
 
 export interface TaskRepository {
   subscribeTasks(groupId: string, onChange: (tasks: readonly HouseholdTask[]) => void): () => void;

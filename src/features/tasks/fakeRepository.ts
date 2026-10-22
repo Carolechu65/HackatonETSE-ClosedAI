@@ -7,7 +7,7 @@
  */
 import { DomainError } from '../../domain/errors.ts';
 import type { OperationReceipt } from '../../domain/contracts/types.ts';
-import { cancelTask, completeTask, createTask, type HouseholdTask, type TaskMember } from './model.ts';
+import { cancelTask, completeTask, reopenTask, createTask, type HouseholdTask, type TaskMember } from './model.ts';
 import type { TaskCommand, TaskRepository } from './ports.ts';
 
 export type DemoTaskRepository = TaskRepository & {
@@ -72,7 +72,7 @@ export function createDemoTaskRepository(options: {
         ? Date.now()
         : command.kind === 'completeTask'
           ? command.completedAtEpochMs
-          : command.cancelledAtEpochMs;
+          : command.kind === 'reopenTask' ? command.reopenedAtEpochMs : command.cancelledAtEpochMs;
 
       let affectedId: string | null = null;
       if (command.kind === 'createTask') {
@@ -99,7 +99,9 @@ export function createDemoTaskRepository(options: {
         }
         const mutation = command.kind === 'completeTask'
           ? completeTask(current, { actorUid: options.actorUid, members: options.members, nowEpochMs: now })
-          : cancelTask(current, { actorUid: options.actorUid, members: options.members, nowEpochMs: now });
+          : command.kind === 'reopenTask'
+            ? reopenTask(current, { actorUid: options.actorUid, members: options.members, nowEpochMs: now })
+            : cancelTask(current, { actorUid: options.actorUid, members: options.members, nowEpochMs: now });
         if (mutation.changed) replace(mutation.task);
         affectedId = current.id;
       }

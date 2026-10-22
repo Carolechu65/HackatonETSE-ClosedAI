@@ -20,6 +20,7 @@ import java.util.Date
  */
 class AlarmActivity : Activity() {
   private var occurrenceKey: String? = null
+  private var taskId: String? = null
 
   override fun onNewIntent(intent: android.content.Intent) {
     super.onNewIntent(intent)
@@ -45,6 +46,7 @@ class AlarmActivity : Activity() {
 
     occurrenceKey = intent.getStringExtra(AlarmContract.EXTRA_KEY)
     val occurrence = occurrenceKey?.let { AlarmStore(this).find(it) }
+    taskId = occurrence?.taskId
     val title = occurrence?.title?.ifBlank { "Alarma" } ?: "Alarma"
     val time = DateFormat.getTimeFormat(this).format(
       Date(occurrence?.effectiveAtEpochMs ?: System.currentTimeMillis()),
@@ -72,7 +74,7 @@ class AlarmActivity : Activity() {
     })
 
     val stop = Button(this).apply {
-      text = "Detener"
+      text = if (taskId != null) "Recordar en 10 min" else "Detener"
       textSize = 18f
       setOnClickListener {
         occurrenceKey?.let { AlarmActions.stop(this@AlarmActivity, it) }
@@ -84,12 +86,23 @@ class AlarmActivity : Activity() {
       dp(56),
     ))
 
+    taskId?.let { linkedTaskId ->
+      root.addView(Button(this).apply {
+        text = "Ver tarea asociada"
+        setOnClickListener {
+          val link = android.content.Intent(android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse("alarmat:///task/${android.net.Uri.encode(linkedTaskId)}"))
+            .setPackage(packageName).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+          startActivity(link)
+        }
+      })
+    }
     val snooze = Button(this).apply {
-      text = "Posponer ${AlarmContract.DEFAULT_SNOOZE_MINUTES} min"
+      text = "Posponer ${if (taskId != null) AlarmPolicy.TASK_REPEAT_MINUTES else AlarmContract.DEFAULT_SNOOZE_MINUTES} min"
       textSize = 16f
       setOnClickListener {
         occurrenceKey?.let {
-          AlarmActions.snooze(this@AlarmActivity, it, AlarmContract.DEFAULT_SNOOZE_MINUTES)
+          AlarmActions.snooze(this@AlarmActivity, it, if (taskId != null) AlarmPolicy.TASK_REPEAT_MINUTES else AlarmContract.DEFAULT_SNOOZE_MINUTES)
         }
         finish()
       }
@@ -100,7 +113,7 @@ class AlarmActivity : Activity() {
     ).apply { topMargin = dp(12) })
 
     root.addView(label(
-      "El sonido continúa hasta que pulses Detener o Posponer.",
+      if (taskId != null) "Si la tarea sigue pendiente, se repetirá en 10 minutos. Abre la tarea para marcarla como hecha." else "El sonido continúa hasta que pulses Detener o Posponer.",
       13f,
       "#68766E",
     ).apply {

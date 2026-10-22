@@ -123,9 +123,6 @@ function createAlarmRequest(
       throw new DomainError('FORBIDDEN', 'Un destinatario no pertenece al piso.');
     }
   }
-  if (payload.recipientUids.includes(actor.uid)) {
-    throw new DomainError('INVALID_ARGUMENT', 'Propón el aviso a otra persona; nadie puede decidir por sí mismo desde el emisor.');
-  }
   if (payload.taskId !== undefined) {
     const task = db
       .prepare("SELECT 1 AS ok FROM tasks WHERE id = ? AND group_id = ? AND status='PENDING'")

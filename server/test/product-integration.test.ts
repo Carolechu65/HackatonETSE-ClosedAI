@@ -216,6 +216,29 @@ test('task idempotency/version checks and linked withdrawal share the canonical 
       ).statusCode,
       404,
     );
+    const reopenUrl = `/v1/groups/${group}/tasks/${task.id}`;
+    const reopenPayload = { operationId: operationId(), status: 'pending', expectedVersion: 2 };
+    const stale = await ctx.app.inject({ method: 'POST', url: reopenUrl, headers: auth(a.token), payload: { ...reopenPayload, operationId: operationId(), expectedVersion: 1 } });
+    assert.equal(stale.statusCode, 409);
+    const forbidden = await ctx.app.inject({ method: 'POST', url: reopenUrl, headers: auth(outside.token), payload: reopenPayload });
+    assert.equal(forbidden.statusCode, 404);
+    const alarmBefore = ctx.db.prepare('SELECT * FROM alarm_requests WHERE id=?').get(alarm.json().result.requestId);
+    const recipientsBefore = ctx.db.prepare('SELECT * FROM alarm_recipients WHERE request_id=?').all(alarm.json().result.requestId);
+    const reopened = await ctx.app.inject({ method: 'POST', url: reopenUrl, headers: auth(a.token), payload: reopenPayload });
+    assert.equal(reopened.statusCode, 200, reopened.body);
+    assert.equal(reopened.json().status, 'pending');
+    assert.equal(reopened.json().version, 3);
+    assert.equal(reopened.json().completedByUid, null);
+    assert.equal(reopened.json().completedAtEpochMs, null);
+    assert.deepEqual((await ctx.app.inject({ method: 'POST', url: reopenUrl, headers: auth(a.token), payload: reopenPayload })).json(), reopened.json());
+    assert.deepEqual(ctx.db.prepare('SELECT * FROM alarm_requests WHERE id=?').get(alarm.json().result.requestId), alarmBefore);
+    assert.deepEqual(ctx.db.prepare('SELECT * FROM alarm_recipients WHERE request_id=?').all(alarm.json().result.requestId), recipientsBefore);
+    const listed = (await ctx.app.inject({ url: `/v1/groups/${group}/tasks`, headers: auth(b.token) })).json().tasks;
+    assert.deepEqual(listed.find((item: { id: string }) => item.id === task.id), reopened.json());
+    const finishedAgain = await ctx.app.inject({ method: 'POST', url: reopenUrl, headers: auth(b.token), payload: { operationId: operationId(), status: 'completed', expectedVersion: 3 } });
+    assert.equal(finishedAgain.statusCode, 200, finishedAgain.body);
+    assert.equal(finishedAgain.json().version, 4);
+    assert.equal(finishedAgain.json().completedByUid, b.uid);
     const changed = await ctx.app.inject({
       method: 'POST',
       url: `/v1/groups/${group}/tasks`,

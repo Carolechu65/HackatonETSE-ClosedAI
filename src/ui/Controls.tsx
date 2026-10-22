@@ -16,7 +16,7 @@ export function Action({ children, onPress, disabled, selected, style, label }: 
   </Pressable>;
 }
 export function Choice({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} style={[styles.choice, selected && styles.choiceSelected]}>
+  return <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} aria-checked={selected} onPress={onPress} style={[styles.choice, selected && styles.choiceSelected]}>
     <Text style={[typography.body, selected && { color: colors.onAvatar }]}>{label}</Text>
   </Pressable>;
 }

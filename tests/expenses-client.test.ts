@@ -23,3 +23,17 @@ test('settle sends no impersonated actor and preserves caller operation identity
  await client.settle('group-1','expense-1',{operationId:'same-retry',expectedVersion:1});
  assert.deepEqual(sent,{path:'/v1/groups/group-1/expenses/expense-1/settle',method:'POST',body:{operationId:'same-retry',expectedVersion:1}});
 });
+
+test('selected debtors may exclude payer and their complete balance and deadline survive the client',async()=>{
+ const selected:Expense={...example,participantUids:['b','c'],settledUids:[],shares:[{uid:'b',amountCents:50},{uid:'c',amountCents:50}],dueDate:'2028-02-29'};
+ let sent:unknown;const client=createFinanceClient(async(path,method,body)=>{sent={path,method,body};return {expense:selected};});
+ const draft={operationId:'deadline-retry',title:'Compra',amountCents:100,participantUids:['b','c'],dueDate:'2028-02-29'};
+ assert.deepEqual(await client.create('group-1',draft),selected);
+ assert.deepEqual(sent,{path:'/v1/groups/group-1/expenses',method:'POST',body:draft});
+ assert.deepEqual(expenseBalance([selected],'a'),{owed:100,owes:0});
+ assert.deepEqual(expenseBalance([selected],'b'),{owed:0,owes:50});
+ for(const dueDate of ['2026-02-30','2025-02-29','',null]){
+  const invalid=createFinanceClient(async()=>({currency:'EUR',expenses:[{...selected,dueDate}]}));
+  await assert.rejects(()=>invalid.list('group-1'));
+ }
+});

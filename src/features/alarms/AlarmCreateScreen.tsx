@@ -24,7 +24,7 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
   const [sent, setSent] = useState(false);
   const update = <K extends keyof AlarmForm>(key: K, value: AlarmForm[K]) => setForm(previous => ({ ...previous, [key]: value }));
   const tasks = state.tasks.filter(task => task.groupId === state.groupId && task.status === 'pending');
-  const recipients = state.members.filter(member => member.userId !== state.session?.userId);
+  const recipients = state.members;
   const context = { groupId: state.groupId ?? '', memberIds: recipients.map(m => m.userId), actorUid: state.session?.userId, openTaskIds: tasks.map(t => t.id), nowEpochMs: Date.now() };
   let preview: CreateAlarmRequestPayload | null = null;
   try { preview = alarmPayload(form, context); } catch { /* Errors appear on explicit submission, not before typing. */ }
@@ -48,8 +48,8 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
         <Field label="¿Qué hay que recordar?" value={form.title} maxLength={120} onChangeText={v => update('title', v)} editable={!action.busy} placeholder="Sacar la basura" />
         <Field label="Una nota, si hace falta" value={form.note} maxLength={500} onChangeText={v => update('note', v)} multiline editable={!action.busy} placeholder="La recogida pasa a las nueve." />
         <Text style={typography.labelOnNote}>PARA QUIÉN</Text>
-        <View style={styles.choices}>{recipients.map(member => <Choice key={member.userId} label={member.displayName} selected={form.recipientUids.includes(member.userId)} onPress={() => { if (!action.busy) update('recipientUids', form.recipientUids.includes(member.userId) ? form.recipientUids.filter(id => id !== member.userId) : [...form.recipientUids, member.userId]); }} />)}</View>
-        {!recipients.length ? <><Text style={typography.support}>Invita a otra persona al piso para proponerle un aviso. Cada destinatario decide después si lo activa.</Text><Action onPress={() => router.push('/group')}>Invitar a un compañero →</Action></> : null}
+        <View style={styles.choices}>{recipients.map(member => <Choice key={member.userId} label={member.userId === state.session?.userId ? `${member.displayName} · Tú` : member.displayName} selected={form.recipientUids.includes(member.userId)} onPress={() => { if (!action.busy) update('recipientUids', form.recipientUids.includes(member.userId) ? form.recipientUids.filter(id => id !== member.userId) : [...form.recipientUids, member.userId]); }} />)}</View>
+        {!recipients.length ? <><Text style={typography.support}>Crea un piso o únete a uno para configurar tus avisos.</Text><Action onPress={() => router.push('/group')}>Ir al piso →</Action></> : null}
         <View style={styles.fields}><View style={styles.grow}><Field label="Fecha · AAAA-MM-DD" value={form.localDate} onChangeText={v => update('localDate', v)} editable={!action.busy} placeholder="2026-10-24" autoCapitalize="none" /></View><View style={styles.grow}><Field label="Hora · HH:mm" value={form.localTime} onChangeText={v => update('localTime', v)} editable={!action.busy} placeholder="20:30" /></View></View>
         <Field label="Zona horaria" value={form.timeZone} onChangeText={v => update('timeZone', v)} editable={!action.busy} autoCapitalize="none" autoCorrect={false} hint="Ejemplo: Europe/Madrid. La vista previa muestra la hora resuelta, incluido el cambio de hora." />
         <Text style={typography.labelOnNote}>CÓMO AVISAR</Text>
@@ -60,6 +60,7 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
         {form.weekly && form.untilEpochMs !== undefined ? <><Text style={typography.support}>La serie termina el {formatDateTimeInZone(form.untilEpochMs, initialDraft?.timeSpec.timeZone ?? group?.timeZone ?? 'Europe/Madrid')}. Revisa este límite del borrador.</Text><Action disabled={action.busy} onPress={() => update('untilEpochMs', undefined)}>Quitar fecha de fin</Action></> : null}
         <Text style={typography.labelOnNote}>TAREA ASOCIADA</Text>
         <View style={styles.choices}><Choice label="Aviso independiente" selected={!form.taskId} onPress={() => { if (!action.busy) update('taskId', ''); }} />{tasks.map(task => <Choice key={task.id} label={task.title} selected={form.taskId === task.id} onPress={() => { if (!action.busy) update('taskId', task.id); }} />)}</View>
+        {form.taskId && form.mode === 'ALARM' ? <Text style={typography.support}>En la app Android actualizada, esta alarma vuelve a avisar a los 10 minutos mientras la tarea siga pendiente. Detenerla no completa la tarea.</Text> : null}
       </Sheet>
       {preview ? <Message text={`${preview.title} · ${formatDateTimeInZone(preview.timeSpec.effectiveAtEpochMs, preview.timeSpec.timeZone)} (${preview.timeSpec.timeZone}) · ${preview.recipientUids.length} persona${preview.recipientUids.length === 1 ? '' : 's'}${preview.recurrence ? ' · cada semana' : ''}.`} /> : null}
       <Message text={action.error} error />

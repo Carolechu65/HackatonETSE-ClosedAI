@@ -74,8 +74,8 @@ test('expenses: reject invalid amounts, titles, duplicate or inactive participan
       ...[0, -1, 1.1, 100000001, Number.MAX_SAFE_INTEGER + 1, '100', null].map(amountCents => ({ amountCents })),
       { title: ' ' }, { title: 'x'.repeat(121) }, { participantUids: [] },
       { participantUids: [ctx.owner.uid, ctx.owner.uid] },
-      { participantUids: [ctx.member.uid] },
       { participantUids: [ctx.owner.uid, ctx.outsider.uid] },
+      ...['2026-02-30', '2025-02-29', '2026-13-01', '2026-1-01', '', null, 20261231].map(dueDate => ({ dueDate })),
       { paidByUid: ctx.member.uid }, { currency: 'USD' },
     ];
     for (const extra of invalid) {
@@ -172,10 +172,60 @@ test('expenses migration upgrades schema 4 without modifying existing households
       INSERT INTO tasks(id,group_id,title,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid,description,category)
       VALUES('old-task','old-group','Comprar pan','PENDING',1,1,1,'old-user','Integral','Compra');`);
     const before = db.prepare('SELECT * FROM tasks').all();
-    assert.deepEqual(migrate(db).applied.map(m => m.version), [5]);
+    assert.deepEqual(migrate(db).applied.map(m => m.version), [5, 6]);
     assert.deepEqual(db.prepare('SELECT * FROM tasks').all(), before);
     assert.equal((db.prepare('SELECT name FROM groups').get() as { name: string }).name, 'Casa anterior');
     assert.equal(integrityCheck(db), 'ok');
     assert.equal(migrate(db).applied.length, 0);
+  } finally { db.close(); await ctx.close(); }
+});
+
+test('expenses: selected debtors can exclude payer, deadline persists and retry binds the deadline', async () => {
+  const ctx = await household();
+  try {
+    const payload = { ...ctx.input, participantUids: [ctx.member.uid, ctx.third.uid], amountCents: 101, dueDate: '2028-02-29' };
+    const create = () => ctx.app.inject({ method: 'POST', url: ctx.url, headers: auth(ctx.owner.token), payload });
+    const response = await create();
+    assert.equal(response.statusCode, 200, response.body);
+    const expense = response.json().expense;
+    assert.equal(expense.paidByUid, ctx.owner.uid);
+    assert.equal(expense.dueDate, '2028-02-29');
+    assert.deepEqual(expense.participantUids, [...payload.participantUids].sort());
+    assert.deepEqual(expense.shares.map((share: { amountCents: number }) => share.amountCents), [51, 50]);
+    assert.deepEqual(expense.settledUids, []);
+    assert.deepEqual((await create()).json(), response.json());
+    const conflict = await ctx.app.inject({ method: 'POST', url: ctx.url, headers: auth(ctx.owner.token), payload: { ...payload, dueDate: '2028-03-01' } });
+    assert.equal(conflict.statusCode, 409);
+    const settled = await ctx.app.inject({ method: 'POST', url: `${ctx.url}/${expense.id}/settle`, headers: auth(ctx.member.token), payload: { operationId: operationId(), expectedVersion: 1 } });
+    assert.equal(settled.statusCode, 200, settled.body);
+    assert.equal(settled.json().expense.dueDate, payload.dueDate);
+    assert.deepEqual(settled.json().expense.settledUids, [ctx.member.uid]);
+    const list = await ctx.app.inject({ method: 'GET', url: ctx.url, headers: auth(ctx.owner.token) });
+    assert.deepEqual(list.json().expenses, [settled.json().expense]);
+  } finally { await ctx.close(); }
+});
+
+test('expense deadline migration preserves existing expenses and settlements without inventing a deadline', async () => {
+  const ctx = await setupTest();
+  const legacy = join(ctx.dir, 'schema5-migrations');
+  mkdirSync(legacy);
+  for (const file of ['001_init.sql', '002_product_integration.sql', '003_task_details.sql', '004_google_calendar.sql', '005_shared_expenses.sql'])
+    copyFileSync(join(findMigrationsDir(), file), join(legacy, file));
+  const db = openDatabase(join(ctx.dir, 'schema5.db'));
+  try {
+    migrate(db, legacy);
+    db.exec(`INSERT INTO users(id,email,password_hash,display_name,device_epoch,created_at_epoch_ms,updated_at_epoch_ms)
+      VALUES('old-user','old@example.test','hash','Legacy',0,1,1);
+      INSERT INTO groups(id,name,time_zone,created_by,created_at_epoch_ms,updated_at_epoch_ms)
+      VALUES('old-group','Casa anterior','Europe/Madrid','old-user',1,1);
+      INSERT INTO shared_expenses(id,group_id,title,amount_cents,paid_by_uid,version,created_at_epoch_ms)
+      VALUES('old-expense','old-group','Pan',123,'old-user',2,1);
+      INSERT INTO expense_participants(expense_id,uid,share_cents,settled_at_epoch_ms)
+      VALUES('old-expense','old-user',123,2);`);
+    const participants = db.prepare('SELECT * FROM expense_participants').all();
+    assert.deepEqual(migrate(db).applied.map(m => m.version), [6]);
+    assert.deepEqual(db.prepare('SELECT title,amount_cents,version,due_date FROM shared_expenses').get(), { title: 'Pan', amount_cents: 123, version: 2, due_date: null });
+    assert.deepEqual(db.prepare('SELECT * FROM expense_participants').all(), participants);
+    assert.equal(integrityCheck(db), 'ok');
   } finally { db.close(); await ctx.close(); }
 });

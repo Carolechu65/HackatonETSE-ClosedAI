@@ -201,7 +201,7 @@ export function updateTask(
 ): HouseholdTask {
   const data = asRecord(raw);
   assertNoExtraKeys(data, ['operationId', 'status', 'expectedVersion']);
-  if (data.status !== 'completed' && data.status !== 'cancelled')
+  if (data.status !== 'pending' && data.status !== 'completed' && data.status !== 'cancelled')
     throw new DomainError('INVALID_ARGUMENT', 'Estado inválido.');
   const expected = readPositiveInt(data.expectedVersion, 'expectedVersion');
   return db
@@ -214,7 +214,7 @@ export function updateTask(
         if (!row) throw new DomainError('NOT_FOUND', 'Tarea no encontrada.');
         if (row.status.toLowerCase() === data.status) return dto(row);
         if (row.version !== expected) throw new DomainError('VERSION_CONFLICT', 'La tarea cambió.');
-        if (row.status !== 'PENDING')
+        if (data.status === 'pending' ? row.status !== 'COMPLETED' : row.status !== 'PENDING')
           throw new DomainError('INVALID_ARGUMENT', 'La tarea ya está cerrada.');
         db.prepare(
           'UPDATE tasks SET status=?,version=version+1,completed_by_uid=?,completed_at_epoch_ms=?,updated_at_epoch_ms=? WHERE id=?',
@@ -225,7 +225,7 @@ export function updateTask(
           now,
           taskId,
         );
-        for (const alarm of db
+        if (data.status !== 'pending') for (const alarm of db
           .prepare("SELECT * FROM alarm_requests WHERE task_id=? AND status='ACTIVE'")
           .all(taskId) as AlarmRequestRow[])
           withdrawLinked(db, alarm, now);

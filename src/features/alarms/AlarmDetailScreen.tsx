@@ -26,6 +26,7 @@ export function AlarmDetailScreen({ requestId }: { requestId: string }) {
   const action = useAction();
   if (!alarm || !state.session) return <AppShell title="Este aviso no está disponible." eyebrow="ALARMAS"><BackLink to="/alarms" label="Volver a alarmas" /><Message text="Puede que el aviso no exista, pertenezca a otro piso o falte sincronizar." /><Action disabled={action.busy} onPress={() => void action.run(() => client.refresh())}>Volver a sincronizar</Action><Message text={action.error} error /></AppShell>;
   const request = alarm.request;
+  const task = request.taskId ? state.tasks.find(item => item.id === request.taskId && item.groupId === alarm.groupId) : undefined;
   const status = alarmStatus(alarm, state.session.userId);
   const effective = recipient?.chosenTimeSpec ?? request.timeSpec;
   const versionKey = `${state.session.userId}:${alarm.groupId}:${requestId}:${request.requestVersion}:${recipient?.decisionRevision ?? 0}`;
@@ -71,8 +72,19 @@ export function AlarmDetailScreen({ requestId }: { requestId: string }) {
         <Text style={typography.labelOnNote}>{status.title.toUpperCase()}</Text>
         <Text style={typography.body}>{status.detail}</Text>
         <Text style={typography.support}>Para {request.recipientUids.map(memberName).join(', ')}.</Text>
-        {request.taskId ? <Action onPress={() => router.push({ pathname: '/task/[taskId]', params: { taskId: request.taskId! } })}>Ver tarea asociada →</Action> : null}
       </Sheet>
+      {request.taskId ? <Sheet>
+        <Text style={typography.labelOnNote}>TAREA ASOCIADA</Text>
+        <Text style={typography.noteTitle}>{task?.title ?? 'Consultar tarea'}</Text>
+        {task ? <Text style={typography.body}>{task.status === 'completed' ? 'Hecha' : task.status === 'cancelled' ? 'Cancelada' : 'Pendiente de completar'}</Text> : null}
+        <Text style={typography.support}>Detener o posponer el aviso no marca la tarea como hecha.</Text>
+        {request.mode === 'ALARM' ? <Text style={typography.support}>En la app Android actualizada, se vuelve a avisar a los 10 minutos mientras la tarea siga pendiente. Marcarla como hecha retira sus avisos cuando el móvil sincroniza.</Text> : null}
+        {task?.status === 'pending' ? <Action disabled={busy} onPress={() => void action.run(async () => {
+          await client.updateTask(task, 'completed', ids.current(`${task.id}:${task.version}`, { status: 'completed' }));
+          setNotice('Tarea completada. Se ha solicitado retirar sus avisos.');
+        })}>Marcar tarea como hecha</Action> : null}
+        <Action onPress={() => router.push({ pathname: '/task/[taskId]', params: { taskId: request.taskId! } })}>Ver tarea asociada →</Action>
+      </Sheet> : null}
       <Sheet>
         <Text style={typography.labelOnNote}>RESPUESTAS DEL PISO</Text>
         {request.recipientUids.map(uid => {

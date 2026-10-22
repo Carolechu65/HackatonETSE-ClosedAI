@@ -96,7 +96,14 @@ class AlarmService : Service() {
 
     // One audible presentation at a time. A concurrent alarm explicitly supersedes
     // the previous sound, whose consumed/dismissed state remains in the snapshot.
-    activeKey?.let { previous -> store.update(previous) { it.copy(dismissedAtEpochMs = System.currentTimeMillis()) } }
+    activeKey?.let { previous ->
+      val previousOccurrence = store.find(previous)
+      if (previousOccurrence != null && AlarmPolicy.shouldRepeatTask(previousOccurrence.taskId, previousOccurrence.mode,
+          previousOccurrence.status, previousOccurrence.dismissedAtEpochMs != null)) {
+        AlarmActions.snooze(this, previous, AlarmPolicy.TASK_REPEAT_MINUTES,
+          AlarmPolicy.nextTaskReminderAt(previousOccurrence.firedAtEpochMs, System.currentTimeMillis()))
+      } else store.update(previous) { it.copy(dismissedAtEpochMs = System.currentTimeMillis()) }
+    }
     stopPlayback()
 
     val now = System.currentTimeMillis()
@@ -145,7 +152,7 @@ class AlarmService : Service() {
       finishAlarm()
       return
     }
-    handler.postDelayed(stopRunnable, AlarmContract.MAX_ALARM_DURATION_MS)
+    handler.postDelayed(stopRunnable, if (occurrence.taskId != null) AlarmPolicy.TASK_RING_DURATION_MS else AlarmContract.MAX_ALARM_DURATION_MS)
   }
 
   private fun playSound(): Boolean {
@@ -212,6 +219,15 @@ class AlarmService : Service() {
   private fun finishAlarm() {
     synchronized(AlarmStore.lock) {
     val key = activeKey
+    // A stopped/elapsed task alarm keeps the same accepted occurrence. A real
+    // cancellation persists CANCELLED first, so it can never enter this branch.
+    key?.let { currentKey ->
+      AlarmStore(this).find(currentKey)?.let { occurrence ->
+        if (AlarmPolicy.shouldRepeatTask(occurrence.taskId, occurrence.mode, occurrence.status, occurrence.dismissedAtEpochMs != null))
+          AlarmActions.snooze(this, currentKey, AlarmPolicy.TASK_REPEAT_MINUTES,
+            AlarmPolicy.nextTaskReminderAt(occurrence.firedAtEpochMs, System.currentTimeMillis()))
+      }
+    }
     stopPlayback()
 
     if (key != null) {

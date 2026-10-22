@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking, Platform, Text, View } from 'react-native';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Linking, Platform, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useProduct } from '../../composition/ProductProvider.tsx';
 import { AppShell } from '../../ui/AppShell.tsx';
@@ -18,7 +18,7 @@ export function CalendarScreen() {
   return <AppShell title="Tu calendario" eyebrow="TUS PLANES, EN SU SITIO"><CalendarContent key={`${state.session?.userId}:${state.session?.mode}`} /></AppShell>;
 }
 function CalendarContent() {
-  const { state,client,group }=useProduct();const api=client.calendar;
+  const { state,client,group }=useProduct();const api=client.calendar;const compact=useWindowDimensions().width<600;
   const params=useLocalSearchParams<{completion?:string;alarmId?:string;taskId?:string}>();
   const [status,setStatus]=useState<CalendarStatus|null>(null);const [calendars,setCalendars]=useState<CalendarChoice[]>([]);const [events,setEvents]=useState<CalendarEvent[]>([]);
   const [page,setPage]=useState<string|null>(null);const [offset,setOffset]=useState(0);const [notice,setNotice]=useState<string|null>(null);const [loading,setLoading]=useState(false);
@@ -83,13 +83,18 @@ function CalendarContent() {
     <Message text={notice}/><Message text={action.error} error/>
     <Action disabled={action.busy||loading} onPress={()=>void action.run(refresh)}>Actualizar calendario</Action>
     {status?.connected?<>
-      <View style={{flexDirection:'row',flexWrap:'wrap',gap:10}}><Action disabled={loading||action.busy} onPress={()=>setOffset(o=>o-1)}>Semana anterior</Action><Action disabled={loading||action.busy} onPress={()=>setOffset(0)}>Esta semana</Action><Action disabled={loading||action.busy} onPress={()=>setOffset(o=>o+1)}>Semana siguiente</Action></View>
+      <View style={{flexDirection:'row',gap:8}}><Action style={{flex:1,paddingHorizontal:6}} label="Semana anterior" disabled={loading||action.busy} onPress={()=>setOffset(o=>o-1)}>{compact?'Anterior':'Semana anterior'}</Action><Action style={{flex:1,paddingHorizontal:6}} label="Esta semana" disabled={loading||action.busy} onPress={()=>setOffset(0)}>{compact?'Hoy':'Esta semana'}</Action><Action style={{flex:1,paddingHorizontal:6}} label="Semana siguiente" disabled={loading||action.busy} onPress={()=>setOffset(o=>o+1)}>{compact?'Siguiente':'Semana siguiente'}</Action></View>
       <Text style={typography.noteTitle}>{new Date(from).toLocaleDateString('es-ES')} — {new Date(to-1).toLocaleDateString('es-ES')}</Text>
       {loading?<Text style={typography.body}>Cargando tus eventos…</Text>:events.length===0?<Note index={4} label="TU AGENDA" title="Sin eventos en estos días"><Text style={typography.body}>Puedes añadir un plan abajo o consultar otra semana.</Text></Note>:events.map((event,index)=><Note key={event.id} index={index+2} label={event.allDay?'TODO EL DÍA':'TU AGENDA'} title={event.title} style={{padding:22,gap:8}}><Text style={typography.body}>{event.allDay?event.start:formatDateTimeInZone(Date.parse(event.start),event.timeZone)}</Text>{!event.allDay?<Text style={typography.support}>Hasta {formatDateTimeInZone(Date.parse(event.end),event.timeZone)} · {event.timeZone}</Text>:null}{event.url?<Action onPress={()=>void action.run(()=>Linking.openURL(event.url!).then(()=>{}))}>Abrir en Google Calendar</Action>:null}</Note>)}
       {page?<Action disabled={action.busy||loading} onPress={()=>void action.run(async()=>{const result=await api.events(from,to,page);if(!alive.current)return;setEvents(old=>[...new Map([...old,...result.events].map(e=>[e.id,e])).values()]);setPage(result.nextPageToken);})}>Cargar más eventos</Action>:null}
       <Sheet style={{gap:12,padding:24}}><Text style={typography.noteTitle}>Añadir un compromiso</Text><Text style={typography.support}>Se guarda una copia en Google Calendar, sin activar alarmas ni invitar a otras personas. Los cambios posteriores se hacen en Google Calendar.</Text>
-        <Field label="Título del evento" value={title} onChangeText={edit(setTitle)} maxLength={160} editable={!action.busy}/><Field label="Fecha · AAAA-MM-DD" value={date} onChangeText={edit(setDate)} placeholder="2026-10-24" editable={!action.busy}/><Field label="Hora · HH:mm" value={time} onChangeText={edit(setTime)} placeholder="18:00" editable={!action.busy}/><Field label="Duración en minutos" value={minutes} onChangeText={edit(setMinutes)} keyboardType="numeric" editable={!action.busy}/><Field label="Zona horaria" value={zone} onChangeText={edit(setZone)} autoCapitalize="none" editable={!action.busy}/>
+        <Field label="Título del evento" value={title} onChangeText={edit(setTitle)} maxLength={160} editable={!action.busy}/><CalendarTimeField label="Fecha" type="date" value={date} onChange={edit(setDate)} disabled={action.busy}/><CalendarTimeField label="Hora" type="time" value={time} onChange={edit(setTime)} disabled={action.busy}/><Field label="Duración en minutos" value={minutes} onChangeText={edit(setMinutes)} keyboardType="numeric" editable={!action.busy}/><Field label="Zona horaria" value={zone} onChangeText={edit(setZone)} autoCapitalize="none" editable={!action.busy}/>
       </Sheet><PrimaryAction label={action.busy?'Guardando…':'Guardar en mi Google Calendar'} disabled={action.busy||!selected?.writable} onPress={create}/>{selected&&!selected.writable?<Text style={typography.support}>Elige un calendario con permiso de escritura para añadir eventos.</Text>:null}
     </>:null}
   </View>;
+}
+
+function CalendarTimeField({label,type,value,onChange,disabled}:{label:string;type:'date'|'time';value:string;onChange:(value:string)=>void;disabled:boolean}) {
+  if(Platform.OS!=='web')return <Field label={type==='date'?'Fecha · AAAA-MM-DD':'Hora · HH:mm'} value={value} onChangeText={onChange} placeholder={type==='date'?'2026-10-24':'18:00'} editable={!disabled} maxLength={type==='date'?10:5}/>;
+  return <View style={{gap:8,marginVertical:6}}><Text style={typography.labelOnNote}>{label}</Text>{createElement('input',{type,value,disabled,'aria-label':label,onChange:(event:{target:{value:string}})=>onChange(event.target.value),style:{width:'100%',minWidth:0,boxSizing:'border-box',minHeight:48,padding:'10px 0',border:0,borderBottom:'1px solid #aaa28f',borderRadius:0,background:'transparent',color:'#3b2a1a',fontFamily:'inherit',fontSize:16}})}</View>;
 }

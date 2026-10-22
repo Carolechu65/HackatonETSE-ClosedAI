@@ -60,6 +60,43 @@ async function reportSchedule(
   });
 }
 
+test('crear un aviso propio requiere aceptación explícita y otra persona no puede aceptarlo', async () => {
+  const ctx = await setupTest();
+  try {
+    const owner = await registerUser(ctx.app, 'Luis');
+    const neighbor = await registerUser(ctx.app, 'Ana');
+    const groupId = await createGroup(ctx.app, owner);
+    await inviteAndJoin(ctx.app, owner, groupId, neighbor);
+    for (const mode of ['ALARM', 'NOTIFICATION']) {
+      const body = createAlarmBody({ groupId, recipientUids: [owner.uid] });
+      const created = await ctx.app.inject({ method: 'POST', url: '/v1/operations/createAlarmRequest', headers: auth(owner.token),
+        payload: { ...body, payload: { ...body.payload as Record<string, unknown>, mode } } });
+      assert.equal(created.statusCode, 200, created.body);
+      const requestId = created.json().result.requestId as string;
+      const detail = () => ctx.app.inject({ method: 'GET', url: `/v1/groups/${groupId}/alarm-requests/${requestId}`, headers: auth(owner.token) });
+      const initial = await detail();
+      assert.equal(initial.statusCode, 200, initial.body);
+      assert.deepEqual(initial.json().request.recipientUids, [owner.uid]);
+      assert.equal(initial.json().request.creatorUid, owner.uid);
+      assert.equal(initial.json().recipient.decision, 'PENDING');
+      assert.equal(initial.json().recipients[0].decision, 'PENDING');
+      assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM device_schedules WHERE request_id=?').get(requestId) as { n: number }).n, 0);
+      const unauthorized = await respond(ctx, neighbor.token, groupId, requestId,
+        { decision: 'ACCEPTED', consentScope: 'THIS_OCCURRENCE' }, { requestVersion: 1, decisionRevision: 1 });
+      assert.equal(unauthorized.statusCode, 403, unauthorized.body);
+      assert.equal((await detail()).json().recipient.decision, 'PENDING');
+      const accepted = await respond(ctx, owner.token, groupId, requestId,
+        { decision: 'ACCEPTED', consentScope: 'THIS_OCCURRENCE' }, { requestVersion: 1, decisionRevision: 1 });
+      assert.equal(accepted.statusCode, 200, accepted.body);
+      assert.equal(accepted.json().decisionRevision, 2);
+      const final = await detail();
+      assert.equal(final.json().recipient.decision, 'ACCEPTED');
+      assert.equal(final.json().recipients[0].decision, 'ACCEPTED');
+      assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM device_schedules WHERE request_id=?').get(requestId) as { n: number }).n, 0);
+    }
+  } finally { await ctx.close(); }
+});
+
 test('A propone, B acepta y programa, C no puede acceder', async () => {
   const ctx = await setupTest();
   try {

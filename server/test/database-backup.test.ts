@@ -41,7 +41,7 @@ test('online backup restores canonical migrations and data; foreign-key failure 
         ).display_name,
         'Backup sintético',
       );
-      assert.equal(restored.pragma('user_version', { simple: true }), 5);
+      assert.equal(restored.pragma('user_version', { simple: true }), 6);
       assert.equal(statSync(backup).mode & 0o777, 0o600);
     } finally {
       restored.close();

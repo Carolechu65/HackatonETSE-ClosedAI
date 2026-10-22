@@ -24,6 +24,8 @@ export interface LocalOccurrence extends OccurrenceKey {
   timeZone: string;
   title: string;
   mode: 'ALARM' | 'NOTIFICATION';
+  /** Audible task reminders repeat locally until their request is withdrawn. */
+  taskId?: string;
 }
 
 export type ScheduleResult =
@@ -92,7 +94,7 @@ export interface AlarmRuntime {
 
 /** Optional native controls kept separate so the sync port remains backwards compatible. */
 export interface NativeAlarmControls extends AlarmRuntime {
-  /** Detiene una alarma sonando o cancela una que aún no ha llegado. */
+  /** Silencia; las alarmas de tarea conservan su recordatorio de 10 minutos. Para retirar, usar cancel. */
   stop(key: OccurrenceKey): Promise<boolean>;
   /** Reagenda la misma ocurrencia (identidad estable) dentro de N minutos. */
   snooze(key: OccurrenceKey, minutes?: number): Promise<SnoozeResult>;

@@ -28,6 +28,7 @@ data class AlarmOccurrence(
   val failureReason: String? = null,
   val updatedAtEpochMs: Long = System.currentTimeMillis(),
   val acceptedAtEpochMs: Long = effectiveAtEpochMs,
+  val taskId: String? = null,
 ) {
   val key: String
     get() = AlarmContract.keyOf(userId, requestId, occurrenceId, deviceId, deviceEpoch)
@@ -47,7 +48,7 @@ data class AlarmOccurrence(
     "timeZone" to timeZone,
     "title" to title,
     "mode" to mode,
-  )
+  ) + (taskId?.let { mapOf("taskId" to it) } ?: emptyMap<String, Any?>())
 
   fun snapshotMap(): Map<String, Any?> {
     val result = mutableMapOf<String, Any?>(
@@ -75,6 +76,7 @@ data class AlarmOccurrence(
     put("timeZone", timeZone)
     put("title", title)
     put("mode", mode)
+    taskId?.let { put("taskId", it) }
     put("status", status)
     put("scheduledAtEpochMs", scheduledAtEpochMs)
     put("snoozeCount", snoozeCount)
@@ -108,10 +110,12 @@ data class AlarmOccurrence(
       timeZone = spec.requireString("timeZone"),
       title = spec.requireString("title"),
       mode = spec.optionalString("mode") ?: MODE_ALARM,
+      taskId = spec.optionalString("taskId"),
     ).also { occurrence ->
       require(occurrence.mode == MODE_ALARM || occurrence.mode == MODE_NOTIFICATION) {
         "mode must be ALARM or NOTIFICATION"
       }
+      require(occurrence.taskId == null || (occurrence.mode == MODE_ALARM && occurrence.taskId.matches(Regex("^[A-Za-z0-9_-]{1,128}$")))) { "Invalid task reminder" }
       require(occurrence.effectiveAtEpochMs > 0) { "effectiveAtEpochMs must be positive" }
       require(occurrence.title.length <= 500) { "title is too long" }
       require(occurrence.timeZone in java.util.TimeZone.getAvailableIDs()) { "Unknown time zone" }
@@ -129,6 +133,7 @@ data class AlarmOccurrence(
       timeZone = json.getString("timeZone"),
       title = json.getString("title"),
       mode = json.optString("mode", MODE_ALARM),
+      taskId = json.optString("taskId").takeIf { it.isNotEmpty() },
       status = json.optString("status", STATUS_SCHEDULED),
       scheduledAtEpochMs = json.optLong("scheduledAtEpochMs", json.getLong("effectiveAtEpochMs")),
       firedAtEpochMs = json.optNullableLong("firedAtEpochMs"),

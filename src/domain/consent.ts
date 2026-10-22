@@ -77,9 +77,6 @@ export function assertCanRespond(input: RespondAuthorizationInput): void {
   if (!input.memberActive) {
     throw new DomainError('FORBIDDEN', 'No perteneces a este piso.');
   }
-  if (input.actorUid === input.creatorUid) {
-    throw new DomainError('FORBIDDEN', 'Quien propone no puede responder en nombre de otra persona.');
-  }
   if (input.actorUid !== input.recipientUid) {
     throw new DomainError('FORBIDDEN', 'Solo el destinatario decide sobre su aviso.');
   }

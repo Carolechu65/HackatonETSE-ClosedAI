@@ -12,7 +12,13 @@ import { canonicalJson, SerialQueue, type AlarmRecord, type LocalSchedule } from
 const sameEntity = (alarm: AlarmRecord, schedule: LocalSchedule) =>
   alarm.groupId === schedule.groupId && alarm.requestId === schedule.spec.requestId;
 const sameSpec = (a: LocalOccurrence, b: LocalOccurrence) => canonicalJson(a) === canonicalJson(b);
+const sameExecution = (a: LocalOccurrence, b: LocalOccurrence) => {
+  const { taskId: _a, ...left } = a; const { taskId: _b, ...right } = b;
+  return canonicalJson(left) === canonicalJson(right);
+};
 const terminal = (status: LocalSchedule['status']) => ['CANCELLED', 'FIRED', 'EXPIRED'].includes(status);
+const needsCancellation = (schedule: Pick<LocalSchedule, 'status' | 'spec'>) => !terminal(schedule.status)
+  || (schedule.status === 'FIRED' && !!schedule.spec.taskId && schedule.spec.mode === 'ALARM');
 
 export type ReconcilerOptions = {
   userId: string; deviceId: string; store: LocalStore; runtime: AlarmRuntime;
@@ -40,8 +46,9 @@ export class ScheduleReconciler {
     const time = recipient.chosenTimeSpec ?? request.timeSpec;
     // Snooze is local execution of the SAME consented occurrence. It never grants new
     // consent or changes the occurrence/ACK identity, and withdrawal always wins above.
-    if (snoozed?.status === 'SCHEDULED' && (snoozed.snoozeCount ?? 0) > 0
-      && (snoozed.scheduledAtEpochMs ?? 0) > clock.nowEpochMs()) {
+    if (snoozed && ((snoozed.status === 'SCHEDULED' && (snoozed.snoozeCount ?? 0) > 0
+      && (snoozed.scheduledAtEpochMs ?? 0) > clock.nowEpochMs())
+      || (snoozed.status === 'FIRED' && request.mode === 'ALARM' && !!request.taskId))) {
       const spec = snoozed.spec;
       const acceptedSlot = spec.effectiveAtEpochMs === time.effectiveAtEpochMs
         || (request.recurrence && recipient.consentScope === 'SERIES'
@@ -49,7 +56,7 @@ export class ScheduleReconciler {
       if (acceptedSlot && spec.userId === userId && spec.requestId === alarm.requestId
         && spec.deviceId === deviceId && spec.deviceEpoch === primaryDevice.deviceEpoch
         && spec.requestVersion === request.requestVersion && spec.decisionRevision === recipient.decisionRevision
-        && spec.mode === request.mode && spec.timeZone === time.timeZone && spec.title === request.title
+        && spec.mode === request.mode && spec.taskId === (request.mode === 'ALARM' ? request.taskId : undefined) && spec.timeZone === time.timeZone && spec.title === request.title
         && spec.occurrenceId === occurrenceIdFromEpochMs(spec.effectiveAtEpochMs)) return spec;
     }
     let effectiveAtEpochMs = time.effectiveAtEpochMs;
@@ -62,7 +69,8 @@ export class ScheduleReconciler {
     }
     return { userId, requestId: alarm.requestId, occurrenceId: occurrenceIdFromEpochMs(effectiveAtEpochMs),
       deviceId, deviceEpoch: primaryDevice.deviceEpoch, requestVersion: request.requestVersion,
-      decisionRevision: recipient.decisionRevision, effectiveAtEpochMs, timeZone: time.timeZone, title: request.title, mode: request.mode };
+      decisionRevision: recipient.decisionRevision, effectiveAtEpochMs, timeZone: time.timeZone, title: request.title, mode: request.mode,
+      ...(request.mode === 'ALARM' && request.taskId ? { taskId: request.taskId } : {}) };
   }
 
   /** Persist execution and ACK in one local transaction, with stable ID across retries. */
@@ -126,7 +134,7 @@ export class ScheduleReconciler {
       await this.recoverSnapshots();
       const alarm = (await store.alarms(userId)).find(item => item.groupId === groupId && item.requestId === requestId && item.recipient.uid === userId);
       for (const schedule of await store.schedules(userId)) {
-        if (schedule.groupId === groupId && schedule.spec.requestId === requestId && !terminal(schedule.status)) await this.cancel(schedule, alarm);
+        if (schedule.groupId === groupId && schedule.spec.requestId === requestId && needsCancellation(schedule)) await this.cancel(schedule, alarm);
       }
     });
   }
@@ -174,7 +182,7 @@ export class ScheduleReconciler {
         const groupId = old?.groupId ?? alarm?.groupId;
         // An orphan still needs cancelling (e.g. logout interrupted before local persistence).
         if (!groupId) {
-          if (!terminal(entry.status)) {
+          if (needsCancellation(entry)) {
             const cancelled = await this.runtime(mode).cancel(entry.spec);
             if (cancelled.status !== 'CANCELLED' || occurrenceKey(cancelled.key) !== occurrenceKey(entry.spec)) {
               throw new Error('Queda una ocurrencia huérfana pendiente de cancelación.');
@@ -214,6 +222,10 @@ export class ScheduleReconciler {
         assertCurrent();
         const alarm = alarms.find(item => sameEntity(item, schedule) && item.recipient.uid === userId);
         const wanted = alarm && !blocked(alarm) ? this.desired(alarm, schedule) : null;
+        if (schedule.status === 'FIRED' && schedule.spec.taskId && !wanted) {
+          await this.cancel(schedule, alarm);
+          continue;
+        }
         if (terminal(schedule.status)) {
           // An offline disable may have completed before its newer server decision arrived.
           // Reconfirm cancellation for that decision; never re-tag an old execution event.
@@ -223,7 +235,7 @@ export class ScheduleReconciler {
           else if (alarm) await this.record(schedule, alarm);
           continue;
         }
-        if (!wanted || !sameSpec(wanted, schedule.spec)) await this.cancel(schedule, alarm);
+        if (!wanted || !sameExecution(wanted, schedule.spec) || (schedule.spec.taskId && wanted.taskId !== schedule.spec.taskId)) await this.cancel(schedule, alarm);
       }
       if (!allowNewSchedules) return 0;
       let scheduled = 0;
@@ -292,11 +304,11 @@ export class ScheduleReconciler {
       const snapshots = await this.recoverSnapshots();
       let pending = false;
       for (const schedule of await store.schedules(userId)) {
-        if (!terminal(schedule.status) && !await this.cancel(schedule)) pending = true;
+        if (needsCancellation(schedule) && !await this.cancel(schedule)) pending = true;
       }
       // A known unavailable runtime is safe only when no local intent exists for it.
       for (const mode of ['ALARM', 'NOTIFICATION'] as const) {
-        if (!snapshots.has(mode) && (await store.schedules(userId)).some(item => item.spec.mode === mode && !terminal(item.status))) pending = true;
+        if (!snapshots.has(mode) && (await store.schedules(userId)).some(item => item.spec.mode === mode && needsCancellation(item))) pending = true;
       }
       if (pending) throw new Error('Quedan cancelaciones locales pendientes. Reintenta antes de cambiar de cuenta.');
       await store.clearUser(userId, preserveAccount);

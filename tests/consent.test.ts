@@ -43,6 +43,7 @@ test('un cambio de términos exige volver a aceptar', () => {
 
 test('solo el destinatario puede responder y con las versiones vigentes', () => {
   assert.doesNotThrow(() => assertCanRespond(base));
+  assert.doesNotThrow(() => assertCanRespond({ ...base, actorUid: 'luis', recipientUid: 'luis' }));
 
   expectDomainError(() => assertCanRespond({ ...base, actorUid: '' }), 'UNAUTHENTICATED');
   expectDomainError(() => assertCanRespond({ ...base, memberActive: false }), 'FORBIDDEN');
