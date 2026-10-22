@@ -35,3 +35,7 @@ server/data/
 *.db
 *.db-wal
 *.db-shm
+
+# Isolated web builds and dependency-directory symlinks
+node_modules
+dist-web/
