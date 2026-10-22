@@ -10,7 +10,7 @@
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
-    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.ts\"",
+    "test": "node scripts/test.mjs",
     "test:contracts": "node scripts/contracts/check.mjs",
     "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix server run build && npm --prefix server test",
     "export:android": "expo export --platform android",

@@ -6,6 +6,8 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 **Estado: estructura inicial y cambio de arquitectura documentado.** El backend objetivo es una API propia con SQLite en el VPS. El código de `functions/` y la configuración `firebase/` siguen siendo el scaffold anterior, pendiente de migración por P3 a `server/`. La app, widgets y alarmas reales todavía requieren integración. Este cambio de documentación no despliega ni migra datos.
 
+**Entrega P5:** [datos y sincronización](src/data/README.md) incorpora SQLite local, outbox, HTTPS/SecureStore y reconciliación probados con SQLite real y adaptadores de prueba. La demo de pantalla sigue en memoria hasta integrar API, contratos HTTP y runtime Android reales.
+
 **Empieza aquí:** [guía de arranque y reparto por persona](docs/START_HERE.md). Incluye comandos reales y el primer archivo que debe modificar cada responsable.
 
 **Para continuar con agentes:** [seis prompts extensos por persona y encargos para subagentes](docs/prompts/README.md), con el reparto de START_HERE.

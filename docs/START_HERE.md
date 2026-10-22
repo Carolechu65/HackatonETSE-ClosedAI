@@ -93,12 +93,12 @@ No importar adaptadores concretos desde las pantallas: usar `src/composition/ind
 
 ## Qué está deliberadamente pendiente
 
-- **Cliente remoto:** P5 implementará HTTP, sesión en SecureStore, sincronización por cursor y push Expo opcional. No instalar RNFirebase para el nuevo backend.
+- **Cliente remoto:** P5 implementa SQLite/outbox, HTTP/SecureStore, sincronización y reconciliación con pruebas en SQLite real. Integración y límites en [`src/data/README.md`](../src/data/README.md). La demo sigue activa hasta que P3 entregue API/URL y wrappers HTTP, P4 el runtime y P2 conecte las pantallas. El registro push sigue pendiente del contrato de dispositivos; no instalar RNFirebase.
 - **Backend:** las funciones antiguas siguen devolviendo `unimplemented`; las Rules antiguas deniegan todo. P3 debe reemplazarlas por API HTTP, sesiones propias, migraciones SQLite y autorización probada; después retirará el legado con P1. No hay servidor SQLite ejecutable todavía.
 - **Alarma sonora:** se integra el prototipo de dAlarmas (AlarmManager, servicio, detener/posponer y recuperación); la validación física sigue pendiente.
 - **Widgets:** hay una proyección pura; no se registra todavía un widget en el launcher. P6 instala/configura expo-widgets y valida el runtime aislado.
 - **Agente:** existe su punto de entrada y contrato de borrador/clarificación; falta conectar un modelo, herramientas autorizadas y confirmación humana.
-- **Automatizaciones:** el outbox es un contrato inicial; recurrencia, reintentos y cancelaciones por tareas están pendientes.
+- **Automatizaciones:** P5 aporta outbox durable, reintentos, barreras de cancelación y recuperación de snapshots. La recurrencia con proceso cerrado y la invalidación por tareas requieren la integración P3/P4/P6.
 
 La demo en memoria pierde cambios al reiniciar. Aceptar produce «activación pendiente», nunca un éxito de programación ficticio. No marcar las features completas hasta integrar y comprobar el flujo real.
 
