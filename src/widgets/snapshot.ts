@@ -85,6 +85,12 @@ export type BuildWidgetSnapshotInput = {
   readonly alarms: readonly WidgetAlarmInput[];
   readonly nowEpochMs: number;
   readonly scope: WidgetSnapshotScope | null;
+  /**
+   * Momento de generación cuando la proyección se publica más tarde (por ejemplo,
+   * al reconciliar en segundo plano). Por defecto coincide con `nowEpochMs`.
+   * La selección de la próxima alarma siempre usa `nowEpochMs`.
+   */
+  readonly generatedAtEpochMs?: number;
 };
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -143,9 +149,11 @@ const PENDING_ACTIVATION_STATES: readonly SchedulingStatus[] = [
  */
 export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnapshot {
   assertEpochMs(input.nowEpochMs, 'nowEpochMs');
+  const generatedAtEpochMs = input.generatedAtEpochMs ?? input.nowEpochMs;
+  assertEpochMs(generatedAtEpochMs, 'generatedAtEpochMs');
 
   if (input.scope === null) {
-    return createSignedOutWidgetSnapshot(input.nowEpochMs);
+    return createSignedOutWidgetSnapshot(generatedAtEpochMs);
   }
 
   assertIdentifier(input.scope.userId, 'scope.userId');
@@ -167,7 +175,7 @@ export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnap
   return {
     schemaVersion: WIDGET_SNAPSHOT_SCHEMA_VERSION,
     scope: { userId: input.scope.userId, groupId: input.scope.groupId },
-    generatedAtEpochMs: input.nowEpochMs,
+    generatedAtEpochMs,
     nextAlarm: next === null ? null : {
       requestId: next.requestId,
       occurrenceId: next.occurrenceId,

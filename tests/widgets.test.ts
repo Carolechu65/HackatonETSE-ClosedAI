@@ -13,6 +13,11 @@ import {
 } from '../src/widgets/snapshot.ts';
 import { toWidgetProps, formatAlarmWhen, describeFreshness, formatPendingLine } from '../src/widgets/viewModel.ts';
 import { alarmLink, inboxLink, parseWidgetLink, taskLink, widgetLinkToRoute } from '../src/widgets/links.ts';
+import {
+  createDemoWidgetSnapshot,
+  demoSessionFor,
+  WIDGET_DEMO_SCOPE,
+} from '../src/widgets/demoSnapshot.ts';
 import { isDomainError } from '../src/domain/errors.ts';
 
 const NOW = Date.parse('2026-10-22T17:05:00.000Z');
@@ -234,4 +239,51 @@ test('enlaces: construyen rutas válidas y rechazan cualquier intento de decisi�
 
   assert.throws(() => alarmLink('../escape'), /inválido/);
   assert.throws(() => taskLink('a/b'), /inválido/);
+});
+
+
+test('laboratorio: los cuatro estados de demo usan la proyección real', () => {
+  const next = createDemoWidgetSnapshot('next', NOW);
+  assert.equal(next.scope?.groupId, WIDGET_DEMO_SCOPE.groupId);
+  assert.equal(next.nextAlarm?.title, 'Pagar la luz');
+  assert.equal(next.counts.pendingProposals, 1);
+  assert.equal(next.counts.pendingActivations, 1);
+  assert.equal(next.counts.withdrawalPending, 1);
+
+  const stale = createDemoWidgetSnapshot('stale', NOW);
+  assert.equal(stale.generatedAtEpochMs, NOW - 3 * 3_600_000);
+  assert.equal(stale.nextAlarm?.title, 'Pagar la luz');
+  assert.equal(isWidgetSnapshotStale(stale, NOW), true);
+
+  const empty = createDemoWidgetSnapshot('empty', NOW);
+  assert.equal(empty.nextAlarm, null);
+  assert.equal(empty.scope?.groupId, WIDGET_DEMO_SCOPE.groupId);
+
+  const signedOut = createDemoWidgetSnapshot('signedOut', NOW);
+  assert.equal(signedOut.scope, null);
+  assert.equal(signedOut.nextAlarm, null);
+});
+
+test('laboratorio: la sesión de demo se cierra solo en el estado sin sesión', () => {
+  assert.deepEqual(demoSessionFor('next'), WIDGET_DEMO_SCOPE);
+  assert.deepEqual(demoSessionFor('stale'), WIDGET_DEMO_SCOPE);
+  assert.deepEqual(demoSessionFor('empty'), WIDGET_DEMO_SCOPE);
+  assert.equal(demoSessionFor('signedOut'), null);
+});
+
+test('widget: generatedAtEpochMs permite publicar una proyección generada antes', () => {
+  const snapshot = buildWidgetSnapshot({
+    alarms: [alarm({ requestId: 'x' })],
+    nowEpochMs: NOW,
+    scope: SCOPE,
+    generatedAtEpochMs: NOW - 10 * 60_000,
+  });
+  assert.equal(snapshot.generatedAtEpochMs, NOW - 10 * 60_000);
+  assert.equal(snapshot.nextAlarm?.requestId, 'x');
+  assert.equal(isWidgetSnapshotStale(snapshot, NOW), false);
+
+  assert.throws(
+    () => buildWidgetSnapshot({ alarms: [], nowEpochMs: NOW, scope: SCOPE, generatedAtEpochMs: Number.NaN }),
+    (error: unknown) => isDomainError(error) && error.code === 'INVALID_ARGUMENT',
+  );
 });

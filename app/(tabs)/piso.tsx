@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { presentMemberCount } from '../../src/features/skeleton/model.ts';
 import { useSkeleton } from '../../src/features/skeleton/store.tsx';
@@ -9,6 +10,7 @@ import {
   Screen,
   ScreenHeader,
   Toggle,
+  colors,
   typography,
 } from '../../src/ui/index.ts';
 
@@ -74,6 +76,15 @@ export default function PisoRoute() {
           </Text>
         </Note>
       </AnimatedIn>
+
+      <AnimatedIn delay={170}>
+        <Note index={1} wide label="Widget" title="Probar en el launcher">
+          <Text style={typography.support}>
+            Publica los estados de demostración en el widget de Android o míralos simulados en web.
+          </Text>
+          <Link href="/widget-lab" style={styles.link}>Abrir laboratorio del widget →</Link>
+        </Note>
+      </AnimatedIn>
     </Screen>
   );
 }
@@ -106,5 +117,10 @@ const styles = StyleSheet.create({
   },
   prefText: {
     flex: 1,
+  },
+  link: {
+    ...typography.label,
+    color: colors.ac,
+    marginTop: 6,
   },
 });
