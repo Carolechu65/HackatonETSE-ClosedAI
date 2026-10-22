@@ -1,5 +1,7 @@
 # Presentación de alarmaT
 
+> **Estado: borrador.** No es la versión final: sirve para revisar contenido y diseño con el equipo. Las cifras y capturas están al día del 22 de octubre de 2026; el guion y las diapositivas pueden cambiar.
+
 Deck estático para exponer el proyecto. Misma estética que la app (Nevera Retro), fuentes locales y capturas reales de la rama `P1-Esqueleto`.
 
 ## Ver en local
@@ -48,7 +50,7 @@ Las capturas actuales están hechas con el estado de ejemplo tras recargar (1 ta
 
 ## Logos
 
-El logotipo de la portada sale de `assets/brand/` (campana con la T girada) y se recorta a `img/alarmat-logo.png`. Los ocho logos están en `img/logos/` en SVG, descargados de [Simple Icons](https://simpleicons.org/) (CC0) con color `#3b2a1a` para respetar la paleta. No se cargan desde internet al presentar.
+El logotipo de la portada es `alarmat-logo.svg` (etiqueta con la casilla, la X a pluma y «alarmaT»), copiado a `img/alarmat-logo.svg` y recortado con `viewBox` al dibujo para quitar el margen interno. Los ocho logos están en `img/logos/` en SVG, descargados de [Simple Icons](https://simpleicons.org/) (CC0) con color `#3b2a1a` para respetar la paleta. No se cargan desde internet al presentar.
 
 ## Fuentes
 
