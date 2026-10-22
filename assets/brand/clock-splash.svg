@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- despertador: símbolo sin fondo, escalado al 74 % del lienzo -->
+  <g transform="translate(512 512) scale(1.1516) translate(-512 -511)">
+    <!-- Patas -->
+    <g stroke="#3b2a1a" stroke-width="44" stroke-linecap="round">
+    <path d="M372 736 326 818"/>
+    <path d="M652 736 698 818"/>
+    </g>
+    <!-- Campanas gemelas -->
+    <circle cx="382" cy="296" r="84" fill="#e8a33a"/>
+    <circle cx="642" cy="296" r="84" fill="#e8a33a"/>
+    <!-- Martillo -->
+    <path d="M512 214v66" stroke="#3b2a1a" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="512" cy="206" r="24" fill="#3b2a1a"/>
+    <!-- Cuerpo y esfera -->
+    <circle cx="512" cy="520" r="252" fill="#bf3a2f"/>
+    <circle cx="512" cy="520" r="192" fill="#fff6ec"/>
+    <!-- Emblema: la letra T, girada para leerse como tick -->
+    <g transform="translate(462 541) scale(0.5) rotate(-42)" fill="none" stroke="#2b2723" stroke-width="86" stroke-linecap="round">
+    <path d="M-110 0H380"/>
+    <path d="M0 0V-240"/>
+    </g>
+  </g>
+</svg>

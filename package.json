@@ -14,7 +14,8 @@
     "test:contracts": "node scripts/contracts/check.mjs",
     "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix functions run build",
     "export:android": "expo export --platform android",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "brand:render": "node scripts/brand/render.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/dm-mono": "^0.4.2",
@@ -26,6 +27,7 @@
     "expo-font": "~58.0.9",
     "expo-linking": "~58.0.14",
     "expo-router": "~58.0.25",
+    "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
     "expo-system-ui": "~58.0.6",
     "react": "19.3.0",
