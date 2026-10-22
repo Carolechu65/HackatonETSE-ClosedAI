@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { buildApp } from '../src/app/buildApp.ts';
+import { buildApp, type BuildAppOptions } from '../src/app/buildApp.ts';
 import { loadConfig, type ServerConfig } from '../src/config.ts';
 import { migrate, openDatabase, type Db } from '../src/persistence/db.ts';
 import type { AgentProvider } from '../src/agents/types.ts';
@@ -40,6 +40,8 @@ export async function setupTest(options: {
   config?: Partial<ServerConfig>;
   agentProvider?: AgentProvider;
   fileDatabase?: boolean;
+  receiptConfig?: BuildAppOptions['receiptConfig'];
+  receiptFetch?: BuildAppOptions['receiptFetch'];
 } = {}): Promise<TestContext> {
   const dir = mkdtempSync(join(tmpdir(), 'alarmat-test-'));
   const config = testConfig({
@@ -48,7 +50,7 @@ export async function setupTest(options: {
   });
   const db = openDatabase(config.databasePath);
   migrate(db);
-  const app = buildApp({ config, db, logger: false, agentProvider: options.agentProvider });
+  const app = buildApp({ config, db, logger: false, agentProvider: options.agentProvider, receiptConfig: options.receiptConfig ?? null, receiptFetch: options.receiptFetch });
   await app.ready();
   return {
     app,

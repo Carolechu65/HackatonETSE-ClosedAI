@@ -12,9 +12,9 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
   try {
     const db = openDatabase(path);
     const first = migrate(db);
-    assert.equal(first.schemaVersion, 6);
-    assert.equal(db.pragma('user_version', { simple: true }), 6);
-    assert.equal(first.applied.length, 6);
+    assert.equal(first.schemaVersion, 7);
+    assert.equal(db.pragma('user_version', { simple: true }), 7);
+    assert.equal(first.applied.length, 7);
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
     assert.equal(db.pragma('busy_timeout', { simple: true }), 5000);
     assert.equal(db.pragma('synchronous', { simple: true }), 2);
@@ -23,7 +23,7 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
 
     const second = migrate(db);
     assert.equal(second.applied.length, 0);
-    assert.equal(second.alreadyApplied, 6);
+    assert.equal(second.alreadyApplied, 7);
 
     db.prepare(
       `INSERT INTO users (id, email, password_hash, display_name, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)
@@ -64,8 +64,8 @@ test('migration 003 preserves existing tasks and requires migration before servi
       INSERT INTO tasks(id,group_id,title,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid)
         VALUES('task-legacy','grp-legacy','Tarea anterior','PENDING',1,1,1,'usr-legacy');
     `);
-    assert.throws(() => assertSchemaReady(db), /006/);
-    assert.equal(migrate(db).applied.length, 4);
+    assert.throws(() => assertSchemaReady(db), /007/);
+    assert.equal(migrate(db).applied.length, 5);
     assertSchemaReady(db);
     assert.deepEqual(db.prepare('SELECT title,description,category FROM tasks WHERE id=?').get('task-legacy'),
       { title: 'Tarea anterior', description: null, category: null });
@@ -120,4 +120,33 @@ test('el dispositivo principal y su epoch controlan los acuses', async () => {
   } finally {
     await ctx.close();
   }
+});
+
+test('receipt migration refuses schema 6 and preserves existing expense balances during upgrade', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'alarmat-receipt-migration-'));
+  const legacy = join(dir, 'migrations');
+  mkdirSync(legacy);
+  for (const file of ['001_init.sql', '002_product_integration.sql', '003_task_details.sql', '004_google_calendar.sql', '005_shared_expenses.sql', '006_expense_due_date.sql'])
+    copyFileSync(join(findMigrationsDir(), file), join(legacy, file));
+  const db = openDatabase(join(dir, 'legacy.db'));
+  try {
+    migrate(db, legacy);
+    db.exec(`INSERT INTO users(id,email,password_hash,display_name,device_epoch,created_at_epoch_ms,updated_at_epoch_ms)
+      VALUES('usr-old','old@example.test','hash','Legacy',0,1,1);
+      INSERT INTO groups(id,name,time_zone,created_by,created_at_epoch_ms,updated_at_epoch_ms)
+      VALUES('grp-old','Casa','Europe/Madrid','usr-old',1,1);
+      INSERT INTO shared_expenses(id,group_id,title,amount_cents,paid_by_uid,version,created_at_epoch_ms,due_date)
+      VALUES('expense-old','grp-old','Compra anterior',1299,'usr-old',2,1,'2026-10-30');
+      INSERT INTO expense_participants(expense_id,uid,share_cents,settled_at_epoch_ms)
+      VALUES('expense-old','usr-old',1299,2);`);
+    const before = db.prepare('SELECT * FROM expense_participants').all();
+    assert.throws(() => assertSchemaReady(db), /007/);
+    assert.deepEqual(migrate(db).applied.map(m => m.version), [7]);
+    assertSchemaReady(db);
+    assert.deepEqual(db.prepare('SELECT title,amount_cents,version,due_date,receipt_id,split_json FROM shared_expenses').get(), {
+      title: 'Compra anterior', amount_cents: 1299, version: 2, due_date: '2026-10-30', receipt_id: null, split_json: null,
+    });
+    assert.deepEqual(db.prepare('SELECT * FROM expense_participants').all(), before);
+    assert.equal(integrityCheck(db), 'ok');
+  } finally { db.close(); rmSync(dir, { recursive: true, force: true }); }
 });
