@@ -657,6 +657,40 @@ code {
 
 /* ---------- Marca de IA ---------- */
 
+.ai-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 2px;
+}
+
+.ai-emblem-label {
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mu);
+  text-align: right;
+  line-height: 1.7;
+}
+
+.ai-emblem-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  background: var(--ntx);
+  color: var(--paper-5);
+  box-shadow: var(--sheet-shadow);
+  flex: none;
+}
+
+.ai-emblem-mark svg { width: 84px; height: 84px; display: block; }
+
 .eyebrow--ai { display: flex; align-items: center; gap: 8px; }
 
 .ai-mark {
@@ -1010,6 +1044,8 @@ body.show-notes .notes p:last-child { margin-bottom: 0; }
   .body, .bullets, .script-row { font-size: 12px; }
   .menu-grid { gap: 10px; }
   .agent { gap: 22px; }
+  .ai-emblem-mark { width: 104px; height: 104px; }
+  .ai-emblem-mark svg { width: 60px; height: 60px; }
   .calendar { gap: 24px; }
   .cal-title { font-size: 19px; }
   .cal-event-title { font-size: 20px; }
@@ -1042,6 +1078,7 @@ body.show-notes .notes p:last-child { margin-bottom: 0; }
   .slide { padding: 28px 22px 96px; }
   .grid--2, .grid--3, .team, .states, .split, .agent, .calendar { grid-template-columns: 1fr; }
   .bubble--user { align-self: flex-start; }
+  .ai-emblem { justify-content: flex-start; }
   .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tech-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .flow { flex-direction: column; }
