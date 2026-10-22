@@ -2,7 +2,8 @@
 # Only alarmaT OAuth states use this callback; Lois retains its original flow.
 @alarmat_google_callback {
     path /nexia/lois/citas/api/google-calendar/callback
-    query state=alarmat_*
+    # Caddy query values match exactly; a prefix needs an explicit expression.
+    expression `{query}.matches("(^|&)state=alarmat_[A-Za-z0-9_-]+(&|$)")`
 }
 handle @alarmat_google_callback {
     rewrite * /v1/calendar/google/callback

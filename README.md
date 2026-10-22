@@ -4,6 +4,8 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 > Nombre propuesto de la app: **alarmaT**. Repositorio: **HackatonETSE-ClosedAI**. Aplicación Android para proponer alarmas y notificaciones a otras personas, que pueden aceptarlas, rechazarlas o elegir otra hora antes de activarlas en su móvil.
 
+**Web publicada:** https://gex-dashboard.hopto.org/alarmat/ · [Revisión y límites de producción](docs/qa/PRODUCTION.md).
+
 **Estado: integración P1–P6 disponible.** La interfaz Nevera Retro conecta sesión, pisos, propuestas, tareas y asistente con la API Fastify/SQLite de `server/`. Android conecta SecureStore, SQLite/outbox, runtimes y widget. La demo sigue claramente separada. [Recorrido, ejecución, evidencia y límites](docs/qa/PRODUCT_INTEGRATION.md).
 
 `functions/` y `firebase/` se conservan como legado; la CI actual valida `server/`. El sonido, launcher y comportamiento físico requieren validar la development build en Android.

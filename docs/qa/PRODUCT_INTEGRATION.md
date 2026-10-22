@@ -2,7 +2,8 @@
 
 La rama `feat/p1-p6-product-integration` integra main, dAlarmas, P6, MERGES y
 el commit compartido P5 `81fce36`, y las mejoras visuales/presentación de P1 `13e09b4` y `474a710`. El checkout de otras personas se conserva.
-No se han desplegado cambios sobre J&A Automation.
+La web y API se publicaron después exclusivamente en `https://gex-dashboard.hopto.org/alarmat/`.
+Ver [revisión de producción y evidencia actualizada](PRODUCTION.md). Los otros dominios conservan su configuración.
 
 ## Recorrido disponible
 
@@ -35,7 +36,8 @@ El servidor se configura según [su README](../../server/README.md) y
 Las variables privadas del proveedor nunca llevan el prefijo `EXPO_PUBLIC_`.
 
 La revisión local usó API `127.0.0.1:8787`, Expo web `127.0.0.1:8091` y CORS
-explícito. Son procesos de desarrollo; no constituyen un despliegue público.
+explícito. Esos eran procesos de desarrollo. El despliegue posterior usa `alarmat.service`,
+loopback18787 y el prefijo HTTPS `/alarmat/` de GEX.
 
 ## Evidencia y límites
 
@@ -60,8 +62,8 @@ requieren las [pruebas físicas](P6_WIDGET.md). Un bundle JS no acredita esos ca
 Siguen fuera de esta integración: finanzas del esqueleto, coordinación avanzada,
 tareas recurrentes/rotaciones y preferencias por emisor. Las tareas requieren
 conexión; la cola offline durable actual cubre operaciones de alarmas. El widget
-actual publica el primer piso de su proyección; la selección de piso del widget
-es una ampliación pendiente. Las siguientes ocurrencias semanales se calculan al reconciliar; no se promete una serie autónoma con la app permanentemente detenida. Consultar FEATURES para el alcance más amplio.
+publica el piso seleccionado por el usuario y conserva la antigüedad real de la
+última sincronización. Las siguientes ocurrencias semanales se calculan al reconciliar; no se promete una serie autónoma con la app permanentemente detenida. Consultar FEATURES para el alcance más amplio.
 
 ## Selección final para main
 
