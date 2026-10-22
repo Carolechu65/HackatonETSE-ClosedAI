@@ -8,6 +8,8 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 **Empieza aquí:** [guía de arranque y reparto por persona](docs/START_HERE.md). Incluye comandos reales y el primer archivo que debe modificar cada responsable.
 
+**Para continuar con agentes:** [seis prompts extensos por persona y encargos para subagentes](docs/prompts/README.md), con el reparto de START_HERE.
+
 ## Documentación
 
 - [FEATURES.md](FEATURES.md): listado de funcionalidades, prioridades y reglas de aceptación de avisos.

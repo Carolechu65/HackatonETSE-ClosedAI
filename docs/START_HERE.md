@@ -42,6 +42,8 @@ Verificado en este arranque: TypeScript de la app, compilación del backend y ex
 
 Cada área incluye comentarios o README con el siguiente paso. El [TDD](TDD.md) define el contrato objetivo y [TEAM_PLAN](TEAM_PLAN.md) las horas/dependencias.
 
+Para encargar la implementación a vuestro agente, copia el [prompt completo de tu persona](prompts/README.md). Cada uno incluye subencargos concretos, archivos permitidos, contratos, pruebas y criterios de entrega. El agente de IA pertenece a P3 y tiene un subprompt específico.
+
 ## Qué está deliberadamente pendiente
 
 - **Firebase cliente:** todavía no se instalan ni configuran RNFirebase, credenciales cliente ni handlers FCM. P3/P5 los añaden juntos y reconstruyen la app.

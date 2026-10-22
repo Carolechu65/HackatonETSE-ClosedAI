@@ -6,6 +6,8 @@ Producto y alcance en [FEATURES](../FEATURES.md); contratos, arquitectura y prue
 
 Ya hay puntos de entrada para cada persona: [estructura inicial y comandos](START_HERE.md). Las rutas de este plan son el objetivo completo; parte existe como scaffold y el resto sigue pendiente.
 
+Prompts extensos para cada responsable y sus subagentes: [docs/prompts](prompts/README.md). Se mantiene el reparto P1 base, P2 pantallas, P3 Firebase/agente, P4 alarmas, P5 datos y P6 widget/tareas/integración.
+
 ## 1. Reparto de responsabilidad
 
 Se utiliza **un proyecto Expo + React Native + TypeScript**, Expo Router, backend Firebase y un módulo Expo nativo local acotado para las alarmas audibles. Se trabaja con development builds, no Expo Go. Cada persona tiene una zona principal y una entrega consumible por las demás. Ser owner significa mantener la coherencia de esa zona, no bloquear revisiones ni trabajar aislado.
@@ -14,7 +16,7 @@ Se utiliza **un proyecto Expo + React Native + TypeScript**, Expo Router, backen
 |---|---|---|---|
 | **P1 — Base Expo y contratos** | Configuración Expo, lockfile, plugins, rutas/layouts comunes `app/`, `src/domain/`, `contracts/`. | Development build, tipos/puertos, fixtures, Clock y composición de dependencias. | P3 para contratos; P6 para build. |
 | **P2 — Experiencia de producto** | `src/features/auth/`, `groups/`, `alarms/` y sus rutas finas `app/`. | Crear grupo/propuesta, bandeja, aceptar/rechazar/otra hora y estados pendientes claros. | P6 para usabilidad; P4 para permisos. |
-| **P3 — Firebase y seguridad** | `functions/`, `firebase/`, pruebas de reglas. | Auth/grupos/invitaciones, operaciones versionadas/idempotentes, Firestore, FCM, emuladores. | P1 para contratos; P6 para escenarios. |
+| **P3 — Firebase y agente** | `functions/`, `firebase/`, pruebas de reglas. | Auth/grupos/invitaciones, operaciones versionadas/idempotentes, Firestore, FCM, emuladores. | P1 para contratos; P6 para escenarios. |
 | **P4 — Runtime Android y avisos** | `modules/alarm-runtime/`, `src/platform/alarms/`, `notifications/`, plugins nativos acordados. | Alarma audible sin JS, store nativo, permisos/canales, programar/cancelar, detener/posponer y recuperación. | P6 en dispositivos; P1 para integración Expo. |
 | **P5 — Datos y sincronización** | `src/data/`, `src/platform/sync/`, `src/bootstrap/`. | SQLite, outbox, RNFirebase único, reconciliación Firestore/runtime, handler background y snapshots. | P3 para backend; P4 para estado local. |
 | **P6 — Widget, tareas e integración** | `src/widgets/`, `src/features/tasks/`, `.github/`, tests transversales, `docs/qa/` y demo. | Widget mínimo expo-widgets, tarea básica, CI, integración diaria y demo. | P2 para UX; P4/P5 para regresiones. |
