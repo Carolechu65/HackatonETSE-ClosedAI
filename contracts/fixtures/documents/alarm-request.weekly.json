@@ -1,0 +1,22 @@
+{
+  "creatorUid": "luis",
+  "title": "Bajar el reciclaje",
+  "taskId": "task-viernes",
+  "recipientUids": ["ana", "luis"],
+  "requestVersion": 2,
+  "status": "ACTIVE",
+  "timeSpec": {
+    "timeZone": "Europe/Madrid",
+    "localDate": "2026-10-23",
+    "localTime": "21:00",
+    "effectiveAtEpochMs": 1792782000000
+  },
+  "mode": "ALARM",
+  "recurrence": {
+    "kind": "WEEKLY",
+    "isoWeekday": 5,
+    "localTime": "21:00"
+  },
+  "createdAtEpochMs": 1792700400000,
+  "updatedAtEpochMs": 1792704000000
+}

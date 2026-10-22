@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "envelopeSchema": "schemas/operation-envelope.schema.json",
+  "operations": [
+    {
+      "id": "createAlarmRequest.minimal",
+      "operation": "createAlarmRequest",
+      "file": "fixtures/operations/create-alarm-request.minimal.json",
+      "payloadSchema": "schemas/create-alarm-request.schema.json"
+    },
+    {
+      "id": "createAlarmRequest.weekly-task",
+      "operation": "createAlarmRequest",
+      "file": "fixtures/operations/create-alarm-request.weekly-task.json",
+      "payloadSchema": "schemas/create-alarm-request.schema.json"
+    },
+    {
+      "id": "respondToAlarm.accept",
+      "operation": "respondToAlarm",
+      "file": "fixtures/operations/respond-to-alarm.accept.json",
+      "payloadSchema": "schemas/respond-to-alarm.schema.json"
+    },
+    {
+      "id": "respondToAlarm.other-time",
+      "operation": "respondToAlarm",
+      "file": "fixtures/operations/respond-to-alarm.other-time.json",
+      "payloadSchema": "schemas/respond-to-alarm.schema.json"
+    },
+    {
+      "id": "respondToAlarm.reject",
+      "operation": "respondToAlarm",
+      "file": "fixtures/operations/respond-to-alarm.reject.json",
+      "payloadSchema": "schemas/respond-to-alarm.schema.json"
+    },
+    {
+      "id": "respondToAlarm.disable",
+      "operation": "respondToAlarm",
+      "file": "fixtures/operations/respond-to-alarm.disable.json",
+      "payloadSchema": "schemas/respond-to-alarm.schema.json"
+    },
+    {
+      "id": "reportSchedule.scheduled",
+      "operation": "reportSchedule",
+      "file": "fixtures/operations/report-schedule.scheduled.json",
+      "payloadSchema": "schemas/report-schedule.schema.json"
+    },
+    {
+      "id": "reportSchedule.pending-permission",
+      "operation": "reportSchedule",
+      "file": "fixtures/operations/report-schedule.pending-permission.json",
+      "payloadSchema": "schemas/report-schedule.schema.json"
+    },
+    {
+      "id": "reportSchedule.cancelled",
+      "operation": "reportSchedule",
+      "file": "fixtures/operations/report-schedule.cancelled.json",
+      "payloadSchema": "schemas/report-schedule.schema.json"
+    },
+    {
+      "id": "withdrawAlarmRequest.reason",
+      "operation": "withdrawAlarmRequest",
+      "file": "fixtures/operations/withdraw-alarm-request.json",
+      "payloadSchema": "schemas/withdraw-alarm-request.schema.json"
+    }
+  ],
+  "documents": [
+    {
+      "id": "operationReceipt.applied",
+      "file": "fixtures/documents/operation-receipt.applied.json",
+      "schema": "schemas/operation-receipt.schema.json"
+    },
+    {
+      "id": "operationReceipt.replayed",
+      "file": "fixtures/documents/operation-receipt.replayed.json",
+      "schema": "schemas/operation-receipt.schema.json"
+    },
+    {
+      "id": "appError.version-conflict",
+      "file": "fixtures/documents/app-error.version-conflict.json",
+      "schema": "schemas/app-error.schema.json"
+    },
+    {
+      "id": "alarmRequest.active",
+      "file": "fixtures/documents/alarm-request.active.json",
+      "schema": "schemas/alarm-request.schema.json"
+    },
+    {
+      "id": "alarmRequest.weekly",
+      "file": "fixtures/documents/alarm-request.weekly.json",
+      "schema": "schemas/alarm-request.schema.json"
+    },
+    {
+      "id": "recipient.accepted",
+      "file": "fixtures/documents/recipient.accepted.json",
+      "schema": "schemas/recipient.schema.json"
+    },
+    {
+      "id": "recipient.rejected",
+      "file": "fixtures/documents/recipient.rejected.json",
+      "schema": "schemas/recipient.schema.json"
+    },
+    {
+      "id": "schedule.scheduled",
+      "file": "fixtures/documents/schedule.scheduled.json",
+      "schema": "schemas/schedule.schema.json"
+    }
+  ],
+  "invalid": [
+    {
+      "id": "createAlarmRequest.unknown-mode",
+      "file": "fixtures/invalid/create-alarm-request.unknown-mode.json",
+      "operation": "createAlarmRequest",
+      "payloadSchema": "schemas/create-alarm-request.schema.json",
+      "rule": "mode solo admite ALARM o NOTIFICATION"
+    },
+    {
+      "id": "createAlarmRequest.duplicate-recipients",
+      "file": "fixtures/invalid/create-alarm-request.duplicate-recipients.json",
+      "operation": "createAlarmRequest",
+      "payloadSchema": "schemas/create-alarm-request.schema.json",
+      "rule": "recipientUids no puede repetir destinatario"
+    },
+    {
+      "id": "createAlarmRequest.empty-title",
+      "file": "fixtures/invalid/create-alarm-request.empty-title.json",
+      "operation": "createAlarmRequest",
+      "payloadSchema": "schemas/create-alarm-request.schema.json",
+      "rule": "title tiene entre 1 y 120 caracteres"
+    },
+    {
+      "id": "createAlarmRequest.local-time-out-of-range",
+      "file": "fixtures/invalid/create-alarm-request.local-time-out-of-range.json",
+      "operation": "createAlarmRequest",
+      "payloadSchema": "schemas/create-alarm-request.schema.json",
+      "rule": "localTime usa HH:mm de 00:00 a 23:59"
+    },
+    {
+      "id": "operationEnvelope.unknown-schema-version",
+      "file": "fixtures/invalid/operation-envelope.unknown-schema-version.json",
+      "rule": "schemaVersion debe ser 1"
+    },
+    {
+      "id": "operationEnvelope.missing-schema-version",
+      "file": "fixtures/invalid/operation-envelope.missing-schema-version.json",
+      "rule": "el sobre exige schemaVersion"
+    },
+    {
+      "id": "operationEnvelope.client-actor-uid",
+      "file": "fixtures/invalid/operation-envelope.client-actor-uid.json",
+      "rule": "el cliente no puede declarar actorUid; la identidad sale de Auth"
+    },
+    {
+      "id": "respondToAlarm.missing-consent-scope",
+      "file": "fixtures/invalid/respond-to-alarm.missing-consent-scope.json",
+      "operation": "respondToAlarm",
+      "payloadSchema": "schemas/respond-to-alarm.schema.json",
+      "rule": "aceptar exige consentScope"
+    },
+    {
+      "id": "respondToAlarm.reject-with-chosen-time",
+      "file": "fixtures/invalid/respond-to-alarm.reject-with-chosen-time.json",
+      "operation": "respondToAlarm",
+      "payloadSchema": "schemas/respond-to-alarm.schema.json",
+      "rule": "rechazar no admite hora propia"
+    },
+    {
+      "id": "reportSchedule.mode-mechanism-mismatch",
+      "file": "fixtures/invalid/report-schedule.mode-mechanism-mismatch.json",
+      "operation": "reportSchedule",
+      "payloadSchema": "schemas/report-schedule.schema.json",
+      "rule": "ALARM solo se programa con ALARM_RUNTIME"
+    },
+    {
+      "id": "reportSchedule.failed-without-reason",
+      "file": "fixtures/invalid/report-schedule.failed-without-reason.json",
+      "operation": "reportSchedule",
+      "payloadSchema": "schemas/report-schedule.schema.json",
+      "rule": "FAILED y PENDING_PERMISSION exigen motivo"
+    }
+  ],
+  "semantic": [
+    {
+      "id": "createAlarmRequest.timezone-unknown",
+      "file": "fixtures/semantic/create-alarm-request.timezone-unknown.json",
+      "operation": "createAlarmRequest",
+      "expect": "INVALID_ARGUMENT",
+      "rule": "la zona debe ser un identificador IANA válido"
+    },
+    {
+      "id": "createAlarmRequest.instant-drift",
+      "file": "fixtures/semantic/create-alarm-request.instant-drift.json",
+      "operation": "createAlarmRequest",
+      "expect": "INVALID_ARGUMENT",
+      "rule": "effectiveAtEpochMs debe corresponder a localDate/localTime en su zona"
+    },
+    {
+      "id": "createAlarmRequest.blank-title",
+      "file": "fixtures/semantic/create-alarm-request.blank-title.json",
+      "operation": "createAlarmRequest",
+      "expect": "INVALID_ARGUMENT",
+      "rule": "un título de solo espacios no es un título"
+    },
+    {
+      "id": "respondToAlarm.disabled-with-consent-scope",
+      "file": "fixtures/semantic/respond-to-alarm.disabled-with-consent-scope.json",
+      "operation": "respondToAlarm",
+      "expect": "INVALID_ARGUMENT",
+      "rule": "consentScope solo acompaña a ACCEPTED"
+    }
+  ]
+}

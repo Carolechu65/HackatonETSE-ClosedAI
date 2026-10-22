@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/app-error.schema.json",
+  "title": "AppError v1",
+  "description": "Error tipado de dominio. No revelar la existencia de entidades a usuarios sin acceso: NOT_FOUND cubre también el acceso denegado por ámbito.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message"],
+  "properties": {
+    "code": { "$ref": "./common.schema.json#/$defs/appErrorCode" },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "retryable": { "type": "boolean" },
+    "serverTimeEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "details": {
+      "type": "object",
+      "description": "Contexto no sensible: campos inválidos, versiones esperadas y vigentes."
+    }
+  }
+}

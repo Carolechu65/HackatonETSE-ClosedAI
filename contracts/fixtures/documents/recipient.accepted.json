@@ -1,0 +1,10 @@
+{
+  "uid": "ana",
+  "receivedVersion": 1,
+  "reception": "RECEIVED",
+  "decision": "ACCEPTED",
+  "decisionRevision": 2,
+  "acceptedRequestVersion": 1,
+  "consentScope": "THIS_OCCURRENCE",
+  "updatedAtEpochMs": 1792701000000
+}

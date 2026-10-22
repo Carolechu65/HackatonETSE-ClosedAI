@@ -1,0 +1,10 @@
+{
+  "code": "VERSION_CONFLICT",
+  "message": "La propuesta cambió: vuelve a cargarla antes de responder.",
+  "retryable": false,
+  "serverTimeEpochMs": 1792701000000,
+  "details": {
+    "expectedRequestVersion": 1,
+    "currentRequestVersion": 2
+  }
+}

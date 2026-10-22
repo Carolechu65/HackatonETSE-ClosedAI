@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/withdraw-alarm-request.schema.json",
+  "title": "withdrawAlarmRequest · payload v1",
+  "description": "El creador retira su propuesta. El sobre debe incluir expectedRequestVersion. La retirada invalida consentimientos y deja la cancelación del dispositivo como pendiente hasta su acuse.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    }
+  }
+}

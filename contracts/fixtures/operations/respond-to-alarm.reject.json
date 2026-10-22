@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-respond-0003",
+  "groupId": "piso-demo",
+  "entityId": "req-001",
+  "expectedRequestVersion": 1,
+  "expectedDecisionRevision": 1,
+  "payload": {
+    "decision": "REJECTED",
+    "reason": "Esa noche no estoy en casa."
+  }
+}

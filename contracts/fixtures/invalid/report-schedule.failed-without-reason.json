@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-invalid-failure",
+  "groupId": "piso-demo",
+  "entityId": "req-001",
+  "payload": {
+    "occurrenceId": "occ-1792782000000",
+    "deviceId": "dev-a1",
+    "deviceEpoch": 1,
+    "requestVersion": 1,
+    "decisionRevision": 1,
+    "mode": "ALARM",
+    "mechanism": "ALARM_RUNTIME",
+    "status": "FAILED",
+    "effectiveAtEpochMs": 1792782000000,
+    "reportedAtEpochMs": 1792701000000
+  }
+}

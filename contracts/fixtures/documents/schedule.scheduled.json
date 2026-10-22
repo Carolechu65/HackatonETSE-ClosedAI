@@ -1,0 +1,13 @@
+{
+  "occurrenceId": "occ-1792782000000",
+  "deviceId": "dev-a1",
+  "deviceEpoch": 1,
+  "requestVersion": 1,
+  "decisionRevision": 1,
+  "mode": "ALARM",
+  "mechanism": "ALARM_RUNTIME",
+  "status": "SCHEDULED",
+  "effectiveAtEpochMs": 1792782000000,
+  "reportedAtEpochMs": 1792701000000,
+  "statusUpdatedAtEpochMs": 1792701000000
+}

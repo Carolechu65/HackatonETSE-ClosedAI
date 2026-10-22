@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/report-schedule.schema.json",
+  "title": "reportSchedule · payload v1",
+  "description": "Acuse idempotente de programación por ocurrencia, dispositivo y versiones. Declara lo que el runtime nativo hizo; no demuestra que alguien oyera el aviso.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "occurrenceId",
+    "deviceId",
+    "deviceEpoch",
+    "requestVersion",
+    "decisionRevision",
+    "mode",
+    "mechanism",
+    "status",
+    "effectiveAtEpochMs",
+    "reportedAtEpochMs"
+  ],
+  "properties": {
+    "occurrenceId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "deviceId": { "$ref": "./common.schema.json#/$defs/deviceId" },
+    "deviceEpoch": { "$ref": "./common.schema.json#/$defs/deviceEpoch" },
+    "requestVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "decisionRevision": { "$ref": "./common.schema.json#/$defs/decisionRevision" },
+    "mode": { "$ref": "./common.schema.json#/$defs/mode" },
+    "mechanism": {
+      "enum": ["ALARM_RUNTIME", "EXPO_NOTIFICATIONS"]
+    },
+    "status": { "$ref": "./common.schema.json#/$defs/scheduleReportStatus" },
+    "effectiveAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "reportedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["status"], "properties": { "status": { "enum": ["FAILED", "PENDING_PERMISSION"] } } },
+      "then": { "required": ["reason"] }
+    },
+    {
+      "if": { "required": ["mode"], "properties": { "mode": { "const": "ALARM" } } },
+      "then": { "properties": { "mechanism": { "const": "ALARM_RUNTIME" } } }
+    },
+    {
+      "if": { "required": ["mode"], "properties": { "mode": { "const": "NOTIFICATION" } } },
+      "then": { "properties": { "mechanism": { "const": "EXPO_NOTIFICATIONS" } } }
+    }
+  ]
+}

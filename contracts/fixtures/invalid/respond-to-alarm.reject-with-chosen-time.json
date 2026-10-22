@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-invalid-reject-with-time",
+  "groupId": "piso-demo",
+  "entityId": "req-001",
+  "expectedRequestVersion": 1,
+  "expectedDecisionRevision": 1,
+  "payload": {
+    "decision": "REJECTED",
+    "chosenTimeSpec": {
+      "timeZone": "Europe/Madrid",
+      "localDate": "2026-10-23",
+      "localTime": "20:30",
+      "effectiveAtEpochMs": 1792780200000
+    }
+  }
+}

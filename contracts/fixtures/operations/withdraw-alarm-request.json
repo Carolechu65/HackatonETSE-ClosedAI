@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-withdraw-0001",
+  "groupId": "piso-demo",
+  "entityId": "req-001",
+  "expectedRequestVersion": 2,
+  "payload": {
+    "reason": "Al final lo hace la vecina."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-create-0002",
+  "groupId": "piso-demo",
+  "payload": {
+    "title": "Bajar el reciclaje",
+    "taskId": "task-viernes",
+    "recipientUids": ["ana", "luis"],
+    "mode": "ALARM",
+    "timeSpec": {
+      "timeZone": "Europe/Madrid",
+      "localDate": "2026-10-23",
+      "localTime": "21:00",
+      "effectiveAtEpochMs": 1792782000000
+    },
+    "recurrence": {
+      "kind": "WEEKLY",
+      "isoWeekday": 5,
+      "localTime": "21:00"
+    }
+  }
+}

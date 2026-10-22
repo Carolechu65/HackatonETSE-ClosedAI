@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/operation-receipt.schema.json",
+  "title": "OperationReceipt v1",
+  "description": "Respuesta común de una callable. Un reintento con el mismo operationId devuelve el mismo resultado con status REPLAYED.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operationId", "status", "serverTimeEpochMs"],
+  "properties": {
+    "operationId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "status": { "enum": ["APPLIED", "REPLAYED"] },
+    "serverTimeEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "requestVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "decisionRevision": { "$ref": "./common.schema.json#/$defs/decisionRevision" },
+    "result": {
+      "type": "object",
+      "description": "Resultado específico de la operación; nunca sustituye al documento vigente."
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-create-0001",
+  "groupId": "piso-demo",
+  "payload": {
+    "title": "Sacar la basura",
+    "note": "La bolsa pesa, mejor bajar antes de las diez.",
+    "recipientUids": ["ana"],
+    "mode": "NOTIFICATION",
+    "timeSpec": {
+      "timeZone": "Europe/Madrid",
+      "localDate": "2026-10-23",
+      "localTime": "21:00",
+      "effectiveAtEpochMs": 1792782000000
+    }
+  }
+}

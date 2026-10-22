@@ -1,0 +1,5 @@
+{
+  "operationId": "op-invalid-missing-group",
+  "groupId": "piso-demo",
+  "payload": {}
+}

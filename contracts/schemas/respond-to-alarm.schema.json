@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/respond-to-alarm.schema.json",
+  "title": "respondToAlarm · payload v1",
+  "description": "Solo el destinatario puede aceptar, rechazar, desactivar o elegir otra hora. El sobre debe incluir expectedRequestVersion y expectedDecisionRevision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision"],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["ACCEPTED", "REJECTED", "DISABLED"]
+    },
+    "chosenTimeSpec": {
+      "allOf": [{ "$ref": "./common.schema.json#/$defs/timeSpec" }],
+      "description": "Hora propia del destinatario. No modifica el vencimiento ni el responsable de una tarea."
+    },
+    "consentScope": { "$ref": "./common.schema.json#/$defs/consentScope" },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "decision": { "const": "ACCEPTED" } },
+        "required": ["decision"]
+      },
+      "then": { "required": ["consentScope"] }
+    },
+    {
+      "if": {
+        "properties": { "decision": { "enum": ["REJECTED", "DISABLED"] } },
+        "required": ["decision"]
+      },
+      "then": { "not": { "required": ["chosenTimeSpec"] } }
+    }
+  ]
+}

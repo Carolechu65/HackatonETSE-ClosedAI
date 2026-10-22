@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-semantic-tz",
+  "groupId": "piso-demo",
+  "payload": {
+    "title": "Sacar la basura",
+    "recipientUids": ["ana"],
+    "mode": "NOTIFICATION",
+    "timeSpec": {
+      "timeZone": "Madrid/Europa",
+      "localDate": "2026-10-23",
+      "localTime": "21:00",
+      "effectiveAtEpochMs": 1792782000000
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "operationId": "op-respond-0001",
+  "status": "REPLAYED",
+  "serverTimeEpochMs": 1792704600000,
+  "requestVersion": 1,
+  "decisionRevision": 2,
+  "result": {
+    "decision": "ACCEPTED"
+  }
+}
