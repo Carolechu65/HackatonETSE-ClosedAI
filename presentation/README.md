@@ -48,7 +48,7 @@ Las capturas actuales están hechas con el estado de ejemplo tras recargar (1 ta
 
 ## Logos
 
-Los ocho logos están en `img/logos/` en SVG, descargados de [Simple Icons](https://simpleicons.org/) (CC0) con color `#3b2a1a` para respetar la paleta. No se cargan desde internet al presentar.
+El logotipo de la portada sale de `assets/brand/` (campana con la T girada) y se recorta a `img/alarmat-logo.png`. Los ocho logos están en `img/logos/` en SVG, descargados de [Simple Icons](https://simpleicons.org/) (CC0) con color `#3b2a1a` para respetar la paleta. No se cargan desde internet al presentar.
 
 ## Fuentes
 
