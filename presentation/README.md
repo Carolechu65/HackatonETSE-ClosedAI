@@ -26,7 +26,7 @@ Imprimir a PDF: `Ctrl/Cmd + P` (una diapositiva por página, sin barra ni notas)
 
 ## Contenido
 
-8 diapositivas: portada, problema, idea, los cuatro menús, interacción, arquitectura (API propia + SQLite), estado real (hecho y pendiente) y cierre.
+8 diapositivas: portada, problema, idea, los cuatro menús, interacción, tecnologías con logos, estado real (hecho y pendiente) y cierre.
 
 Criterio editorial: **nada se presenta como terminado sin evidencia**. Las capturas salen de la app real; los datos de la UI son de ejemplo.
 
@@ -45,6 +45,10 @@ EOF
 ```
 
 Las capturas actuales están hechas con el estado de ejemplo tras recargar (1 tarea hecha, 114,10 € pendientes, 3 de 4 en casa).
+
+## Logos
+
+Los ocho logos están en `img/logos/` en SVG, descargados de [Simple Icons](https://simpleicons.org/) (CC0) con color `#3b2a1a` para respetar la paleta. No se cargan desde internet al presentar.
 
 ## Fuentes
 
