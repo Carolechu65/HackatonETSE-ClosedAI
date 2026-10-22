@@ -1,6 +1,6 @@
 # Empezar a implementar alarmaT
 
-Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. Ningún botón de demo activa alarmas reales.
+Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. La demo no activa alarmas; el banco /alarm-runtime sí permite pruebas nativas explícitas.
 
 ## Arranque
 
@@ -92,7 +92,7 @@ No importar adaptadores concretos desde las pantallas: usar `src/composition/ind
 
 - **Cliente remoto:** P5 implementará HTTP, sesión en SecureStore, sincronización por cursor y push Expo opcional. No instalar RNFirebase para el nuevo backend.
 - **Backend:** las funciones antiguas siguen devolviendo `unimplemented`; las Rules antiguas deniegan todo. P3 debe reemplazarlas por API HTTP, sesiones propias, migraciones SQLite y autorización probada; después retirará el legado con P1. No hay servidor SQLite ejecutable todavía.
-- **Alarma sonora:** el módulo nativo declara sus capacidades como no disponibles y rechaza programar/cancelar. La interfaz TypeScript funciona como punto de conexión.
+- **Alarma sonora:** se integra el prototipo de dAlarmas (AlarmManager, servicio, detener/posponer y recuperación); la validación física sigue pendiente.
 - **Widgets:** hay una proyección pura; no se registra todavía un widget en el launcher. P6 instala/configura expo-widgets y valida el runtime aislado.
 - **Agente:** existe su punto de entrada y contrato de borrador/clarificación; falta conectar un modelo, herramientas autorizadas y confirmación humana.
 - **Automatizaciones:** el outbox es un contrato inicial; recurrencia, reintentos y cancelaciones por tareas están pendientes.

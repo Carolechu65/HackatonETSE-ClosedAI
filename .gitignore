@@ -23,3 +23,10 @@ GoogleService-Info.plist
 *.keystore
 *.jks
 .DS_Store
+
+modules/**/android/.cxx/
+server/dist/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*

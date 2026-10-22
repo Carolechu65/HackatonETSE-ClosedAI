@@ -10,6 +10,9 @@ const config: ExpoConfig = {
   android: { package: 'com.closedai.alarmat' },
   plugins: [
     'expo-router',
+    'expo-sqlite',
+    'expo-secure-store',
+    'expo-notifications',
     /*
      * P6 · widget de la próxima alarma. Requiere development build nueva:
      * el plugin genera el receptor/launcher de Android. Ver handoff de P1.
@@ -26,7 +29,7 @@ const config: ExpoConfig = {
             ios: { supportedFamilies: ['systemSmall', 'systemMedium'] },
             android: {
               targetCellWidth: 4,
-              targetCellHeight: 2,
+              targetCellHeight: 3,
               resizeMode: 'horizontal',
               initialLayout: './src/widgets/AlarmaTWidget.tsx',
             },
@@ -34,6 +37,7 @@ const config: ExpoConfig = {
         ],
       },
     ],
+    './plugins/with-widget-links.cjs',
   ],
 };
 
