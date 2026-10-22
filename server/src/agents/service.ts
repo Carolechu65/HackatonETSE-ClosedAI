@@ -4,7 +4,7 @@ import type { TimeSpec } from '../../../src/domain/contracts/types.ts';
 import type { AuthUser } from '../auth/service.ts';
 import { listMembers, requireActiveMembership } from '../groups/service.ts';
 import { generateId } from '../lib/ids.ts';
-import { readString } from '../lib/validation.ts';
+import { readIdentifier, readString } from '../lib/validation.ts';
 import type { Db } from '../persistence/db.ts';
 import { DeterministicAgentProvider } from './deterministic.ts';
 import { OpenAiCompatibleProvider } from './openai.ts';
@@ -75,10 +75,10 @@ function readInput(value: unknown): ProposeInput {
   const allowed = ['groupId', 'text', 'sessionId'];
   const extra = Object.keys(record).filter((key) => !allowed.includes(key));
   if (extra.length > 0) throw new DomainError('INVALID_ARGUMENT', 'body: campos no permitidos.', { extra });
-  const groupId = readString(record.groupId, 'body.groupId', { max: 128 });
+  const groupId = readIdentifier(record.groupId, 'body.groupId');
   const text = readString(record.text, 'body.text', { max: 2000 });
   const input: ProposeInput = { groupId, text };
-  if (record.sessionId !== undefined) input.sessionId = readString(record.sessionId, 'body.sessionId', { max: 128 });
+  if (record.sessionId !== undefined) input.sessionId = readIdentifier(record.sessionId, 'body.sessionId');
   return input;
 }
 
@@ -93,6 +93,27 @@ function readConversation(session: SessionRow | undefined): string[] {
     return [];
   }
   return [];
+}
+
+type StoredSessionState = {
+  conversation?: unknown;
+  lastClarification?: unknown;
+};
+
+function readLastClarification(session: SessionRow | undefined): { question: string; missingFields: string[] } | undefined {
+  if (!session) return undefined;
+  try {
+    const parsed = JSON.parse(session.collected_json) as StoredSessionState;
+    const raw = parsed.lastClarification;
+    if (raw === null || typeof raw !== 'object') return undefined;
+    const record = raw as Record<string, unknown>;
+    if (typeof record.question !== 'string' || !Array.isArray(record.missingFields)) return undefined;
+    const missingFields = record.missingFields.filter((field): field is string => typeof field === 'string').slice(0, 10);
+    if (record.question.length === 0 || record.question.length > 300 || missingFields.length === 0) return undefined;
+    return { question: record.question, missingFields };
+  } catch {
+    return undefined;
+  }
 }
 
 function parseClarification(value: unknown): { question: string; missingFields: string[] } {
@@ -241,6 +262,9 @@ export async function proposeAlarm(
     })),
     conversation,
   };
+
+  const lastClarification = readLastClarification(session);
+  if (lastClarification) context.lastClarification = lastClarification;
 
   // This is an authorization/context guard, not a simulated model response.
   // A household with only its owner has no eligible recipients by contract.

@@ -49,3 +49,11 @@ Node 22.23.4: build/typecheck correctos; suite canónica más producto/P5, 25 pr
 Migración 003: las tareas admiten `description?: string|null` (máximo 2000) y `category?: string|null` (máximo 80) al crearlas y las devuelven como campos nulos o texto en sus DTO. No cambia el contrato de versiones, idempotencia o retirada de alarmas vinculadas. Las migraciones publicadas 001/002 no se modifican.
 
 La API aplica ahora un límite agregado por usuario a todas las mutaciones autenticadas, incluidos grupos, invitaciones y dispositivos. Ambos endpoints de agente rechazan respuestas si la sesión ha caducado o fue revocada mientras se consultaba al proveedor.
+
+## Integración selectiva de seguridad P3 (2026-10-22)
+
+Se incorporan las correcciones compatibles de `origin/feat/p3-security` (`80998c5`): la outbox revalida pertenencia y participación antes de enviar, elimina el contenido privado de `hint` y limita a diez los intentos. La autorización admite tanto creador como destinatario; los acuses de respuesta/programación del destinatario siguen llegando al creador. `delivered_at_epoch_ms` también marca eventos cerrados sin entrega: consultar `last_error` y el resultado `delivered` para distinguir descartes, ausencia de token y agotamiento de intentos.
+
+El registro concurrente del mismo correo vuelve a comprobar unicidad dentro de la transacción, después del hash, y devuelve 400 en vez de 500. El login de una cuenta inexistente ejecuta verificación Argon2 con los mismos parámetros. El registro de dispositivos valida el formato Expo Push. Una decisión `SERIES` exige propuesta semanal y el primer día civil coincide con el día semanal declarado. El agente conserva la pregunta anterior como contexto de aclaración, manteniendo la revalidación de sesión y hora introducida en producción.
+
+Se conservan las respuestas de autenticación, sync y paginación publicadas; esta integración no adopta el rediseño incompatible de contratos de la rama. Tampoco impide un cambio posterior de `SCHEDULED` a `PENDING_PERMISSION`, porque los permisos del sistema pueden revocarse. Los ACK antiguos siguen protegidos por versión, revisión y fecha.

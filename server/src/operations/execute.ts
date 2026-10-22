@@ -15,7 +15,7 @@ import type {
   WithdrawAlarmRequest,
 } from '../../../src/domain/contracts/types.ts';
 import { occurrenceIdFromEpochMs } from '../../../src/domain/ids.ts';
-import { isPast, nextWeeklyOccurrence } from '../../../src/domain/time.ts';
+import { isPast, isoWeekdayOf, nextWeeklyOccurrence, parseLocalDate } from '../../../src/domain/time.ts';
 import type { AuthUser } from '../auth/service.ts';
 import { isActiveMember, requireActiveMembership } from '../groups/service.ts';
 import { canonicalJson, sha256Hex } from '../lib/crypto.ts';
@@ -135,6 +135,12 @@ function createAlarmRequest(
   if (payload.recurrence !== undefined && payload.recurrence.localTime !== payload.timeSpec.localTime) {
     throw new DomainError('INVALID_ARGUMENT', 'payload.recurrence.localTime debe coincidir con el primer aviso.');
   }
+  if (payload.recurrence !== undefined) {
+    const firstDate = parseLocalDate(payload.timeSpec.localDate);
+    if (!firstDate || isoWeekdayOf(firstDate) !== payload.recurrence.isoWeekday) {
+      throw new DomainError('INVALID_ARGUMENT', 'payload.recurrence.isoWeekday debe coincidir con la fecha del primer aviso.');
+    }
+  }
 
   const requestId = newId('req');
   db.prepare(
@@ -224,6 +230,10 @@ function respondToAlarm(
     to: payload.decision,
   });
 
+  if (payload.decision === 'ACCEPTED' && payload.consentScope === 'SERIES'
+    && request.recurrence_kind !== 'WEEKLY') {
+    throw new DomainError('INVALID_ARGUMENT', 'SERIES exige una propuesta con recurrencia semanal.');
+  }
   const revision = nextDecisionRevision(recipient.decision_revision);
   const accepted = payload.decision === 'ACCEPTED';
   db.prepare(

@@ -42,6 +42,18 @@ export type SessionResponse = {
   user: PublicUser;
 };
 
+const dummyHashes = new Map<string, Promise<string>>();
+async function verifyMissingAccountPassword(config: ServerConfig, password: string): Promise<false> {
+  const key = JSON.stringify(config.argon2);
+  let hash = dummyHashes.get(key);
+  if (!hash) {
+    hash = hashPassword('dummy-password-not-used-by-any-account', config);
+    dummyHashes.set(key, hash);
+  }
+  await verifyPassword(await hash, password);
+  return false;
+}
+
 function createSessionRow(
   db: Db,
   userId: string,
@@ -71,6 +83,11 @@ export async function registerUser(
   const userId = entityId('usr');
 
   const result = db.transaction(() => {
+    // Password hashing yields; another registration may have committed since
+    // the first lookup. Recheck in the same transaction as the insert.
+    if (db.prepare('SELECT id FROM users WHERE email = ? COLLATE NOCASE').get(input.email)) {
+      throw new DomainError('INVALID_ARGUMENT', 'Ese correo ya tiene una cuenta.');
+    }
     db.prepare(
       `INSERT INTO users
         (id, email, password_hash, display_name, primary_device_id, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)
@@ -105,7 +122,8 @@ export async function loginUser(
     )
     .get(input.email) as UserRow | undefined;
 
-  const valid = row ? await verifyPassword(row.password_hash, input.password) : false;
+  const valid = row ? await verifyPassword(row.password_hash, input.password)
+    : await verifyMissingAccountPassword(config, input.password);
   if (!row || !valid) {
     throw new DomainError('UNAUTHENTICATED', 'Correo o contraseña incorrectos.');
   }
