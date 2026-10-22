@@ -2,6 +2,17 @@
 
 ## Actualización de personas, tareas, gastos y asistente
 
+Última publicación web: `347d2a5`, release `20261022T155651Z`, esquema 6.
+Añade historial de gastos plegado por defecto con contador y paginación de tres;
+el formulario sigue disponible. Prueba aislada con siete movimientos, apertura,
+cierre conservando el borrador y creación de un octavo correcta; comprobado
+también en HTTPS real sin modificar datos de producción. Se conservaron el enlace
+`downloads` y la guía `install/index.html`.
+
+APK `347d2a5` también publicado en la descarga habitual tras build release,
+17 verificaciones y comparación de la descarga HTTPS. Incluye la repetición
+nativa de tareas; ver `../ANDROID_RELEASE.md`. Validación física pendiente.
+
 Publicado `ae2290f` en `/opt/alarmat/releases/20261022T154727Z`, con
 esquema 6 y copia previa consistente. HTTPS confirma esquema 6 y sirve la
 misma exportación que se probó. Se conservan las rutas y la configuración Caddy.

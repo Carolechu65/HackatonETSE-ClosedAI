@@ -1,5 +1,26 @@
 # Android de producción
 
+## APK actual · 22-10-2026 · 347d2a5
+
+La descarga pública [alarmat.apk](https://gex-dashboard.hopto.org/alarmat/downloads/alarmat.apk)
+apunta a `alarmat-347d2a5.apk`, que sustituye como versión actual a `14653a4`
+(conservada para recuperación). Incluye alarmas propias, fichas de miembros,
+reapertura de tareas, participantes/fecha de gastos y su historial plegable.
+Las alarmas sonoras vinculadas a una tarea pendiente repiten a los diez minutos;
+completar la tarea solicita su retirada y el móvil la aplica al sincronizar.
+
+Build release ARM64 correcto; 17 verificaciones de APK correctas, firma permanente
+coincidente y 220 archivos de fuente comparados con el snapshot previo al build.
+También se comprobó la presencia en DEX de la política de repetición y del enlace
+a tarea, y en el bundle de las nuevas pantallas. La descarga HTTPS es idéntica al
+artefacto firmado. SHA-256:
+`94c283038f1b5e061cadc185539a9b4de485d40641cfdaf2d56d1625ec011b75`.
+
+Evidencia: `/srv/mail/alarmat-build/artifacts/347d2a5/` y
+`/srv/mail/alarmat-build/member-details-20261022/`. Falta comprobación física de
+sonido, pantalla bloqueada y comportamiento específico del fabricante. La web
+no sustituye la instalación de este APK para la ejecución sonora en segundo plano.
+
 La web pública permite gestionar el piso, propuestas, tareas y asistente. El sonido
 local sin JavaScript y los widgets necesitan el APK Android; Expo Go y añadir la
 web a inicio no instalan estos componentes.
