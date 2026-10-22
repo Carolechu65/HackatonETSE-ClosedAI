@@ -37,6 +37,7 @@ Reglas que el validador ya impone:
 - `FAILED` y `PENDING_PERMISSION` exigen motivo.
 - Los destinatarios no se repiten y un aviso tiene como máximo seis.
 - `timeSpec.effectiveAtEpochMs` debe ser exactamente el instante de `localDate` + `localTime` en `timeZone`.
+- Cada documento de destinatario nace con `decisionRevision = 1`; la primera respuesta envía `expectedDecisionRevision: 1` y el servidor guarda `2`. Toda respuesta incrementa la revisión y nunca se retrocede.
 
 ## 3. Estados por eje
 
