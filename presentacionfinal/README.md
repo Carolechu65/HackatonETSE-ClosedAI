@@ -1,4 +1,4 @@
-# Presentación de alarmaT
+# Presentación final de alarmaT
 
 > **Estado: borrador.** No es la versión final: sirve para revisar contenido y diseño con el equipo. Las cifras y capturas están al día del 22 de octubre de 2026; el guion y las diapositivas pueden cambiar.
 
@@ -7,7 +7,7 @@ Deck estático para exponer el proyecto. Misma estética que la app (Nevera Retr
 ## Ver en local
 
 ```sh
-python3 -m http.server 4173 --directory presentation
+python3 -m http.server 4173 --directory presentacionfinal
 # http://localhost:4173
 ```
 
