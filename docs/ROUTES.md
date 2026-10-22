@@ -13,6 +13,7 @@
 | `/alarm/[requestId]/respond` | Formulario de aceptar / otra hora / rechazar (opcional; puede ser un modal) | P2 |
 | `/group/invite/[inviteId]` | Aceptar invitación al piso | P2 + P3 |
 | `/task/[taskId]` | Detalle de tarea vinculada | P6 |
+| `/design` | Catálogo de componentes del estilo (solo referencia; no es producto) | P1 |
 | `/+not-found` | Enlace roto o entidad ya no visible | P1 |
 
 Las rutas de gastos y huchas se añadirán con su contrato P1; no se crean carpetas vacías.

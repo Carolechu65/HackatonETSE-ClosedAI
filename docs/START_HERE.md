@@ -20,6 +20,7 @@ npm run typecheck        # app + tests
 npm run test:contracts   # esquemas JSON + fixtures (P1/P3)
 npm test                 # dominio, tiempo, consentimiento y fakes
 npm run export:android   # empaqueta el JavaScript; no compila Kotlin
+npm run web              # vista rápida en localhost (no sustituye la dev build)
 ```
 
 Para crear la primera development build Android, prepara Android Studio/SDK, Java y un dispositivo o emulador:

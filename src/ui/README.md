@@ -16,6 +16,8 @@ Implementación de [`nevera-retro.md`](../../nevera-retro.md) para React Native.
 | `PrimaryAction.tsx` | Botón rojo a todo el ancho, fuera de la hoja. |
 | `Magnet.tsx` | Imán redondo con brillo; solo decoración. |
 
+Referencia viva: `app/design.tsx` (ruta `/design`) muestra tablón, hoja de detalle, botón y pestañas con estos primitivos.
+
 ## Uso
 
 ```tsx

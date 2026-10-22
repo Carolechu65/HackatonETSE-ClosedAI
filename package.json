@@ -13,11 +13,13 @@
     "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests",
     "test:contracts": "node scripts/contracts/check.mjs",
     "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix functions run build",
-    "export:android": "expo export --platform android"
+    "export:android": "expo export --platform android",
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo-google-fonts/dm-mono": "^0.4.2",
     "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo/metro-runtime": "~58.0.15",
     "expo": "~58.0.17",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.14",
@@ -29,7 +31,8 @@
     "react": "19.3.0",
     "react-native": "0.88.0",
     "react-native-safe-area-context": "~5.10.1",
-    "react-native-screens": "~4.30.0"
+    "react-native-screens": "~4.30.0",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

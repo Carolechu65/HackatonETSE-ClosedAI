@@ -15,7 +15,8 @@ Además, el estilo [Nevera Retro](../../nevera-retro.md) exige Fraunces y DM Mon
 3. Añadir `expo-font` (`~58.0.9`) y `@expo-google-fonts/fraunces` / `@expo-google-fonts/dm-mono` para el sistema visual. Las fuentes se cargan en el layout raíz; si fallan, la app cae a `serif`/`monospace`.
 4. Añadir `@types/node` (fijado a la misma versión que `functions/`) solo para los tests de Node.
 5. Añadir `expo-system-ui` para que `userInterfaceStyle: "light"` se aplique de verdad (prebuild lo exigía) y evitar que Android pinte fondo oscuro.
-6. Comandos verificados: `npm ci`, `npm ci --prefix functions`, `npm run typecheck`, `npm test`, `npm run test:contracts`, `npm run check`, `npm run export:android` y `npx expo prebuild --platform android --no-install` (genera `android/` con el `applicationId` correcto; la carpeta está ignorada por Git).
+6. Añadir `react-native-web` y `@expo/metro-runtime` solo para previsualizar la app en el navegador durante el hackathon (`npm run web`). No cambian el bundle Android, que sigue siendo el objetivo de la demo.
+7. Comandos verificados: `npm ci`, `npm ci --prefix functions`, `npm run typecheck`, `npm test`, `npm run test:contracts`, `npm run check`, `npm run export:android` y `npx expo prebuild --platform android --no-install` (genera `android/` con el `applicationId` correcto; la carpeta está ignorada por Git).
 
 ## Consecuencias
 
