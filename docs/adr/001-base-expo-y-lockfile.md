@@ -24,4 +24,5 @@ Además, el estilo [Nevera Retro](../../nevera-retro.md) exige Fraunces y DM Mon
 - `npm ci` se ejecutó con Node 26 en la máquina de desarrollo: funciona con avisos `EBADENGINE`. La versión soportada sigue siendo Node 22 (`.nvmrc`), que es la que usa CI.
 - Si Expo publica una revisión que rompe el peer, la solución es alinear `react`/`react-dom`, no forzar la instalación.
 - Las auditorías pendientes de `braces` y `node-forge` siguen abiertas: son transitivas y sin parche compatible con este stack; se revisan antes de distribuir.
-- **No verificado todavía:** instalación en un móvil físico y compilación del APK (`npm run android`). Requiere Android Studio/SDK y un dispositivo; es la primera entrega pendiente de P1/P4.
+- **Verificado:** `assembleDebug` compila la development build completa (Kotlin incluido, `alarm-runtime-debug.aar` generado) en 15 min 55 s con Android SDK 37 y Java 21. El APK queda en `android/app/build/outputs/apk/debug/app-debug.apk`.
+- **No verificado todavía:** instalación y arranque en un móvil físico, permisos y sonido de alarma. Requiere un dispositivo; queda para P1/P4.

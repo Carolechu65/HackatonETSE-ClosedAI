@@ -35,9 +35,19 @@ Para sesiones posteriores con esa build instalada:
 npm start
 ```
 
-`npm run export:android` comprueba el empaquetado JavaScript; no compila Kotlin ni valida permisos o sonido. **La compilación del APK y la instalación en un móvil físico siguen pendientes de P1/P4**; es el único criterio de A01 que no se puede verificar desde este entorno.
+`npm run export:android` comprueba el empaquetado JavaScript; no compila Kotlin ni valida permisos o sonido.
 
-Verificado en este arranque: `npm ci` limpio con Node 22/26, TypeScript estricto, contratos y 40 tests de dominio y diseño, compilación del backend, exportación JavaScript Android y `expo prebuild` para Android con `com.closedai.alarmat`. La auditoría npm de la app señala avisos altos transitivos en `braces` y `node-forge` y sus dependientes; no ofrece una corrección compatible con el stack actual. Queda revisar parches compatibles antes de distribuir; no aplicar el downgrade de Expo/React Native que propone `audit fix --force`. El backend actualizado no presenta avisos en su auditoría de instalación.
+La development build **sí compila** en este entorno, sin depender de un móvil:
+
+```sh
+npx expo prebuild --platform android --no-install
+cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug
+# BUILD SUCCESSFUL · android/app/build/outputs/apk/debug/app-debug.apk (254 MB, debug, todas las ABI)
+```
+
+Esa build incluye `expo-dev-client` y compila el módulo local: se genera `modules/alarm-runtime/android/build/outputs/aar/alarm-runtime-debug.aar`. **Pendiente:** instalar el APK en un teléfono Android real y validar permisos, sonido y detención con la pantalla bloqueada (P1/P4). El tamaño de 254 MB es de debug con todas las ABI; no representa el de release.
+
+Verificado en este arranque: `npm ci` limpio con Node 22/26, TypeScript estricto, contratos y 40 tests de dominio y diseño, compilación del backend, exportación JavaScript Android y APK de debug con Kotlin (`assembleDebug`, 15 min 55 s). La auditoría npm de la app señala avisos altos transitivos en `braces` y `node-forge` y sus dependientes; no ofrece una corrección compatible con el stack actual. Queda revisar parches compatibles antes de distribuir; no aplicar el downgrade de Expo/React Native que propone `audit fix --force`. El backend actualizado no presenta avisos en su auditoría de instalación.
 
 ## Una entrada por persona
 

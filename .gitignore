@@ -5,6 +5,10 @@ functions/lib/
 android/
 ios/
 !modules/**/android/
+# Artefactos de compilación del módulo nativo (su código sí se versiona)
+modules/**/android/build/
+modules/**/android/.gradle/
+modules/**/android/local.properties
 .env
 .env.*
 !.env.example
