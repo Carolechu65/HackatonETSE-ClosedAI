@@ -364,7 +364,13 @@ function reportSchedule(
 
   const consentTime = recipient.chosen_effective_at_epoch_ms ?? request.effective_at_epoch_ms;
   const recurrence=alarmRequestDto(request).recurrence;
-  const seriesOccurrence=recurrence && recipient.consent_scope==='SERIES' && payload.effectiveAtEpochMs>consentTime && nextWeeklyOccurrence(recurrence,request.time_zone,payload.effectiveAtEpochMs-1)===payload.effectiveAtEpochMs;
+  const seriesOccurrence = recurrence && recipient.consent_scope === 'SERIES'
+    && payload.effectiveAtEpochMs > consentTime
+    && nextWeeklyOccurrence(
+      { ...recurrence, localTime: recipient.chosen_local_time ?? request.local_time },
+      recipient.chosen_time_zone ?? request.time_zone,
+      payload.effectiveAtEpochMs - 1,
+    ) === payload.effectiveAtEpochMs;
   if (!cancellation && payload.effectiveAtEpochMs !== consentTime && !seriesOccurrence) {
     throw new DomainError('INVALID_ARGUMENT', 'payload.effectiveAtEpochMs no coincide con el horario consentido.', {
       expectedEffectiveAtEpochMs: consentTime,
@@ -395,9 +401,14 @@ function reportSchedule(
     payload.deviceId,
     payload.deviceEpoch,
   );
-  const terminal = new Set(['CANCELLED', 'EXPIRED', 'FAILED','FIRED']);
-  if (existing && ((['CANCELLED','EXPIRED','FIRED'].includes(existing.status) && payload.status!==existing.status && existing.decision_revision>=payload.decisionRevision) || (terminal.has(existing.status) && payload.reportedAtEpochMs <= existing.status_updated_at_epoch_ms)
-    || payload.reportedAtEpochMs < existing.reported_at_epoch_ms)) {
+  const terminal = new Set(['CANCELLED', 'EXPIRED', 'FAILED', 'FIRED']);
+  const sameRevision = existing?.request_version === payload.requestVersion
+    && existing.decision_revision === payload.decisionRevision;
+  if (existing && sameRevision && (
+    (['CANCELLED', 'EXPIRED', 'FIRED'].includes(existing.status) && payload.status !== existing.status)
+    || (terminal.has(existing.status) && payload.reportedAtEpochMs <= existing.status_updated_at_epoch_ms)
+    || payload.reportedAtEpochMs < existing.reported_at_epoch_ms
+  )) {
     return receiptWith(operationId, nowEpochMs, {
       requestVersion: request.request_version,
       decisionRevision: recipient.decision_revision,
@@ -412,7 +423,8 @@ function reportSchedule(
 
   if (existing) {
     db.prepare(
-      `UPDATE device_schedules SET request_version=?,decision_revision=?,status = ?, reported_at_epoch_ms = ?, status_updated_at_epoch_ms = ?, reason = ?
+      `UPDATE device_schedules SET request_version=?,decision_revision=?,status = ?, reported_at_epoch_ms = ?, status_updated_at_epoch_ms = ?, reason = ?,
+         mode = ?, mechanism = ?, effective_at_epoch_ms = ?
        WHERE request_id = ? AND uid = ? AND occurrence_id = ? AND device_id = ? AND device_epoch = ?`,
     ).run(
       payload.requestVersion,
@@ -421,6 +433,9 @@ function reportSchedule(
       payload.reportedAtEpochMs,
       payload.reportedAtEpochMs,
       payload.reason ?? null,
+      payload.mode,
+      payload.mechanism,
+      payload.effectiveAtEpochMs,
       request.id,
       actor.uid,
       payload.occurrenceId,

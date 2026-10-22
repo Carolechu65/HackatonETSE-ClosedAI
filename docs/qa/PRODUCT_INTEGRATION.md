@@ -39,7 +39,7 @@ explícito. Son procesos de desarrollo; no constituyen un despliegue público.
 
 ## Evidencia y límites
 
-`npm run check`: 221 pruebas de app/datos y 27 de API aprobadas; 42 fixtures y 15 esquemas válidos. La prueba externa del modelo se omite por defecto y se ejecutó explícitamente con resultado correcto.
+`npm run check`: 224 pruebas de app/datos y 40 de API aprobadas; 42 fixtures y 15 esquemas válidos. La prueba externa del modelo se omite por defecto y se ejecutó explícitamente con resultado correcto.
 
 Los tests de dominio/datos incluyen SQLite real, aislamiento de cuentas,
 idempotencia, respuesta tardía de una sesión anterior, rechazo de datos ajenos,
@@ -62,3 +62,13 @@ tareas recurrentes/rotaciones y preferencias por emisor. Las tareas requieren
 conexión; la cola offline durable actual cubre operaciones de alarmas. El widget
 actual publica el primer piso de su proyección; la selección de piso del widget
 es una ampliación pendiente. Las siguientes ocurrencias semanales se calculan al reconciliar; no se promete una serie autónoma con la app permanentemente detenida. Consultar FEATURES para el alcance más amplio.
+
+## Selección final para main
+
+Se incorporaron de forma selectiva las correcciones P5 del checkout compartido:
+series con hora/zona elegidas, acuses de un consentimiento nuevo aunque coincida
+o retroceda el reloj, y consultas/snapshots que dejan de presentar el dispositivo
+anterior como vigente. Los estados terminales siguen protegidos dentro de una
+misma revisión y se conserva el historial del servidor. La revisión cruzada y
+29 pruebas específicas verifican estos casos. La composición y el adaptador de
+API ya integrados se mantienen; el trabajo local original permanece disponible.

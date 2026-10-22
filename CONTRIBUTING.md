@@ -1,10 +1,10 @@
 # Contribuir a alarmaT
 
-Este repositorio contiene el diseño y una estructura inicial. Los comandos disponibles y límites del scaffold están en [START_HERE](docs/START_HERE.md). El stack acordado es Expo, React Native, TypeScript, Expo Router, API propia y SQLite en el VPS. Consulta el [TDD](docs/TDD.md) antes de programar y el [plan de seis personas](docs/TEAM_PLAN.md) para identificar responsables.
+Este repositorio contiene el diseño y la integración del producto. Los comandos disponibles y límites del scaffold están en [START_HERE](docs/START_HERE.md). El stack acordado es Expo, React Native, TypeScript, Expo Router, API propia y SQLite en el VPS. Consulta el [TDD](docs/TDD.md) antes de programar y el [plan de seis personas](docs/TEAM_PLAN.md) para identificar responsables.
 
 ## Organización y dependencias
 
-- Las rutas Expo Router delegan en funcionalidades dentro de `src/`. El backend objetivo vive en `server/`; `functions/` es el scaffold legado pendiente de migrar y el módulo local de alarmas, cuando se implemente, en `modules/alarm-runtime/`.
+- Las rutas Expo Router delegan en funcionalidades dentro de `src/`. La API vigente vive en `server/`; `functions/` se conserva como legado y el runtime Android en `modules/alarm-runtime/`.
 - La UI tramita acciones mediante hooks/controladores y representa estados explícitos. No accede a SQLite del servidor ni salta el repositorio HTTP ni programa alarmas desde los componentes.
 - Los repositorios separan datos compartidos, proyecciones SQLite y lógica de presentación. El adaptador Android implementa la programación del sistema detrás de una interfaz.
 - Mantener DTO de red, filas SQLite y modelos de dominio separados cuando sus ciclos de vida difieran. El registro nativo de alarmas tiene una única autoridad y se consulta mediante su interfaz; no modificar su almacenamiento desde JS en paralelo.
@@ -52,7 +52,7 @@ Para cada PR de código:
 - Actualizar documentación y ejemplos de contratos si cambia el comportamiento.
 - Explicar limitaciones conocidas y distinguir resultados reales de simulaciones.
 
-La CI actual comprueba TypeScript, contratos, tests y export Android, y aún compila `functions/`. P1/P3 deben sustituir ese paso por build/tests del servidor HTTP y migraciones SQLite al implementarlo. Un check del legado no acredita la migración. Los cambios nativos requieren reconstruir la app; una recarga JS no basta. No presentar comprobaciones pendientes como ejecutadas.
+La CI actual comprueba TypeScript, contratos, tests anidados de app/datos, build/tests de `server/` y exportaciones Android/web. `npm run check` ejecuta las verificaciones de código y contratos; las exportaciones se ejecutan por separado. Los cambios nativos requieren reconstruir la app; una recarga JS no basta. No presentar comprobaciones pendientes como ejecutadas.
 
 ## Definición de terminado
 

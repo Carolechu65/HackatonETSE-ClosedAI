@@ -190,16 +190,25 @@ export class LocalStore {
             || alarm.request.updatedAtEpochMs < old.request.updatedAtEpochMs
             || alarm.recipient.updatedAtEpochMs < old.recipient.updatedAtEpochMs) continue;
           // An out-of-order ACK cannot turn a confirmed cancellation back into SCHEDULED.
-          const merged = new Map(old.schedules.map(schedule =>
+          const previousSchedules = new Map(old.schedules.map(schedule =>
             [`${schedule.occurrenceId}/${schedule.deviceId}/${schedule.deviceEpoch}`, schedule]));
-          for (const schedule of alarm.schedules) {
+          // Each projection carries a complete authorized snapshot. Missing identities
+          // (for example a former primary device) must disappear from the projection.
+          const schedules = alarm.schedules.map(schedule => {
             const key = `${schedule.occurrenceId}/${schedule.deviceId}/${schedule.deviceEpoch}`;
-            const previous = merged.get(key);
-            if (!previous || (schedule.requestVersion >= previous.requestVersion
-              && schedule.decisionRevision >= previous.decisionRevision
-              && schedule.statusUpdatedAtEpochMs > previous.statusUpdatedAtEpochMs)) merged.set(key, schedule);
-          }
-          alarm = { ...alarm, schedules: [...merged.values()] };
+            const previous = previousSchedules.get(key);
+            if (!previous) return schedule;
+            if (schedule.requestVersion < previous.requestVersion
+              || schedule.decisionRevision < previous.decisionRevision) return previous;
+            const newerRevision = schedule.requestVersion > previous.requestVersion
+              || schedule.decisionRevision > previous.decisionRevision;
+            // A new consent supersedes the old schedule even if the device clock moved backwards.
+            if (newerRevision) return schedule;
+            if (['CANCELLED', 'EXPIRED', 'FIRED'].includes(previous.status)
+              && schedule.status !== previous.status) return previous;
+            return schedule.statusUpdatedAtEpochMs > previous.statusUpdatedAtEpochMs ? schedule : previous;
+          });
+          alarm = { ...alarm, schedules };
         }
         if (alarm.recipient.uid === userId) {
           const pendingAcks = await db.getAllAsync<OutboxRow>(`SELECT * FROM outbox WHERE user_id=? AND group_id=? AND request_id=?

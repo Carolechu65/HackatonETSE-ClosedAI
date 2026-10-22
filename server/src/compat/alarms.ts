@@ -46,9 +46,9 @@ export function readAlarmRecord(
     .get(recipientUid) as { primary_device_id: string | null; device_epoch: number };
   const schedules = db
     .prepare(
-      'SELECT * FROM device_schedules WHERE request_id=? AND uid=? ORDER BY status_updated_at_epoch_ms DESC LIMIT 128',
+      'SELECT * FROM device_schedules WHERE request_id=? AND uid=? AND device_id=? AND device_epoch=? ORDER BY status_updated_at_epoch_ms DESC LIMIT 128',
     )
-    .all(requestId, recipientUid) as ScheduleRow[];
+    .all(requestId, recipientUid, primary.primary_device_id, primary.device_epoch) as ScheduleRow[];
   return {
     groupId,
     requestId,

@@ -202,3 +202,56 @@ test('schedule plus ACK is atomic in both insertion and conflicting replay', asy
   await assert.rejects(db.store.saveSchedule('ana', { ...schedule, status: 'CANCELLED' }, { ...ack, payload: { ...ack.payload, status: 'CANCELLED' } }), { code: 'VERSION_CONFLICT' });
   assert.equal((await db.store.schedules('ana'))[0]!.status, 'SCHEDULED');
 });
+
+test('complete schedule snapshot removes identities no longer authorized while preserving present monotonic state', async t => {
+  const db = await openTestStore(); t.after(db.cleanup);
+  const record = alarm(); record.primaryDevice = null;
+  const { ack } = scheduleAndAck();
+  record.schedules = [
+    { ...ack.payload, deviceId: 'previous-primary', status: 'SCHEDULED', statusUpdatedAtEpochMs: 2000 },
+    { ...ack.payload, deviceId: 'current-primary', deviceEpoch: 2, status: 'CANCELLED', statusUpdatedAtEpochMs: 3000 },
+  ];
+  await db.store.applyPage('luis', page(record, 'all-schedules'));
+  const incoming = structuredClone(record);
+  incoming.schedules = [{ ...record.schedules[1]!, status: 'SCHEDULED', statusUpdatedAtEpochMs: 2500 }];
+  await db.store.applyPage('luis', page(incoming, 'authorized-schedules'));
+  assert.deepEqual((await db.store.alarms('luis'))[0]!.schedules, [record.schedules[1]]);
+  await db.store.applyPage('luis', page({ ...incoming, schedules: [] }, 'no-authorized-schedules'));
+  assert.deepEqual((await db.store.alarms('luis'))[0]!.schedules, []);
+});
+
+
+for (const counter of ['requestVersion', 'decisionRevision'] as const) {
+  test(`a newer ${counter} replaces cancellation at an equal timestamp without losing monotonicity`, async t => {
+    const db = await openTestStore(); t.after(db.cleanup);
+    const record = alarm();
+    const { ack } = scheduleAndAck();
+    record.schedules = [{ ...ack.payload, status: 'CANCELLED', statusUpdatedAtEpochMs: 2000 }];
+    await db.store.applyPage('luis', page(record, 'cancelled'));
+    const incoming = structuredClone(record);
+    incoming.schedules[0]![counter] += 1;
+    incoming.schedules[0]!.status = 'SCHEDULED';
+    await db.store.applyPage('luis', page(incoming, 'new-consent'));
+    assert.deepEqual((await db.store.alarms('luis'))[0]!.schedules, incoming.schedules);
+    await db.store.applyPage('luis', page(record, 'old-revision'));
+    assert.deepEqual((await db.store.alarms('luis'))[0]!.schedules, incoming.schedules);
+    const olderTime = structuredClone(incoming);
+    olderTime.schedules[0]![counter] += 1;
+    olderTime.schedules[0]!.statusUpdatedAtEpochMs = 1999;
+    await db.store.applyPage('luis', page(olderTime, 'older-timestamp'));
+    assert.deepEqual((await db.store.alarms('luis'))[0]!.schedules, olderTime.schedules);
+    await db.store.applyPage('luis', page(incoming, 'older-revision-newer-clock'));
+    assert.deepEqual((await db.store.alarms('luis'))[0]!.schedules, olderTime.schedules);
+  });
+}
+
+test('a later timestamp cannot revive a terminal schedule at the same revision', async t => {
+  const db = await openTestStore(); t.after(db.cleanup);
+  const record = alarm(); const { ack } = scheduleAndAck();
+  record.schedules = [{ ...ack.payload, status: 'CANCELLED', statusUpdatedAtEpochMs: 2000 }];
+  await db.store.applyPage('luis', page(record, 'cancelled'));
+  const incoming = structuredClone(record);
+  incoming.schedules[0]!.status = 'SCHEDULED'; incoming.schedules[0]!.statusUpdatedAtEpochMs = 3000;
+  await db.store.applyPage('luis', page(incoming, 'late-scheduled'));
+  assert.equal((await db.store.alarms('luis'))[0]!.schedules[0]!.status, 'CANCELLED');
+});
