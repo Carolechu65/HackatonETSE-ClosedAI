@@ -160,6 +160,10 @@ test('receipt expenses: attachment ownership, group scope and duplicate expense 
     assert.deepEqual(sharedImage.rawPayload, png);
     const sharedPreview = await ctx.app.inject({ method: 'GET', url: `${ctx.url}/${receipt.id}/preview`, headers: auth(ctx.member.token) });
     assert.deepEqual(sharedPreview.json(), { mediaType: 'image/png', base64: upload.base64 });
+    const reuploaded = await ctx.app.inject({ method: 'POST', url: ctx.url, headers: auth(ctx.owner.token), payload: upload });
+    assert.equal(reuploaded.statusCode, 200, reuploaded.body);
+    assert.equal(reuploaded.json().receipt.id, receipt.id);
+    assert.equal(reuploaded.json().existingExpenseId, response.json().expense.id);
     assert.deepEqual((await create(input)).json(), response.json());
     assert.equal((await create({ ...input, operationId: operationId() })).statusCode, 409);
     const pending = await ctx.app.inject({ method: 'GET', url: ctx.url, headers: auth(ctx.owner.token) });
