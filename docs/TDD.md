@@ -298,3 +298,5 @@ No crear estos módulos en paralelo a costa de la aceptación, persistencia y pr
 | Nivel P1 que entra realmente | P6 con el equipo al cierre del día 2; solo si pasa el recorrido P0 y queda capacidad de verificación. |
 
 Cada decisión se registra como ADR breve con contexto, elección, alternativa y consecuencia. Si cambia este contrato, se actualizan fixtures y consumidores en el mismo cambio o con una transición compatible; un documento no puede afirmar una garantía que la demo no verifica.
+
+Decisiones ya cerradas por P1: [ADR-001 · base Expo y lockfile](adr/001-base-expo-y-lockfile.md), [ADR-002 · ejes de estado](adr/002-ejes-de-estado.md) y [ADR-003 · política de cambio horario](adr/003-politica-dst.md). Los payloads resultantes están en [CONTRACTS](CONTRACTS.md).

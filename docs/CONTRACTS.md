@@ -103,3 +103,17 @@ const receipt = await repository.submit(command);
 ## 8. Fuera de esta versión
 
 Rotaciones e intercambios, gastos, presupuestos, huchas y salida estructurada del agente. El contrato del agente (`proposeAlarm`) mantiene su forma `draft`/`needs_clarification` en `functions/src/agents/`; su payload se cerrará con P3 y P2 antes de conectarlo.
+
+## 9. Divergencias actuales con el scaffold
+
+Estado real al cerrar A01; P3 las resuelve en B02:
+
+| Pieza | Situación | Qué hacer |
+|---|---|---|
+| `functions/src/contracts/operation.ts` | Acepta `schemaVersion`, `operationId`, `groupId` y `payload`, pero no `entityId` ni versiones esperadas; no hay idempotencia real. | Adoptar `parseOperationEnvelope` de `src/domain` (o generar el validador desde los esquemas) antes de implementar transacciones. |
+| `functions/src/operations/alarms.ts` | Las tres callables comprueban Auth y el sobre, y devuelven `unimplemented`. | Implementar con transacciones, autorización y deduplicación del `operationId`. |
+| `src/domain/alarms.ts` (`AlarmSummary`) | Proyección de UI del scaffold; no incluye versiones ni dispositivo. | No usarla como contrato de seguridad ni como estado de servidor. |
+| `src/data/alarmRepository.ts` (`demoAlarm`) | Repository en memoria; aceptar solo cambia la proyección. | P5 lo sustituye por SQLite + RNFirebase sobre `AlarmRepository`. |
+| `app.config.ts` | `android.package` fijado; no hay `googleServicesFile` ni plugins nativos de Firebase. | P3/P5 añaden la configuración del proyecto real fuera de Git (`google-services.json` está ignorado). |
+| `modules/alarm-runtime` | Declara capacidades no disponibles y rechaza programar. | P4 implementa; `OccurrenceKey` debe seguir la forma de `src/domain/ids.ts`. |
+

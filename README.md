@@ -14,6 +14,9 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 - [FEATURES.md](FEATURES.md): listado de funcionalidades, prioridades y reglas de aceptación de avisos.
 - [TDD](docs/TDD.md): diseño técnico, contratos, datos, estados y estrategia de pruebas.
+- [Contratos v1](docs/CONTRACTS.md): sobre de operaciones, estados, tiempo, errores y fixtures compartidos.
+- [Rutas y deep links](docs/ROUTES.md): nombres acordados para pantallas y widget.
+- [Decisiones (ADR)](docs/adr/): base Expo y lockfile, ejes de estado y política de cambio horario.
 - [Plan para seis personas](docs/TEAM_PLAN.md): responsables, dependencias y entregas diarias.
 - [Estado de las prácticas a octubre de 2026](docs/STATE_OF_THE_ART.md): investigación y decisiones aplicadas al proyecto.
 - [Buenas prácticas Android](docs/ANDROID_PRACTICES.md) y [Firebase](docs/FIREBASE_PRACTICES.md): referencias técnicas verificadas.
