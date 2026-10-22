@@ -1,3 +1,4 @@
+import { taskCanChangeCompletion } from '../tasks/model.ts';
 import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
@@ -79,7 +80,7 @@ export function AlarmDetailScreen({ requestId }: { requestId: string }) {
         {task ? <Text style={typography.body}>{task.status === 'completed' ? 'Hecha' : task.status === 'cancelled' ? 'Cancelada' : 'Pendiente de completar'}</Text> : null}
         <Text style={typography.support}>Detener o posponer el aviso no marca la tarea como hecha.</Text>
         {request.mode === 'ALARM' ? <Text style={typography.support}>En la app Android actualizada, se vuelve a avisar a los 10 minutos mientras la tarea siga pendiente. Marcarla como hecha retira sus avisos cuando el móvil sincroniza.</Text> : null}
-        {task?.status === 'pending' ? <Action disabled={busy} onPress={() => void action.run(async () => {
+        {task?.status === 'pending' && taskCanChangeCompletion(task) ? <Action disabled={busy} onPress={() => void action.run(async () => {
           await client.updateTask(task, 'completed', ids.current(`${task.id}:${task.version}`, { status: 'completed' }));
           setNotice('Tarea completada. Se ha solicitado retirar sus avisos.');
         })}>Marcar tarea como hecha</Action> : null}
@@ -112,7 +113,7 @@ export function AlarmDetailScreen({ requestId }: { requestId: string }) {
           <PrimaryAction label={busy ? 'Guardando…' : 'Aceptar a esta hora'} disabled={busy || !canRespond} onPress={() => respond('ACCEPTED', true)} />
           <Action disabled={busy} onPress={() => { setChanging(false); action.setError(null); }}>Cancelar cambio de hora</Action>
         </> : <>
-          {recipient.decision !== 'ACCEPTED' ? <PrimaryAction label={busy ? 'Guardando…' : 'Aceptar mi aviso'} disabled={busy || !canAccept} onPress={() => respond('ACCEPTED')} /> : null}
+          {recipient.decision !== 'ACCEPTED' ? <PrimaryAction label={busy ? 'Guardando…' : request.mode === 'ALARM' ? 'Aceptar alarma' : 'Aceptar notificación'} disabled={busy || !canAccept} onPress={() => respond('ACCEPTED')} /> : null}
           {!canAccept && canRespond ? <Text style={typography.support}>La hora anterior ya pasó. Puedes elegir otra hora.</Text> : null}
           <View style={styles.row}><Action disabled={busy || !canRespond} onPress={startChanging}>Elegir otra hora</Action>{recipient.decision === 'ACCEPTED' ? <Action disabled={busy || !canRespond} onPress={() => respond('DISABLED')}>Desactivar mi aviso</Action> : <Action disabled={busy || !canRespond || recipient.decision === 'REJECTED'} onPress={() => respond('REJECTED')}>Rechazar</Action>}</View>
         </>}

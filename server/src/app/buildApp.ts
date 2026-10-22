@@ -1,3 +1,5 @@
+import { listAssignments } from '../tasks/assignments.ts';
+import { createTaskAlarm } from '../tasks/createTaskAlarm.ts';
 import { calendarRoutes } from '../calendar/routes.ts';
 import { expenseRoutes } from '../expenses/routes.ts';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
@@ -23,7 +25,7 @@ import { proposeAlarm } from '../agents/service.ts';
 import type { AgentProvider } from '../agents/types.ts';
 import { installErrorHandler } from './errors.ts';
 import { listAlarmRecords, readAlarmProjection } from '../compat/alarms.ts';
-import { createTask, listTasks, updateTask } from '../tasks/service.ts';
+import { createTask, listTasks, updateTask, respondTaskAssignment } from '../tasks/service.ts';
 
 export type BuildAppOptions = {
   config: ServerConfig;
@@ -310,6 +312,9 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.get('/v1/groups/:groupId/alarms',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return listAlarmRecords(db,actor.uid,readIdentifier(groupId,'groupId'));});
   app.post('/v1/invitations/accept',async request=>{const actor=requireAuth(db,request);return acceptInvitation(db,actor.uid,readToken(asRecord(request.body).token));});
   app.route({method:['POST','PUT'],url:'/v1/devices/primary',handler:async request=>{const actor=requireAuth(db,request);return setPrimaryDevice(db,actor,{deviceId:asRecord(request.body).deviceId});}});
+  app.post('/v1/operations/createTaskAlarm', async request => { const actor = requireAuth(db, request); return createTaskAlarm(db, actor, request.body); });
+  app.get('/v1/assignments', async request => { const actor = requireAuth(db, request); return listAssignments(db, actor.uid); });
+  app.post('/v1/groups/:groupId/tasks/:taskId/assignment', async request => { const actor = requireAuth(db, request); const { groupId, taskId } = request.params as { groupId: string; taskId: string }; return respondTaskAssignment(db, actor.uid, readIdentifier(groupId, 'groupId'), readIdentifier(taskId, 'taskId'), request.body); });
   app.get('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return listTasks(db,actor.uid,readIdentifier(groupId,'groupId'));});
   app.post('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return createTask(db,actor.uid,readIdentifier(groupId,'groupId'),request.body);});
   app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});

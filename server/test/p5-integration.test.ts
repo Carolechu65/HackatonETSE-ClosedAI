@@ -108,7 +108,8 @@ test('P5 + API SQLite: consent, lost ACK/replay, sender visibility, task withdra
     assert.equal(sent.alarms[0].recipient.decision, 'ACCEPTED');
     assert.equal(sent.alarms[0].schedules[0].status, 'SCHEDULED', 'sender only sees programming after server ACK');
     assert.equal(sent.alarms[0].recipient.uid, recipient.userId);
-    await call('POST', `/v1/groups/${group.id}/tasks/${task.id}`, { operationId: 'complete-task', status: 'completed', expectedVersion: 1 }, sender.token);
+    await call('POST', `/v1/groups/${group.id}/tasks/${task.id}/assignment`, { operationId: 'accept-task', decision: 'accepted', expectedVersion: 1 }, recipient.token);
+    await call('POST', `/v1/groups/${group.id}/tasks/${task.id}`, { operationId: 'complete-task', status: 'completed', expectedVersion: 2 }, sender.token);
     online = false;
     await assert.rejects(repository.reconcile());
     assert.equal(runtime.scheduled[0]?.status, 'SCHEDULED', 'remote withdrawal cannot reach an offline phone');

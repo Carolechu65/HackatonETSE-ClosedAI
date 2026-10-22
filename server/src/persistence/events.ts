@@ -37,7 +37,7 @@ export type EnqueueOutboxInput = {
   audienceUid: string;
   groupId: string | null;
   kind: string;
-  entityType: ChangeEntityType;
+  entityType: ChangeEntityType | 'task';
   entityId: string;
   entityVersion: number;
   payload: Record<string, unknown>;

@@ -15,6 +15,8 @@ import type { SyncStatus } from '../../domain/states.ts';
 export const TASK_TITLE_MAX_LENGTH = 120;
 export const TASK_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
+export type TaskAssignmentDecision = 'pending' | 'accepted' | 'rejected' | 'not_required';
+
 export type TaskStatus = 'pending' | 'completed' | 'cancelled';
 
 export type HouseholdTask = {
@@ -29,6 +31,8 @@ export type HouseholdTask = {
   readonly activateAtEpochMs: number | null;
   readonly dueAtEpochMs: number | null;
   readonly status: TaskStatus;
+  /** Missing on tasks created before assignment consent was introduced. */
+  readonly assignmentDecision?: TaskAssignmentDecision;
   /** Versión de la entidad; cualquier cambio de estado la incrementa. */
   readonly version: number;
   readonly completedByUid: string | null;
@@ -165,10 +169,42 @@ export function createTask(input: {
     activateAtEpochMs: draft.activateAtEpochMs,
     dueAtEpochMs: draft.dueAtEpochMs,
     status: 'pending',
+    assignmentDecision: draft.assigneeUid !== null && draft.assigneeUid !== input.createdByUid ? 'pending' : 'not_required',
     version: 1,
     completedByUid: null,
     completedAtEpochMs: null,
   };
+}
+
+/** Legacy and self-assigned tasks need no new consent. */
+export function taskCanChangeCompletion(task: HouseholdTask): boolean {
+  return task.assignmentDecision !== 'pending' && task.assignmentDecision !== 'rejected';
+}
+
+export function taskAssignmentLabel(task: HouseholdTask): string | null {
+  if (task.assignmentDecision === 'pending') return 'Pendiente de aceptar';
+  if (task.assignmentDecision === 'rejected') return 'Asignación rechazada';
+  if (task.assignmentDecision === 'accepted') return 'Asignación aceptada';
+  return null;
+}
+
+/** Only the current assignee can accept the work assigned to them. */
+export function respondTaskAssignment(
+  task: HouseholdTask,
+  input: { readonly actorUid: string; readonly members: readonly TaskMember[]; readonly decision: 'accepted' | 'rejected' },
+): HouseholdTask {
+  assertActiveMember(input.members, input.actorUid, 'actorUid');
+  if (task.assigneeUid !== input.actorUid) throw new DomainError('FORBIDDEN', 'Solo la persona asignada puede aceptar o rechazar esta tarea.');
+  if (task.status !== 'pending') throw new DomainError('INVALID_ARGUMENT', 'Esta tarea ya no está pendiente.');
+  if (input.decision !== 'accepted' && input.decision !== 'rejected') throw new DomainError('INVALID_ARGUMENT', 'Respuesta de asignación inválida.');
+  if (task.assignmentDecision === input.decision) return task;
+  if (task.assignmentDecision !== 'pending') throw new DomainError('INVALID_ARGUMENT', 'Esta asignación ya no espera respuesta.');
+  return { ...task, assignmentDecision: input.decision, version: task.version + 1 };
+}
+
+function assertTaskAssignmentAllowsCompletion(task: HouseholdTask): void {
+  if (!taskCanChangeCompletion(task)) throw new DomainError('INVALID_ARGUMENT', task.assignmentDecision === 'rejected'
+    ? 'La asignación de esta tarea fue rechazada.' : 'La persona asignada debe aceptar esta tarea antes de marcarla como hecha.');
 }
 
 /**
@@ -180,6 +216,7 @@ export function completeTask(
   input: { readonly actorUid: string; readonly members: readonly TaskMember[]; readonly nowEpochMs: number },
 ): TaskMutation {
   assertActiveMember(input.members, input.actorUid, 'actorUid');
+  assertTaskAssignmentAllowsCompletion(task);
   if (!isEpochMs(input.nowEpochMs)) {
     throw new DomainError('INVALID_ARGUMENT', 'Instante de finalización inválido.');
   }
@@ -209,6 +246,7 @@ export function reopenTask(
   input: { readonly actorUid: string; readonly members: readonly TaskMember[]; readonly nowEpochMs: number },
 ): TaskMutation {
   assertActiveMember(input.members, input.actorUid, 'actorUid');
+  assertTaskAssignmentAllowsCompletion(task);
   if (!isEpochMs(input.nowEpochMs)) throw new DomainError('INVALID_ARGUMENT', 'Instante de reapertura inválido.');
   if (task.status === 'cancelled') throw new DomainError('INVALID_ARGUMENT', 'Una tarea cancelada no se puede reabrir.');
   if (task.status === 'pending') return { task, outcome: 'already_pending', changed: false, invalidatesLinkedAlarms: false };
@@ -290,6 +328,7 @@ export function describeTaskCardState(task: HouseholdTask, write?: TaskWriteStat
   if (write?.sync === 'QUEUED' || write?.sync === 'SENDING') {
     return { label: 'Guardando…', tone: 'pending', detail: 'Todavía no hay confirmación del servidor.' };
   }
+  if (task.status === 'pending' && !taskCanChangeCompletion(task)) return { label: taskAssignmentLabel(task)!, tone: 'pending', detail: task.assignmentDecision === 'pending' ? 'La persona asignada aún debe aceptar la tarea.' : 'Esta tarea no ha sido aceptada por su responsable.' };
   const label = task.status === 'completed' ? 'Completada' : task.status === 'cancelled' ? 'Cancelada' : 'Pendiente';
   if (write?.alarmWithdrawal === 'pending') {
     return { label, tone: 'pending', detail: 'Retirada de alarmas pedida, sin acuse del móvil.' };

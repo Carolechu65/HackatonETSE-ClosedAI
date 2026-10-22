@@ -172,8 +172,8 @@ test('expenses migration upgrades schema 4 without modifying existing households
       INSERT INTO tasks(id,group_id,title,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid,description,category)
       VALUES('old-task','old-group','Comprar pan','PENDING',1,1,1,'old-user','Integral','Compra');`);
     const before = db.prepare('SELECT * FROM tasks').all();
-    assert.deepEqual(migrate(db).applied.map(m => m.version), [5, 6]);
-    assert.deepEqual(db.prepare('SELECT * FROM tasks').all(), before);
+    assert.deepEqual(migrate(db).applied.map(m => m.version), [5, 6, 7]);
+    assert.deepEqual(db.prepare('SELECT * FROM tasks').all(), before.map(row => ({ ...(row as object), assignment_decision: 'not_required' })));
     assert.equal((db.prepare('SELECT name FROM groups').get() as { name: string }).name, 'Casa anterior');
     assert.equal(integrityCheck(db), 'ok');
     assert.equal(migrate(db).applied.length, 0);
@@ -223,7 +223,7 @@ test('expense deadline migration preserves existing expenses and settlements wit
       INSERT INTO expense_participants(expense_id,uid,share_cents,settled_at_epoch_ms)
       VALUES('old-expense','old-user',123,2);`);
     const participants = db.prepare('SELECT * FROM expense_participants').all();
-    assert.deepEqual(migrate(db).applied.map(m => m.version), [6]);
+    assert.deepEqual(migrate(db).applied.map(m => m.version), [6, 7]);
     assert.deepEqual(db.prepare('SELECT title,amount_cents,version,due_date FROM shared_expenses').get(), { title: 'Pan', amount_cents: 123, version: 2, due_date: null });
     assert.deepEqual(db.prepare('SELECT * FROM expense_participants').all(), participants);
     assert.equal(integrityCheck(db), 'ok');

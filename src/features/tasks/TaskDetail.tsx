@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PrimaryAction, Sheet, colors, layout, typography } from '../../ui/index.ts';
 import {
   describeTaskCardState,
+  taskCanChangeCompletion,
   describeTaskDue,
   memberInitial,
   type HouseholdTask,
@@ -120,7 +121,7 @@ export function TaskDetail({
           <PrimaryAction
             label={busy ? 'Guardando…' : 'Completar tarea'}
             onPress={onComplete}
-            disabled={busy}
+            disabled={busy || !taskCanChangeCompletion(task)}
           />
           <Pressable
             accessibilityRole="button"

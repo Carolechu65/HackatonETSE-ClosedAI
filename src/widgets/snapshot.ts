@@ -1,5 +1,5 @@
 /**
- * P6 · Proyección del widget (contrato v2).
+ * P6 · Proyección del widget (contrato v3).
  *
  * Selecciona, de forma pura y reproducible, lo que el launcher puede mostrar:
  * la próxima ocurrencia **confirmada y futura**, y contadores separados de
@@ -17,17 +17,18 @@
  * `scaffoldAlarmInput` traduce la proyección simplificada de la bandeja sin crear
  * un segundo modelo de estados.
  */
+import type { TaskAssignmentDecision } from '../features/tasks/model.ts';
 import type { AlarmSummary } from '../domain/alarms.ts';
 import { DomainError } from '../domain/errors.ts';
 import type { Decision, Mode, ProposalStatus, SchedulingStatus } from '../domain/states.ts';
 
 /** Sube de versión cuando cambia la forma del snapshot que consume el widget. */
-export const WIDGET_SNAPSHOT_SCHEMA_VERSION = 2;
+export const WIDGET_SNAPSHOT_SCHEMA_VERSION = 3;
 
 /** Edad a partir de la cual el widget avisa de que la información puede estar obsoleta. */
 export const WIDGET_SNAPSHOT_MAX_AGE_MS = 30 * 60 * 1_000;
 
-/** El título se acota porque el launcher no tiene scroll ni tooltip fiable. */
+/** El título se acota para que cada tarjeta sea legible en el launcher. */
 export const WIDGET_TITLE_MAX_LENGTH = 64;
 
 /**
@@ -72,6 +73,24 @@ export type WidgetSnapshotCounts = {
   readonly withdrawalPending: number;
 };
 
+export const WIDGET_TASK_LIMIT = 20;
+
+export type WidgetTask = {
+  readonly id: string;
+  readonly title: string;
+  readonly assigneeLabel: string;
+  readonly completed: boolean;
+  readonly version: number;
+  readonly assignmentDecision?: TaskAssignmentDecision;
+  readonly dueAtEpochMs: number | null;
+};
+
+export type WidgetTaskInput = Omit<WidgetTask, 'completed'> & {
+  readonly completedAtEpochMs?: number | null;
+  readonly groupId: string;
+  readonly status: 'pending' | 'completed' | 'cancelled';
+};
+
 export type WidgetSnapshot = {
   readonly schemaVersion: typeof WIDGET_SNAPSHOT_SCHEMA_VERSION;
   readonly scope: WidgetSnapshotScope | null;
@@ -79,10 +98,13 @@ export type WidgetSnapshot = {
   readonly generatedAtEpochMs: number;
   readonly nextAlarm: WidgetNextAlarm | null;
   readonly counts: WidgetSnapshotCounts;
+  readonly tasks: readonly WidgetTask[];
+  readonly pendingTaskCount: number;
 };
 
 export type BuildWidgetSnapshotInput = {
   readonly alarms: readonly WidgetAlarmInput[];
+  readonly tasks?: readonly WidgetTaskInput[];
   readonly nowEpochMs: number;
   readonly scope: WidgetSnapshotScope | null;
   /**
@@ -177,6 +199,23 @@ export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnap
     withdrawalPending: alarms.filter((alarm) => alarm.scheduling === 'CANCEL_PENDING').length,
   };
 
+  const visibleTasks = (input.tasks ?? []).filter(task => task.groupId === input.scope!.groupId
+    && (task.status === 'pending' || task.status === 'completed') && ID_PATTERN.test(task.id) && typeof task.title === 'string'
+    && task.title.trim().length > 0 && typeof task.assigneeLabel === 'string'
+    && Number.isSafeInteger(task.version) && task.version > 0
+    && (task.dueAtEpochMs === null || (Number.isSafeInteger(task.dueAtEpochMs)
+      && task.dueAtEpochMs >= 0 && task.dueAtEpochMs <= 8_640_000_000_000_000)));
+  const uniqueTasks = [...new Map(visibleTasks.map(task => [task.id, task])).values()];
+  const pendingTasks = uniqueTasks.filter(task => task.status === 'pending').sort((a, b) =>
+    (a.dueAtEpochMs ?? Infinity) - (b.dueAtEpochMs ?? Infinity) || a.id.localeCompare(b.id));
+  const completedTasks = uniqueTasks.filter(task => task.status === 'completed').sort((a, b) =>
+    (b.completedAtEpochMs ?? 0) - (a.completedAtEpochMs ?? 0) || a.id.localeCompare(b.id)).slice(0, 5);
+  const tasks = [...pendingTasks, ...completedTasks].slice(0, WIDGET_TASK_LIMIT).map(task => ({
+    id: task.id, title: truncateWidgetTitle(task.title), completed: task.status === 'completed', version: task.version,
+    assigneeLabel: truncateWidgetTitle(task.assigneeLabel), dueAtEpochMs: task.dueAtEpochMs,
+    ...(task.assignmentDecision ? { assignmentDecision: task.assignmentDecision } : {}),
+  }));
+
   return {
     schemaVersion: WIDGET_SNAPSHOT_SCHEMA_VERSION,
     scope: { userId: input.scope.userId, groupId: input.scope.groupId },
@@ -189,6 +228,8 @@ export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnap
       mode: next.mode,
     },
     counts,
+    tasks,
+    pendingTaskCount: pendingTasks.length,
   };
 }
 
@@ -200,6 +241,8 @@ export function createSignedOutWidgetSnapshot(nowEpochMs: number): WidgetSnapsho
     scope: null,
     generatedAtEpochMs: nowEpochMs,
     nextAlarm: null,
+    tasks: [],
+    pendingTaskCount: 0,
     counts: { pendingProposals: 0, pendingActivations: 0, withdrawalPending: 0 },
   };
 }
@@ -237,12 +280,21 @@ export function isValidWidgetSnapshot(value: unknown): value is WidgetSnapshot {
   if (snapshot.scope !== null && (!snapshot.scope || !validId(snapshot.scope.userId) || !validId(snapshot.scope.groupId))) return false;
   if (!snapshot.counts || ![snapshot.counts.pendingProposals, snapshot.counts.pendingActivations, snapshot.counts.withdrawalPending]
     .every((count) => Number.isSafeInteger(count) && count >= 0)) return false;
+  if (!Array.isArray(snapshot.tasks) || snapshot.tasks.length > WIDGET_TASK_LIMIT
+    || !Number.isSafeInteger(snapshot.pendingTaskCount) || snapshot.pendingTaskCount < snapshot.tasks.filter(task => task && !task.completed).length
+    || new Set(snapshot.tasks.map(task => task?.id)).size !== snapshot.tasks.length
+    || !snapshot.tasks.every(task => task && validId(task.id)
+      && typeof task.completed === 'boolean' && Number.isSafeInteger(task.version) && task.version > 0
+      && (task.assignmentDecision === undefined || ['pending', 'accepted', 'rejected', 'not_required'].includes(task.assignmentDecision))
+      && typeof task.title === 'string' && task.title.length > 0 && task.title.length <= WIDGET_TITLE_MAX_LENGTH
+      && typeof task.assigneeLabel === 'string' && task.assigneeLabel.length <= WIDGET_TITLE_MAX_LENGTH
+      && (task.dueAtEpochMs === null || validTime(task.dueAtEpochMs)))) return false;
   const next = snapshot.nextAlarm;
   if (next !== null && (!next || !validId(next.requestId)
     || (next.occurrenceId !== null && !validId(next.occurrenceId))
     || typeof next.title !== 'string' || !validTime(next.scheduledAtEpochMs)
     || (next.mode !== 'ALARM' && next.mode !== 'NOTIFICATION'))) return false;
-  return snapshot.scope !== null || (next === null && Object.values(snapshot.counts).every((count) => count === 0));
+  return snapshot.scope !== null || (next === null && snapshot.tasks.length === 0 && snapshot.pendingTaskCount === 0 && Object.values(snapshot.counts).every((count) => count === 0));
 }
 
 /** `true` si el snapshot supera la antigüedad permitida o su reloj es incoherente. */

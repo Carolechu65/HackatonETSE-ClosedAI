@@ -30,6 +30,7 @@ export type HouseholdTask = {
   activateAtEpochMs: number | null;
   dueAtEpochMs: number | null;
   status: 'pending' | 'completed' | 'cancelled';
+  assignmentDecision: 'pending' | 'accepted' | 'rejected' | 'not_required';
   version: number;
   completedByUid: string | null;
   completedAtEpochMs: number | null;
@@ -45,6 +46,7 @@ type TaskRow = {
   activate_at_epoch_ms: number | null;
   due_at_epoch_ms: number | null;
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  assignment_decision: HouseholdTask['assignmentDecision'];
   version: number;
   completed_by_uid: string | null;
   completed_at_epoch_ms: number | null;
@@ -60,6 +62,7 @@ const dto = (r: TaskRow): HouseholdTask => ({
   activateAtEpochMs: r.activate_at_epoch_ms,
   dueAtEpochMs: r.due_at_epoch_ms,
   status: r.status.toLowerCase() as HouseholdTask['status'],
+  assignmentDecision: r.assignment_decision,
   version: r.version,
   completedByUid: r.completed_by_uid,
   completedAtEpochMs: r.completed_at_epoch_ms,
@@ -146,8 +149,9 @@ export function createTask(
           throw new DomainError('INVALID_ARGUMENT', 'Vencimiento anterior a activación.');
         const id = generateId('task');
         db.prepare(
-          "INSERT INTO tasks(id,group_id,title,assigned_to,activate_at_epoch_ms,due_at_epoch_ms,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid,description,category) VALUES (?,?,?,?,?,?,'PENDING',1,?,?,?,?,?)",
-        ).run(id, groupId, title, assignee, activate, due, now, now, user, description, category);
+          "INSERT INTO tasks(id,group_id,title,assigned_to,activate_at_epoch_ms,due_at_epoch_ms,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid,description,category,assignment_decision) VALUES (?,?,?,?,?,?,'PENDING',1,?,?,?,?,?,?)",
+        ).run(id, groupId, title, assignee, activate, due, now, now, user, description, category, assignee && assignee !== user ? 'pending' : 'not_required');
+        if (assignee && assignee !== user) enqueueOutboxEvent(db, { audienceUid: assignee, groupId, kind: 'task.assigned', entityType: 'task', entityId: id, entityVersion: 1, payload: { taskId: id }, nowEpochMs: now });
         return dto(db.prepare('SELECT * FROM tasks WHERE id=?').get(id) as TaskRow);
       });
     })
@@ -212,6 +216,7 @@ export function updateTask(
           .prepare('SELECT * FROM tasks WHERE id=? AND group_id=?')
           .get(taskId, groupId) as TaskRow | undefined;
         if (!row) throw new DomainError('NOT_FOUND', 'Tarea no encontrada.');
+        if (data.status !== 'cancelled' && (row.assignment_decision === 'pending' || row.assignment_decision === 'rejected')) throw new DomainError('FORBIDDEN', 'La persona asignada debe aceptar la tarea antes de completarla.');
         if (row.status.toLowerCase() === data.status) return dto(row);
         if (row.version !== expected) throw new DomainError('VERSION_CONFLICT', 'La tarea cambió.');
         if (data.status === 'pending' ? row.status !== 'COMPLETED' : row.status !== 'PENDING')
@@ -233,4 +238,25 @@ export function updateTask(
       });
     })
     .immediate();
+}
+
+/** Assignment consent is separate from completion and never grants alarm consent. */
+export function respondTaskAssignment(db: Db, user: string, groupId: string, taskId: string, raw: unknown, now = Date.now()): HouseholdTask {
+  const data = asRecord(raw);
+  assertNoExtraKeys(data, ['operationId', 'decision', 'expectedVersion']);
+  if (data.decision !== 'accepted' && data.decision !== 'rejected') throw new DomainError('INVALID_ARGUMENT', 'Decisión inválida.');
+  const expected = readPositiveInt(data.expectedVersion, 'expectedVersion');
+  return db.transaction(() => {
+    requireActiveMembership(db, groupId, user);
+    return operation(db, user, 'respondTaskAssignment', { ...data, groupId, taskId }, now, () => {
+      const row = db.prepare('SELECT * FROM tasks WHERE id=? AND group_id=?').get(taskId, groupId) as TaskRow | undefined;
+      if (!row) throw new DomainError('NOT_FOUND', 'Tarea no encontrada.');
+      if (row.assigned_to !== user) throw new DomainError('FORBIDDEN', 'Solo la persona asignada puede aceptar o rechazar la tarea.');
+      if (row.status !== 'PENDING') throw new DomainError('VERSION_CONFLICT', 'La tarea ya no está pendiente.');
+      if (row.assignment_decision === data.decision) return dto(row);
+      if (row.version !== expected || row.assignment_decision !== 'pending') throw new DomainError('VERSION_CONFLICT', 'La asignación ha cambiado.');
+      db.prepare('UPDATE tasks SET assignment_decision=?,version=version+1,updated_at_epoch_ms=? WHERE id=?').run(data.decision, now, taskId);
+      return dto(db.prepare('SELECT * FROM tasks WHERE id=?').get(taskId) as TaskRow);
+    });
+  }).immediate();
 }

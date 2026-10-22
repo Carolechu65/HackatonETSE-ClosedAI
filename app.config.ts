@@ -41,15 +41,29 @@ const config: ExpoConfig = {
         widgets: [
           {
             name: 'AlarmaTWidget',
-            displayName: 'AlarmaT',
-            description: 'Próxima alarma, propuestas pendientes y estado de sincronización.',
+            displayName: 'AlarmaT · Tablón',
+            description: 'Tu tablón del piso: próxima alarma y notas de tareas. Desliza para ver más.',
             ios: { supportedFamilies: ['systemSmall', 'systemMedium'] },
             android: {
               targetCellWidth: 4,
               targetCellHeight: 3,
-              resizeMode: 'horizontal',
+              resizeMode: 'both',
               initialLayout: './src/widgets/AlarmaTWidget.tsx',
             },
+          },
+          {
+            name: 'AlarmaTAlarmsWidget',
+            displayName: 'AlarmaT · Alarmas',
+            description: 'Próxima alarma, hora y propuestas pendientes con los colores de AlarmaT.',
+            ios: { supportedFamilies: ['systemSmall', 'systemMedium'] },
+            android: { targetCellWidth: 4, targetCellHeight: 3, resizeMode: 'both', initialLayout: './src/widgets/AlarmaTAlarmsWidget.tsx' },
+          },
+          {
+            name: 'AlarmaTTasksWidget',
+            displayName: 'AlarmaT · Tareas',
+            description: 'Tareas pendientes con nombre, fecha y persona asignada. Desliza para ver más.',
+            ios: { supportedFamilies: ['systemSmall', 'systemMedium'] },
+            android: { targetCellWidth: 4, targetCellHeight: 3, resizeMode: 'both', initialLayout: './src/widgets/AlarmaTTasksWidget.tsx' },
           },
         ],
       },
