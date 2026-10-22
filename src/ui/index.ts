@@ -5,7 +5,17 @@
  * Ninguna pantalla debe inventar colores, sombras o tipografías fuera de `theme.ts`.
  * La guía completa está en `nevera-retro.md` y el uso en `README.md`.
  */
+export { AnimatedIn } from './AnimatedIn.tsx';
+export { Avatar } from './Avatar.tsx';
+export { Checkbox } from './Checkbox.tsx';
+export { Chip } from './Chip.tsx';
+export { FlashMessage } from './FlashMessage.tsx';
+export { Icon, type IconName } from './Icon.tsx';
+export { IconButton } from './IconButton.tsx';
 export { Magnet } from './Magnet.tsx';
+export { PressableScale, type PressableScaleProps } from './PressableScale.tsx';
+export { TextField, type TextFieldProps } from './TextField.tsx';
+export { Toggle } from './Toggle.tsx';
 export { Note, type NoteProps } from './Note.tsx';
 export { PrimaryAction, type PrimaryActionProps } from './PrimaryAction.tsx';
 export { Screen, type ScreenProps } from './Screen.tsx';
@@ -25,3 +35,4 @@ export {
   typography,
 } from './theme.ts';
 export { fontFamily, useNeveraFonts } from './fonts.ts';
+export { RetroTabBar, type RetroTabBarProps } from './RetroTabBar.tsx';

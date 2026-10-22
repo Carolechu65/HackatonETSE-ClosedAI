@@ -1,47 +1,53 @@
-import { resolve } from "node:path";
-import { buildApp } from "./app/index.ts";
-import { openDatabase } from "./persistence/database.ts";
-import { processOutbox, processReceipts } from "./messaging/outbox.ts";
-const databasePath = process.env.DATABASE_PATH ?? resolve("data/alarmat.db");
-const db = openDatabase(
-  databasePath,
-  process.env.MIGRATIONS_DIRECTORY ?? resolve("migrations"),
-);
-const app = await buildApp({
+import { loadConfig } from './config.ts';
+import { buildApp } from './app/buildApp.ts';
+import { openDatabase, assertSchemaReady } from './persistence/db.ts';
+import { OutboxWorker } from './messaging/outboxWorker.ts';
+import { ExpoPushSender } from './messaging/push.ts';
+import { createAgentProvider } from './agents/service.ts';
+
+const config = loadConfig();
+const db = openDatabase(config.databasePath);
+try {
+  assertSchemaReady(db);
+} catch (error) {
+  db.close();
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+}
+
+const app = buildApp({ config, db });
+const agent = createAgentProvider(config.agent);
+if (config.agent.provider === 'openai' && !agent) {
+  app.log.warn('AI_PROVIDER=openai sin AI_BASE_URL/AI_API_KEY/AI_MODEL: el agente responderá 503 y queda el formulario manual.');
+}
+
+const worker = new OutboxWorker(
   db,
-  logger: true,
-  corsOrigins: (process.env.CORS_ORIGINS ?? "").split(",").filter(Boolean),
-  sessionDurationMs: Number(process.env.SESSION_DURATION_MS ?? 604800000),
-  agent: {
-    apiKey: process.env.OPENROUTER_API_KEY,
-    model: process.env.OPENROUTER_MODEL,
-  },
-});
-let running = false;
-const interval =
-  process.env.EXPO_PUSH_ENABLED === "true"
-    ? setInterval(() => {
-        if (running) return;
-        running = true;
-        void processOutbox(db, Date.now(), process.env.EXPO_ACCESS_TOKEN)
-          .then(() =>
-            processReceipts(db, Date.now(), process.env.EXPO_ACCESS_TOKEN),
-          )
-          .catch(() => app.log.error("push_worker_failed"))
-          .finally(() => {
-            running = false;
-          });
-      }, 15000)
-    : null;
-for (const signal of ["SIGINT", "SIGTERM"])
-  process.on(signal, () => {
-    if (interval) clearInterval(interval);
-    void app.close().then(() => {
-      db.close();
-      process.exit(0);
-    });
-  });
-await app.listen({
-  host: process.env.HOST ?? "127.0.0.1",
-  port: Number(process.env.PORT ?? 3100),
-});
+  config.push.workerEnabled && config.push.expoToken ? new ExpoPushSender(config.push.expoToken) : null,
+  { pollIntervalMs: config.push.pollIntervalMs, leaseMs: config.push.leaseMs, logger: app.log },
+);
+if (config.push.workerEnabled && config.push.expoToken) {
+  worker.start();
+} else {
+  app.log.info('Push desactivado o sin EXPO_PUSH_TOKEN: outbox persistida y sincronización al abrir la app.');
+}
+
+async function shutdown(signal: string): Promise<void> {
+  app.log.info({ signal }, 'shutting down');
+  worker.stop();
+  await app.close();
+  db.close();
+  process.exit(0);
+}
+
+process.on('SIGINT', () => { void shutdown('SIGINT'); });
+process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
+
+try {
+  await app.listen({ host: config.host, port: config.port });
+} catch (error) {
+  app.log.error(error);
+  worker.stop();
+  db.close();
+  process.exit(1);
+}

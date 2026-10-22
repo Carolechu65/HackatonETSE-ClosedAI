@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/alarm-request-detail.schema.json",
+  "title": "GET /v1/groups/{groupId}/alarm-requests/{requestId} · detalle v1",
+  "description": "Detalle autorizado: propuesta, decisión del actor y acuses de programación de ese destinatario. No incluye decisiones de otros destinatarios.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request", "recipient", "schedules"],
+  "properties": {
+    "request": { "$ref": "./alarm-request.schema.json" },
+    "recipient": { "$ref": "./recipient.schema.json" },
+    "schedules": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "./schedule.schema.json" }
+    }
+  }
+}

@@ -36,8 +36,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
     paddingHorizontal: layout.gutter,
-    paddingBottom: 24,
+    paddingBottom: 12,
     gap: layout.noteGapRow,
   },
 });

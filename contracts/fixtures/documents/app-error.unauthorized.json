@@ -1,0 +1,6 @@
+{
+  "code": "UNAUTHENTICATED",
+  "message": "Tu sesión ya no es válida. Vuelve a iniciar sesión.",
+  "retryable": false,
+  "serverTimeEpochMs": 1792701000000
+}

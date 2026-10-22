@@ -7,6 +7,7 @@ export * from './states.ts';
 export * from './errors.ts';
 export * from './time.ts';
 export * from './ids.ts';
+export * from './http.ts';
 export * from './consent.ts';
 export * from './ports.ts';
 export * from './fakes.ts';

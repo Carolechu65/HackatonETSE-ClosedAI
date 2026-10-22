@@ -12,15 +12,17 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.ts\"",
     "test:contracts": "node scripts/contracts/check.mjs",
-    "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix functions run build",
+    "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix server run build && npm --prefix server test",
     "export:android": "expo export --platform android",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "brand:render": "node scripts/brand/render.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/dm-mono": "^0.4.2",
     "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo/metro-runtime": "~58.0.15",
     "@expo/ui": "~58.0.22",
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~58.0.17",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.14",
@@ -32,6 +34,7 @@
     "expo-router": "~58.0.25",
     "expo-secure-store": "~58.0.2",
     "expo-sqlite": "~58.0.13",
+    "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
     "expo-system-ui": "~58.0.6",
     "expo-widgets": "~58.0.22",

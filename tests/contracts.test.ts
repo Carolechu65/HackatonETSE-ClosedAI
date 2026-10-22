@@ -2,14 +2,19 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   OPERATION_PARSERS,
+  parseAlarmRequestDetail,
   parseAlarmRequestDocument,
+  parseAlarmRequestPage,
+  parseAuthResponse,
   parseAppError,
   parseCreateAlarmRequest,
+  parseMeResponse,
   parseOperationReceipt,
   parseRecipientDocument,
   parseReportSchedule,
   parseRespondToAlarm,
   parseScheduleDocument,
+  parseSyncPage,
   parseWithdrawAlarmRequest,
   type AppErrorPayload,
   type OperationName,
@@ -27,16 +32,22 @@ test('todos los fixtures válidos pasan los validadores de TypeScript', () => {
   }
 });
 
+const documentParsers: Record<string, (data: unknown) => unknown> = {
+  'schemas/operation-receipt.schema.json': parseOperationReceipt,
+  'schemas/app-error.schema.json': parseAppError,
+  'schemas/alarm-request.schema.json': parseAlarmRequestDocument,
+  'schemas/recipient.schema.json': parseRecipientDocument,
+  'schemas/schedule.schema.json': parseScheduleDocument,
+  'schemas/session.schema.json#/$defs/authResponse': parseAuthResponse,
+  'schemas/session.schema.json#/$defs/meResponse': parseMeResponse,
+  'schemas/sync-page.schema.json': parseSyncPage,
+  'schemas/alarm-request-page.schema.json': parseAlarmRequestPage,
+  'schemas/alarm-request-detail.schema.json': parseAlarmRequestDetail,
+};
+
 test('los documentos compartidos pasan sus validadores', () => {
-  const parsers: Record<string, (data: unknown) => unknown> = {
-    'schemas/operation-receipt.schema.json': parseOperationReceipt,
-    'schemas/app-error.schema.json': parseAppError,
-    'schemas/alarm-request.schema.json': parseAlarmRequestDocument,
-    'schemas/recipient.schema.json': parseRecipientDocument,
-    'schemas/schedule.schema.json': parseScheduleDocument,
-  };
   for (const entry of manifest.documents) {
-    const parser = parsers[entry.schema as string];
+    const parser = documentParsers[entry.schema as string];
     assert.ok(parser, `${entry.id}: sin validador para ${entry.schema}`);
     assert.doesNotThrow(() => parser(readContractsFile<unknown>(entry.file)), `${entry.id} debería ser válido`);
   }
@@ -45,6 +56,12 @@ test('los documentos compartidos pasan sus validadores', () => {
 test('los fixtures inválidos se rechazan con INVALID_ARGUMENT', () => {
   for (const entry of manifest.invalid) {
     const fixture = readContractsFile<unknown>(entry.file);
+    if (entry.schema) {
+      const parser = documentParsers[entry.schema];
+      assert.ok(parser, `${entry.id}: sin validador para ${entry.schema}`);
+      expectDomainError(() => parser(fixture), 'INVALID_ARGUMENT');
+      continue;
+    }
     const parse = entry.payloadSchema
       ? () => OPERATION_PARSERS[entry.operation as OperationName](fixture)
       : () => parseCreateAlarmRequest(fixture);

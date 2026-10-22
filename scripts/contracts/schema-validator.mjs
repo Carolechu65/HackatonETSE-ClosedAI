@@ -206,8 +206,12 @@ export async function createContractValidator(rootDir) {
     }
   }
 
-  async function validate(value, schemaPath) {
-    const schema = await loadSchema(schemaPath);
+  async function validate(value, schemaReference) {
+    const [schemaPath, pointer = ''] = schemaReference.split('#');
+    const schema = pointer && pointer !== '/'
+      ? pointerTarget(await loadSchema(schemaPath), pointer)
+      : await loadSchema(schemaPath);
+    if (!schema) throw new Error(`No se pudo resolver ${schemaReference}`);
     const errors = [];
     await validateSchemaKeywords(schema, value, schemaPath, '$', errors);
     return errors;
@@ -232,6 +236,8 @@ function matchesType(type, value) {
       return Number.isInteger(value);
     case 'number':
       return typeof value === 'number' && Number.isFinite(value);
+    case 'null':
+      return value === null;
     default:
       return typeof value === type;
   }

@@ -82,6 +82,12 @@ export const typography = {
     lineHeight: 12 * 1.55,
     color: colors.ntx,
   },
+  bodyStrong: {
+    fontFamily: fontFamily.bodyStrong,
+    fontSize: 12,
+    lineHeight: 12 * 1.55,
+    color: colors.ntx,
+  },
   bodyOnDoor: {
     fontFamily: fontFamily.body,
     fontSize: 12,

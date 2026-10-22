@@ -160,3 +160,68 @@ export type ScheduleDocument = Omit<ReportSchedulePayload, 'status'> & {
   status: SchedulingStatus;
   statusUpdatedAtEpochMs: number;
 };
+
+/* ------------------------------------------------------------------ *
+ * Transporte HTTPS: sesión, feed y wrappers de consulta (ADR-004 VPS) *
+ * ------------------------------------------------------------------ */
+
+export type PublicUser = {
+  uid: string;
+  email: string;
+  displayName?: string;
+};
+
+/** Token opaco de sesión. Vive en SecureStore; nunca en SQLite ni en una URL. */
+export type SessionToken = {
+  token: string;
+  expiresAtEpochMs: number;
+};
+
+export type AuthResponse = {
+  session: SessionToken;
+  user: PublicUser;
+};
+
+export type MeResponse = {
+  user: PublicUser;
+};
+
+export const SYNC_ENTITY_TYPES = [
+  'ALARM_REQUEST',
+  'RECIPIENT',
+  'SCHEDULE',
+  'TASK',
+  'GROUP_MEMBERSHIP',
+] as const;
+export type SyncEntityType = (typeof SYNC_ENTITY_TYPES)[number];
+
+export type SyncChange = {
+  sequence: number;
+  entityType: SyncEntityType;
+  entityId: string;
+  kind: 'UPSERT' | 'DELETE';
+  version: number;
+  updatedAtEpochMs: number;
+};
+
+/** `nextCursor: null` significa que el feed conocido termina aquí. */
+export type SyncPage = {
+  changes: SyncChange[];
+  nextCursor: string | null;
+};
+
+export type AlarmRequestListItem = {
+  request: AlarmRequestDocument;
+  recipient: RecipientDocument;
+};
+
+export type AlarmRequestPage = {
+  items: AlarmRequestListItem[];
+  nextCursor: string | null;
+};
+
+export type AlarmRequestDetail = {
+  request: AlarmRequestDocument;
+  recipient: RecipientDocument;
+  schedules: ScheduleDocument[];
+};

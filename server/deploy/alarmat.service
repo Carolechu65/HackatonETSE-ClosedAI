@@ -1,22 +1,27 @@
+# /etc/systemd/system/alarmat.service
+# Ajusta rutas y usuario. Secretos en /etc/alarmat/alarmat.env (modo 0600).
 [Unit]
-Description=alarmaT HTTP API
+Description=alarmaT API (Fastify + SQLite)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
+Type=simple
 User=alarmat
 Group=alarmat
 WorkingDirectory=/opt/alarmat/server
-EnvironmentFile=/etc/alarmat/server.env
-ExecStart=/usr/bin/node /opt/alarmat/server/dist/index.js
+EnvironmentFile=/etc/alarmat/alarmat.env
+ExecStartPre=/usr/bin/npm --prefix /opt/alarmat/server run migrate
+ExecStart=/usr/bin/node /opt/alarmat/server/dist/server/src/index.js
 Restart=on-failure
 RestartSec=3
-UMask=0077
 NoNewPrivileges=true
+PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-PrivateTmp=true
 ReadWritePaths=/var/lib/alarmat
+UMask=0077
+LimitNOFILE=4096
 
 [Install]
 WantedBy=multi-user.target

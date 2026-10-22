@@ -1,0 +1,13 @@
+{
+  "changes": [
+    {
+      "sequence": 41,
+      "entityType": "FACTURA",
+      "entityId": "req-001",
+      "kind": "UPSERT",
+      "version": 2,
+      "updatedAtEpochMs": 1792704000000
+    }
+  ],
+  "nextCursor": "cur-demo-2"
+}
