@@ -4,8 +4,8 @@ import type { ExpoConfig } from 'expo/config';
  * Configuración Expo (P1).
  *
  * Marca «Nevera Retro»: fuente vectorial en `assets/brand/*.svg`; los PNG se
- * regeneran con `node scripts/brand/render.mjs` (requiere rsvg-convert).
- * El icono activo es la campana; la alternativa `clock` está generada.
+ * regeneran con `node scripts/brand/render.mjs` (rsvg-convert o ImageMagick).
+ * Icono activo: casilla + X del logo P1; campana y reloj se conservan como alternativas.
  */
 const config: ExpoConfig = {
   name: 'alarmaT',
@@ -14,7 +14,7 @@ const config: ExpoConfig = {
   scheme: 'alarmat',
   // A subdirectory is only used by the VPS web export, never native deep links.
   experiments: { baseUrl: process.env.ALARMAT_WEB_BASE_PATH || undefined },
-  web: { output: 'single' },
+  web: { output: 'single', favicon: './assets/brand/favicon.png' },
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   icon: './assets/brand/icon.png',

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<!-- Generated from alarmat-logo.svg; original checkbox and X paths retained. -->
+<rect width="1024" height="1024" fill="#efe2c4"/>
+<g transform="translate(512 512) scale(0.99343284) translate(-581 -581)">
+<!-- Casilla de marcar: solo el perímetro, con esquinas redondeadas -->
+      <rect x="200" y="200" width="624" height="624" rx="132" fill="none" stroke="#bf3a2f" stroke-width="42"/>
+      <!-- La X, afinada como un trazo de pluma: más gruesa en el cruce y más fina
+           en los extremos. El trazo largo baja por la esquina inferior derecha y
+           se estira fuera de la casilla; girado 45°, es el asta de una t minúscula
+           y el corto, su barra. -->
+      <g fill="#2b2723">
+        <path d="M320.20 359.80 L487.25 536.75 L943.73 976.27 L976.27 943.73 L536.75 487.25 L359.80 320.20 Z"/>
+        <circle cx="340" cy="340" r="28"/>
+        <circle cx="960" cy="960" r="23"/>
+        <path d="M363.51 695.85 L535.33 535.33 L695.85 363.51 L661.49 328.15 L488.67 488.67 L328.15 661.49 Z"/>
+        <circle cx="678.17" cy="345.83" r="25"/>
+        <circle cx="345.83" cy="678.17" r="25"/>
+      </g>
+</g>
+</svg>
