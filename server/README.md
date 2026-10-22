@@ -2,7 +2,7 @@
 
 Implementación objetivo de P3: **Node.js 22 + TypeScript estricto + Fastify + better-sqlite3**, sesiones propias, autorización por recurso, operaciones idempotentes, feed incremental, outbox y agente de borradores. Sustituye el scaffold de `functions/`; no usa Firebase Auth/Firestore/RNFirebase.
 
-Estado: **implementación local verificada con 22 pruebas**. No hay VPS desplegado ni credenciales reales en este repositorio. La IA real es opcional; sin proveedor configurado el formulario manual sigue disponible (la API responde `TEMPORARY_UNAVAILABLE`).
+Estado de código: **API canónica e integración de producto verificadas con SQLite real temporal**. El estado del despliegue público se registra en la documentación de operaciones; las credenciales reales nunca forman parte del repositorio. La IA real es opcional; sin proveedor configurado el formulario manual sigue disponible (la API responde `TEMPORARY_UNAVAILABLE`).
 
 ## Arranque local
 
@@ -140,11 +140,11 @@ o un `draft` con `title`, `recipientUids`, `timeSpec` IANA/UTC, `mode`, `reason`
 
 - Contraseñas Argon2id (parámetros OWASP mínimos, reducibles solo en pruebas). Tokens de 32 bytes CSPRNG; solo se guarda SHA-256 en `sessions`.
 - SQL parametrizado, FK, `CHECK`, WAL, `foreign_keys=ON`, `busy_timeout=5000`, `synchronous=FULL` verificado al abrir.
-- CORS `*` para permitir la vista previa web local; no usa cookies ni credenciales. En producción puede restringirse en el reverse proxy.
+- CORS requiere `CORS_ORIGINS` explícito; no usa cookies ni credenciales de navegador. Escuchar solo en loopback detrás del proxy HTTPS.
 - Rate limiting en memoria: válido para **un proceso**, no para varias réplicas.
 - Sin refresh token, OAuth, recuperación de contraseña, SSE ni receipts de Expo en este corte.
 - Push Android sigue necesitando credenciales FCM como transporte de Expo; no se reintroduce Firebase como backend.
-- No se ha desplegado ningún VPS ni se han inventado hostname, dominio o credenciales.
+- Consultar la documentación de operaciones para el hostname y la evidencia del despliegue; las variables privadas se inyectan desde un archivo externo al repositorio.
 
 ## Despliegue y copias
 
@@ -169,7 +169,7 @@ npm --prefix server test            -> 22 tests, 22 pass, 0 fail
 
 Cubre: registro/login/logout y sesión revocada; invitaciones de un solo uso; límites; A/B/C con C sin acceso; un destinatario no puede ser suplantado; idempotencia y conflicto de payload; dos llamadas concurrentes; versión obsoleta; retirada invalida consentimiento; ACK antiguo no revive cancelación; epoch de dispositivo; sync con cursor por actor; revocación de membresía; outbox con reintento y token inválido; migraciones/PRAGMA/reinicio; agente con aclaración, ambigüedad, inyección, salida maliciosa y proveedor ausente.
 
-No acredita: push real en un teléfono, VPS desplegado, IA real con proveedor, ni alarma sonando (P4/P5/P6).
+La suite HTTP no acredita push real en un teléfono ni una alarma sonando (P4/P5/P6). El proveedor real se verifica por separado con la prueba opt-in; el despliegue tiene evidencia de operaciones independiente.
 
 ## Handoff
 
@@ -181,7 +181,7 @@ No acredita: push real en un teléfono, VPS desplegado, IA real con proveedor, n
 
 ## Pendiente explícito
 
-- Endpoints de tareas (`createTask`/`completeTask`/`cancelTask`) y materialización de recurrencia: solo existe la tabla y el contrato de la propuesta.
+- Tareas: crear/listar/completar/cancelar y retirar avisos vinculados ya están implementados. Recurrencia semanal y rotación de responsables de tareas siguen pendientes.
 - SSE, receipts Expo, retención/caducidad de cursores y snapshot incremental completo.
 - Transferencia de propiedad del grupo, recuperación de contraseña, refresh de sesión y verificación de correo.
 - Prueba HTTPS desde dispositivos y despliegue real.
@@ -189,3 +189,9 @@ No acredita: push real en un teléfono, VPS desplegado, IA real con proveedor, n
 ## Integración de producto y cliente móvil
 
 La [hoja de compatibilidad P2/P5/P6](docs/PRODUCT_INTEGRATION.md) documenta tareas idempotentes, proyección `/sync?projection=alarms`, aliases de UI, CORS explícito y OpenRouter real sobre estos mismos servicios y esta misma SQLite. Se aplica la migración 002 sin modificar la migración 001 publicada.
+
+## Auditoría previa a producción (2026-10-22)
+
+La migración `003_task_details.sql` añade `description` (hasta 2000 caracteres) y `category` (hasta 80) opcionales a las tareas; las filas existentes conservan sus datos y reciben `null`. Debe ejecutarse `migrate` antes de arrancar: la API rechaza esquemas anteriores a 003. Se prueban migración desde 002 y restauración de backup con integridad.
+
+Todas las mutaciones autenticadas de grupos, invitaciones, dispositivos, tareas y alarmas comparten `OPERATION_RATE_LIMIT` por cuenta; el agente conserva además su límite específico. Cerrar sesión sigue disponible al alcanzar el límite. Tras esperar al modelo, ambos endpoints del agente revalidan la sesión y pertenencia antes de guardar o devolver el resultado; un logout concurrente devuelve 401 sin completar el borrador. Las horas del borrador se validan al recibir la respuesta, no únicamente al iniciar la consulta.

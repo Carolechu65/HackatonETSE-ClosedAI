@@ -227,3 +227,30 @@ test('task idempotency/version checks and linked withdrawal share the canonical 
     await ctx.close();
   }
 });
+
+test('task descriptions and categories persist with optional legacy input and validation', async () => {
+  const ctx = await setupTest({ fileDatabase: true });
+  try {
+    const owner = await registerUser(ctx.app);
+    const groupId = await createGroup(ctx.app, owner);
+    const url = `/v1/groups/${groupId}/tasks`;
+    const headers = auth(owner.token);
+    const payload = { operationId: operationId(), title: 'Limpiar cocina',
+      description: 'Limpiar encimera y sacar la basura.', category: 'Limpieza' };
+    const created = await ctx.app.inject({ method: 'POST', url, headers, payload });
+    assert.equal(created.statusCode, 200, created.body);
+    assert.equal(created.json().description, payload.description);
+    assert.equal(created.json().category, payload.category);
+    assert.deepEqual((await ctx.app.inject({ method: 'POST', url, headers, payload })).json(), created.json());
+    const legacy = await ctx.app.inject({ method: 'POST', url, headers,
+      payload: { operationId: operationId(), title: 'Otra tarea' } });
+    assert.equal(legacy.json().description, null);
+    assert.equal(legacy.json().category, null);
+    const tasks = (await ctx.app.inject({ url, headers })).json().tasks;
+    assert.deepEqual(tasks.find((task: { id: string }) => task.id === created.json().id), created.json());
+    assert.equal((await ctx.app.inject({ method: 'POST', url, headers,
+      payload: { ...payload, operationId: operationId(), description: 'x'.repeat(2001) } })).statusCode, 400);
+    assert.equal((await ctx.app.inject({ method: 'POST', url, headers,
+      payload: { ...payload, operationId: operationId(), category: { unexpected: true } } })).statusCode, 400);
+  } finally { await ctx.close(); }
+});

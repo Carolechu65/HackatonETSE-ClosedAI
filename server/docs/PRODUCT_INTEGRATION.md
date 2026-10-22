@@ -43,3 +43,9 @@ RUN_LIVE_AGENT=true node --env-file=/ruta/privada/openrouter.env --test dist/ser
 ## Evidencia de integración local
 
 Node 22.23.4: build/typecheck correctos; suite canónica más producto/P5, 25 pruebas aprobadas y la prueba de proveedor real omitida por defecto. Prueba adicional Online Backup API + restauración/integrity_check/FK rollback aprobada. Prueba real opt-in del agente canónico con DeepSeek, 1/1 aprobada (~3,7 s, aclaración y borrador en dos llamadas). `npm run dev` usa `--experimental-transform-types` para las propiedades de constructor TypeScript existentes; imports de desarrollo verificados. El runtime Android usado por la integración P5 es falso explícito: estas pruebas no acreditan sonido físico, entrega push ni un despliegue HTTPS.
+
+## Auditoría de despliegue 2026-10-22
+
+Migración 003: las tareas admiten `description?: string|null` (máximo 2000) y `category?: string|null` (máximo 80) al crearlas y las devuelven como campos nulos o texto en sus DTO. No cambia el contrato de versiones, idempotencia o retirada de alarmas vinculadas. Las migraciones publicadas 001/002 no se modifican.
+
+La API aplica ahora un límite agregado por usuario a todas las mutaciones autenticadas, incluidos grupos, invitaciones y dispositivos. Ambos endpoints de agente rechazan respuestas si la sesión ha caducado o fue revocada mientras se consultaba al proveedor.

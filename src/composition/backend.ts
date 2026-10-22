@@ -11,6 +11,7 @@ export interface ProductBackend {
   request(path: string, method?: 'GET' | 'POST', body?: unknown): Promise<unknown>;
   submit(command: AlarmCommand): Promise<OperationReceipt>;
   reconcile(): Promise<void>;
+  selectGroup?(groupId: string): Promise<void>;
   decorate(alarms: ProductAlarm[]): ProductAlarm[];
   cached?(): { userId: string; alarms: ProductAlarm[]; lastSync: number | null };
   pending(): number;

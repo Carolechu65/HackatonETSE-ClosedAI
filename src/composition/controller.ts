@@ -72,6 +72,7 @@ export function createProductController(backendFactory: () => Promise<ProductBac
     ]);
     assertGeneration(expected); const userId = api.userId(); if (!userId) throw new DomainError('UNAUTHENTICATED', 'Inicia sesión de nuevo.');
     const user = record(record(profile).user ?? profile);
+    await api.selectGroup?.(groupId); assertGeneration(expected);
     set({ session: { userId, displayName: typeof user.displayName === 'string' ? user.displayName : 'Tú', mode: 'live' }, groups, groupId,
       members: decodeMembers(members), alarms: api.decorate(decodeProductAlarms(alarms, groupId, userId)), tasks: decodeTasks(tasks, groupId), lastSync: Date.now(), pending: api.pending(), error: null });
   }

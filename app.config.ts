@@ -14,8 +14,16 @@ const config: ExpoConfig = {
   scheme: 'alarmat',
   orientation: 'portrait',
   userInterfaceStyle: 'light',
+  // A subdirectory is only used by the VPS web export, never native deep links.
+  experiments: { baseUrl: process.env.ALARMAT_WEB_BASE_PATH || undefined },
+  web: { output: 'single' },
   icon: './assets/brand/icon.png',
-  android: { package: 'com.closedai.alarmat', adaptiveIcon: { foregroundImage: './assets/brand/adaptive-icon.png', backgroundColor: '#efe2c4' } },
+  android: {
+    package: 'com.closedai.alarmat',
+    // A restored native alarm store must never execute an old device's consent.
+    allowBackup: false,
+    adaptiveIcon: { foregroundImage: './assets/brand/adaptive-icon.png', backgroundColor: '#efe2c4' },
+  },
   plugins: [
     'expo-router',
     ['expo-splash-screen', { image: './assets/brand/splash-icon.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#efe2c4' }],
@@ -47,6 +55,7 @@ const config: ExpoConfig = {
       },
     ],
     './plugins/with-widget-links.cjs',
+    './plugins/with-release-signing.cjs',
   ],
 };
 

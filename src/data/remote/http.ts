@@ -47,16 +47,19 @@ function retryAfterMs(value: string | null, now: number): number | undefined {
 export class HttpClient {
   private readonly options: HttpClientOptions;
   private readonly origin: string;
+  private readonly basePath: string;
   private readonly timeoutMs: number;
   private readonly maxBytes: number;
   constructor(options: HttpClientOptions) {
     let url: URL;
     try { url = new URL(options.baseUrl); } catch { throw remoteError('INVALID_ARGUMENT'); }
     const localHttp = options.allowLocalHttp === true && url.protocol === 'http:' && ['localhost', '127.0.0.1', '10.0.2.2'].includes(url.hostname);
-    if ((url.protocol !== 'https:' && !localHttp) || url.username || url.password || url.search || url.hash || !/^\/?$/.test(url.pathname)) {
+    if ((url.protocol !== 'https:' && !localHttp) || url.username || url.password || url.search || url.hash
+      || !/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/.test(url.pathname)) {
       throw remoteError('INVALID_ARGUMENT');
     }
     this.origin = url.origin;
+    this.basePath = url.pathname.replace(/\/$/, '');
     this.options = options;
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.maxBytes = options.maxResponseBytes ?? 1_048_576;
@@ -74,7 +77,9 @@ export class HttpClient {
 
   private async request(path: string, method: 'GET' | 'POST', body: unknown, guard: SessionGuard, lease?: SessionLease): Promise<unknown> {
     guard.assertCurrent();
-    if (!/^\/v1\/[A-Za-z0-9/_.-]+(?:\?[^#\s]*)?$/.test(path) || path.includes('\\') || new URL(path, this.origin).origin !== this.origin) {
+    if (!/^\/v1\/[A-Za-z0-9/_.-]+(?:\?[^#\s]*)?$/.test(path) || path.includes('\\')
+      || path.split('?')[0]!.split('/').some(segment => segment === '.' || segment === '..')
+      || new URL(path, this.origin).origin !== this.origin) {
       throw remoteError('INVALID_ARGUMENT');
     }
     let encoded: string | undefined;
@@ -93,7 +98,7 @@ export class HttpClient {
       const request: RequestInit & { cache: 'no-store' } = {
         method, headers, body: encoded, signal: controller.signal, redirect: 'error', credentials: 'omit', cache: 'no-store',
       };
-      const response = await (this.options.fetch ?? globalThis.fetch)(`${this.origin}${path}`, request);
+      const response = await (this.options.fetch ?? globalThis.fetch)(`${this.origin}${this.basePath}${path}`, request);
       if (controller.signal.aborted) throw remoteError('TEMPORARY_UNAVAILABLE');
       guard.assertCurrent();
       if (response.redirected || (response.status >= 300 && response.status < 400)) throw remoteError('INVALID_ARGUMENT');

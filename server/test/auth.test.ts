@@ -120,3 +120,21 @@ test('límite de intentos de autenticación', async () => {
     await ctx.close();
   }
 });
+
+test('authenticated mutations share a limit across groups and devices', async () => {
+  const ctx = await setupTest({ config: { operationRateLimit: { max: 2, windowMs: 60_000 } } });
+  try {
+    const user = await registerUser(ctx.app);
+    const headers = auth(user.token);
+    assert.equal((await ctx.app.inject({ method: 'POST', url: '/v1/groups', headers,
+      payload: { name: 'Piso', timeZone: 'Europe/Madrid' } })).statusCode, 201);
+    assert.equal((await ctx.app.inject({ method: 'POST', url: '/v1/devices', headers,
+      payload: { platform: 'android' } })).statusCode, 201);
+    const blocked = await ctx.app.inject({ method: 'POST', url: '/v1/groups', headers,
+      payload: { name: 'Segundo', timeZone: 'Europe/Madrid' } });
+    assert.equal(blocked.statusCode, 429);
+    assert.ok(blocked.headers['retry-after']);
+    assert.equal((await ctx.app.inject({ url: '/v1/groups', headers })).json().groups.length, 1);
+    assert.equal((await ctx.app.inject({ method: 'POST', url: '/v1/auth/logout', headers })).statusCode, 200);
+  } finally { await ctx.close(); }
+});

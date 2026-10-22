@@ -209,3 +209,29 @@ test('preserves allowed domain subcodes and only exposes bounded Retry-After met
     fetch: async () => new Response('', { status: 503, headers: { 'Retry-After': 'Thu, 01 Jan 1970 00:00:30 GMT' } }) });
   await assert.rejects(http.authenticatedJson('/v1/sync', 'GET'), { code: 'TEMPORARY_UNAVAILABLE', details: { retryAfterMs: 30_000 } });
 });
+
+test('reverse proxy base path survives anonymous login and authenticated API calls', async () => {
+  for (const baseUrl of ['https://app.example.test/alarmat/api', 'https://app.example.test/alarmat/api/']) {
+    const requests: { url: string; init: RequestInit }[] = [];
+    const sessions = new SessionManager(storage(), clock);
+    const http = new HttpClient({ baseUrl, sessions, fetch: async (url, init) => {
+      requests.push({ url, init });
+      return Response.json(url.endsWith('/login') ? credentials : { userId: 'ana' });
+    } });
+    const auth = new HttpAuthClient(http, sessions, codec);
+    await auth.login({ example: 'test-only' });
+    await auth.me();
+    await http.authenticatedJson('/v1/sync?cursor=opaque%2Ftoken', 'GET');
+    assert.deepEqual(requests.map(request => request.url), [
+      'https://app.example.test/alarmat/api/v1/auth/login',
+      'https://app.example.test/alarmat/api/v1/auth/me',
+      'https://app.example.test/alarmat/api/v1/sync?cursor=opaque%2Ftoken',
+    ]);
+    assert.equal((requests[0]!.init.headers as Record<string, string>).Authorization, undefined);
+    assert.equal((requests[1]!.init.headers as Record<string, string>).Authorization, 'Bearer opaque-secret');
+    for (const path of ['/v1/../../outside', '/v1/./auth/me', '//another.example/v1/auth/me']) {
+      await assert.rejects(http.authenticatedJson(path, 'GET'), { code: 'INVALID_ARGUMENT' });
+    }
+    assert.equal(requests.length, 3);
+  }
+});

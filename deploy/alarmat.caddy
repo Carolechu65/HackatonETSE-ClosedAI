@@ -1,0 +1,15 @@
+# Import only inside gex-dashboard.hopto.org. Other applications retain their routes.
+redir /alarmat /alarmat/ 308
+handle_path /alarmat/api/* {
+    reverse_proxy 127.0.0.1:18787
+}
+handle_path /alarmat/* {
+    root * /opt/alarmat/current/web
+    encode zstd gzip
+    header X-Content-Type-Options nosniff
+    header Referrer-Policy same-origin
+    header X-Frame-Options DENY
+    header Cache-Control "no-cache"
+    try_files {path} /index.html
+    file_server
+}

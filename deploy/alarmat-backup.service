@@ -1,0 +1,18 @@
+[Unit]
+Description=Consistent AlarmaT SQLite backup with integrity validation
+After=alarmat.service
+
+[Service]
+Type=oneshot
+User=alarmat
+Group=alarmat
+WorkingDirectory=/opt/alarmat/current/server
+ExecStart=/usr/bin/bash /opt/alarmat/current/deploy/backup.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/alarmat
+UMask=0077
+MemoryMax=192M
+CPUQuota=25%

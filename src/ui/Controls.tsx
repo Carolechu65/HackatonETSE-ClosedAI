@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, typography, layout, paper } from './theme.ts';
 
@@ -29,13 +29,15 @@ export function Message({ text, error = false }: { text: string | null; error?: 
 }
 export function useAction() {
   const [busy, setBusy] = useState(false);
+  const locked = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const run = async (action: () => Promise<void>) => {
-    if (busy) return;
+    if (locked.current) return;
+    locked.current = true;
     setBusy(true); setError(null);
     try { await action(); }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar. Vuelve a intentarlo.'); }
-    finally { setBusy(false); }
+    finally { locked.current = false; setBusy(false); }
   };
   return { busy, error, run, setError };
 }

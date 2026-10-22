@@ -100,6 +100,17 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const operationLimiter = new FixedWindowLimiter(config.operationRateLimit.max, config.operationRateLimit.windowMs);
   const agentLimiter = new FixedWindowLimiter(config.agentRateLimit.max, config.agentRateLimit.windowMs);
 
+  // Cover all authenticated writes, including groups/invitations/devices and
+  // aliases. Endpoint-specific checks alone left cheap unbounded DB writes.
+  app.addHook('preHandler', async (request) => {
+    const path = request.routeOptions.url ?? '';
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+      && path.startsWith('/v1/') && !path.startsWith('/v1/auth/')) {
+      const actor = requireAuth(db, request);
+      operationLimiter.check(`write:${actor.uid}`);
+    }
+  });
+
   app.get('/health', async () => ({
     status: 'ok',
     service: 'alarmat-server',
@@ -202,7 +213,6 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.post('/v1/operations/:operationName', async (request) => {
     const actor = requireAuth(db, request);
-    operationLimiter.check(`operation:${actor.uid}`);
     const params = request.params as { operationName: string };
     if (!isOperationName(params.operationName)) {
       throw new DomainError('INVALID_ARGUMENT', 'Operación desconocida.');
@@ -298,8 +308,8 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.post('/v1/invitations/accept',async request=>{const actor=requireAuth(db,request);return acceptInvitation(db,actor.uid,readToken(asRecord(request.body).token));});
   app.route({method:['POST','PUT'],url:'/v1/devices/primary',handler:async request=>{const actor=requireAuth(db,request);return setPrimaryDevice(db,actor,{deviceId:asRecord(request.body).deviceId});}});
   app.get('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return listTasks(db,actor.uid,readIdentifier(groupId,'groupId'));});
-  app.post('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);operationLimiter.check(`task:${actor.uid}`);const {groupId}=request.params as {groupId:string};return createTask(db,actor.uid,readIdentifier(groupId,'groupId'),request.body);});
-  app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);operationLimiter.check(`task:${actor.uid}`);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});
+  app.post('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return createTask(db,actor.uid,readIdentifier(groupId,'groupId'),request.body);});
+  app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});
   app.post('/v1/agent/draft',async request=>{const actor=requireAuth(db,request);agentLimiter.check(`agent:${actor.uid}`);const body=asRecord(request.body);if(Object.keys(body).some(key=>!['groupId','text','conversationId'].includes(key)))throw new DomainError('INVALID_ARGUMENT','Campos del asistente inválidos.');const result=await proposeAlarm(db,actor,{groupId:body.groupId,text:body.text,...(body.conversationId?{sessionId:body.conversationId}:{})},config.agent,options.agentProvider);requireAuth(db,request);if(result.status==='needs_clarification')return {conversationId:result.sessionId,status:result.status,question:result.question,missingFields:result.missingFields};return {conversationId:result.sessionId,status:'draft',draft:{title:result.draft.title,recipientUids:result.draft.recipientUids,timeSpec:result.draft.timeSpec,mode:result.draft.mode},requiresSenderReview:true,requiresRecipientConsent:true};});
   return app;
 }

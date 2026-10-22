@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useProduct } from '../../composition/ProductProvider.tsx';
 import type { AssistantReply } from '../../composition/product.ts';
@@ -14,10 +14,12 @@ export function AssistantScreen() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [reply, setReply] = useState<AssistantReply | null>(null);
   const [reviewing, setReviewing] = useState(false);
-  const [conversationGroup, setConversationGroup] = useState(state.groupId);
+  const scope = `${state.session?.userId ?? ''}:${state.groupId ?? ''}`;
+  const [conversationGroup, setConversationGroup] = useState(scope);
   const locked = useRef(false);
   const action = useAction();
-  const sameGroup = state.groupId === conversationGroup;
+  const sameGroup = scope === conversationGroup;
+  useEffect(() => { setTurns([]); setReply(null); setText(''); setReviewing(false); setConversationGroup(scope); }, [scope]);
   const send = () => {
     const message = text.trim();
     if (!message || locked.current || state.session?.mode !== 'live') return;
@@ -26,7 +28,7 @@ export function AssistantScreen() {
       if (!state.groupId) throw new Error('Elige tu piso antes de pedir una propuesta.');
       const answer = await client.askAssistant(message, sameGroup ? reply?.conversationId : undefined);
       setTurns(previous => [...(sameGroup ? previous : []), { role: 'user', text: message }, { role: 'assistant', text: answer.message }]);
-      setConversationGroup(state.groupId); setReply(answer); setText('');
+      setConversationGroup(scope); setReply(answer); setText('');
     }).finally(() => { locked.current = false; });
   };
   if (reviewing && sameGroup && reply?.draft) return <AlarmCreateScreen initialDraft={reply.draft} onCancel={() => setReviewing(false)} />;
@@ -40,7 +42,7 @@ export function AssistantScreen() {
       <Sheet><Field label={reply?.kind === 'needs_clarification' && sameGroup ? 'Completa el dato que falta' : '¿Qué quieres recordar?'} multiline value={text} onChangeText={setText} maxLength={2000} editable={!action.busy && state.session?.mode === 'live'} placeholder="Recuérdale a Ana sacar la basura mañana a las 21:00." hint="No se enviará ninguna propuesta hasta que la revises y confirmes." /></Sheet>
       <Message text={action.error} error />
       <PrimaryAction label={action.busy ? 'Preparando respuesta…' : 'Consultar al compañero'} disabled={action.busy || !text.trim() || !state.groupId || state.session?.mode !== 'live'} onPress={send} />
-      {turns.length ? <Action disabled={action.busy} onPress={() => { setTurns([]); setReply(null); setText(''); setConversationGroup(state.groupId); }}>Empezar otra conversación</Action> : null}
+      {turns.length ? <Action disabled={action.busy} onPress={() => { setTurns([]); setReply(null); setText(''); setConversationGroup(scope); }}>Empezar otra conversación</Action> : null}
     </View>
   </AppShell>;
 }

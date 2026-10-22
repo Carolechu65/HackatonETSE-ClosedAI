@@ -23,6 +23,8 @@ export type HouseholdTask = {
   id: string;
   groupId: string;
   title: string;
+  description: string | null;
+  category: string | null;
   assigneeUid: string | null;
   createdByUid: string;
   activateAtEpochMs: number | null;
@@ -36,6 +38,8 @@ type TaskRow = {
   id: string;
   group_id: string;
   title: string;
+  description: string | null;
+  category: string | null;
   assigned_to: string | null;
   created_by_uid: string;
   activate_at_epoch_ms: number | null;
@@ -49,6 +53,8 @@ const dto = (r: TaskRow): HouseholdTask => ({
   id: r.id,
   groupId: r.group_id,
   title: r.title,
+  description: r.description,
+  category: r.category,
   assigneeUid: r.assigned_to,
   createdByUid: r.created_by_uid,
   activateAtEpochMs: r.activate_at_epoch_ms,
@@ -115,6 +121,8 @@ export function createTask(
   assertNoExtraKeys(data, [
     'operationId',
     'title',
+    'description',
+    'category',
     'assigneeUid',
     'activateAtEpochMs',
     'dueAtEpochMs',
@@ -124,6 +132,8 @@ export function createTask(
       requireActiveMembership(db, groupId, user);
       return operation(db, user, 'createTask', { ...data, groupId }, now, () => {
         const title = readString(data.title, 'title', { max: 120 }),
+          description = data.description == null || data.description === '' ? null : readString(data.description, 'description', { max: 2000 }),
+          category = data.category == null || data.category === '' ? null : readString(data.category, 'category', { max: 80 }),
           assignee =
             data.assigneeUid === null || data.assigneeUid === undefined
               ? null
@@ -136,8 +146,8 @@ export function createTask(
           throw new DomainError('INVALID_ARGUMENT', 'Vencimiento anterior a activación.');
         const id = generateId('task');
         db.prepare(
-          "INSERT INTO tasks(id,group_id,title,assigned_to,activate_at_epoch_ms,due_at_epoch_ms,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid) VALUES (?,?,?,?,?,?,'PENDING',1,?,?,?)",
-        ).run(id, groupId, title, assignee, activate, due, now, now, user);
+          "INSERT INTO tasks(id,group_id,title,assigned_to,activate_at_epoch_ms,due_at_epoch_ms,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid,description,category) VALUES (?,?,?,?,?,?,'PENDING',1,?,?,?,?,?)",
+        ).run(id, groupId, title, assignee, activate, due, now, now, user, description, category);
         return dto(db.prepare('SELECT * FROM tasks WHERE id=?').get(id) as TaskRow);
       });
     })

@@ -123,7 +123,7 @@ export function assertSchemaReady(db: Db): void {
     .get();
   if (!table) throw new Error('La base no tiene migraciones aplicadas. Ejecuta npm --prefix server run migrate.');
   const row = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number | null };
-  if (!row.version || row.version < 2) throw new Error('La base requiere migración 002. Ejecuta npm --prefix server run migrate.');
+  if (!row.version || row.version < 3) throw new Error('La base requiere migración 003. Ejecuta npm --prefix server run migrate.');
 }
 
 export function integrityCheck(db: Db): string {

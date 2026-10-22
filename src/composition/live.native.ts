@@ -7,26 +7,34 @@ import { productWireCodec } from './wire.ts';
 import { apiBaseUrlFromEnv } from '../config/api.ts';
 import { createIdGenerator } from '../domain/ids.ts';
 import { clearWidget, syncWidgetForSession } from '../widgets/publisher.ts';
-import { WIDGET_SNAPSHOT_SCHEMA_VERSION, type WidgetSnapshot } from '../widgets/snapshot.ts';
+import { projectSelectedWidget } from './widgetProjection.ts';
 import type { ProductBackend } from './backend.ts';
-import type { DataSnapshot } from '../data/repositories/alarmRepository.ts';
+import type { DataSnapshot, PersistedWidgetSnapshot } from '../data/repositories/alarmRepository.ts';
 
 export async function createLiveBackend(): Promise<ProductBackend> {
   let deviceId = await SecureStore.getItemAsync('alarmat.installation.v1');
   if (!deviceId) { deviceId = createIdGenerator().next('device'); await SecureStore.setItemAsync('alarmat.installation.v1', deviceId); }
   const deviceIdForUser = (userId: string) => `${deviceId}.${userId}`;
   const checkPublication = (result: ReturnType<typeof clearWidget>) => { if (!result.published && result.reason === 'native_error') throw new Error('No se pudo limpiar o actualizar el widget del dispositivo. Vuelve a intentarlo.'); };
+  let selectedScope: { userId: string; groupId: string | null } | null = null;
+  let widgetProjection: PersistedWidgetSnapshot | null = null;
+  const publishSelectedWidget = (snapshot: PersistedWidgetSnapshot) => {
+    const groupId = selectedScope?.userId === snapshot.userId ? selectedScope.groupId : null;
+    const widget = projectSelectedWidget(snapshot, groupId);
+    if (!widget) { checkPublication(clearWidget(Date.now())); return; }
+    checkPublication(syncWidgetForSession(widget, widget.scope, Date.now()));
+  };
   const runtime = createAlarmRuntime(); const notificationRuntime = createNotificationRuntime();
   const client = await startMobileServices({
     baseUrl: apiBaseUrlFromEnv({ allowLocalHttp: __DEV__ }), allowLocalHttp: __DEV__, codec: productWireCodec, deviceId, deviceIdForUser, runtime, notificationRuntime,
     async publishWidget(snapshot) {
-      if (!snapshot) { checkPublication(clearWidget(Date.now())); return; }
-      const group = snapshot.groups[0]; if (!group) { checkPublication(clearWidget(Date.now())); return; }
-      const scope = { userId: snapshot.userId, groupId: group.groupId };
-      const widget: WidgetSnapshot = { schemaVersion: WIDGET_SNAPSHOT_SCHEMA_VERSION, scope, generatedAtEpochMs: snapshot.generatedAtEpochMs,
-        nextAlarm: group.nextAlarm ? { requestId: group.nextAlarm.requestId, occurrenceId: group.nextAlarm.occurrenceId, title: group.nextAlarm.title, scheduledAtEpochMs: group.nextAlarm.effectiveAtEpochMs, mode: group.nextAlarm.mode } : null,
-        counts: { pendingProposals: group.pendingProposals, pendingActivations: group.pendingActivation, withdrawalPending: group.cancelPending } };
-      checkPublication(syncWidgetForSession(widget, scope, Date.now()));
+      widgetProjection = snapshot;
+      if (!snapshot) { selectedScope = null; checkPublication(clearWidget(Date.now())); return; }
+      if (selectedScope?.userId !== snapshot.userId) {
+        const groupId = await SecureStore.getItemAsync(`alarmat.widgetGroup.${snapshot.userId}`);
+        selectedScope = { userId: snapshot.userId, groupId };
+      }
+      publishSelectedWidget(snapshot);
     },
   });
   let snapshot: DataSnapshot | null = null; let unsubscribeRepository: (() => void) | undefined;
@@ -46,6 +54,13 @@ export async function createLiveBackend(): Promise<ProductBackend> {
     request: (path, method, body) => client.request(path, method, body),
     async submit(command) { const repository = client.getRepository(); if (!repository) throw new Error('Inicia sesión para continuar.'); return repository.submit(command); },
     async reconcile() { if (client.view().session?.authenticated && registeredUserId !== client.view().session?.userId) await registerInstallation(); await client.sync.reconcile(); },
+    async selectGroup(groupId) {
+      const userId = client.view().session?.userId;
+      if (!userId) return;
+      selectedScope = { userId, groupId };
+      if (widgetProjection?.userId === userId) publishSelectedWidget(widgetProjection);
+      await SecureStore.setItemAsync(`alarmat.widgetGroup.${userId}`, groupId);
+    },
     decorate(alarms) {
       return alarms.map(alarm => {
         const view = snapshot?.alarms.find(item => item.alarm.requestId === alarm.requestId && item.alarm.recipient.uid === snapshot?.userId);

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { integrityCheck, migrate, openDatabase } from '../src/persistence/db.ts';
+import { assertSchemaReady, findMigrationsDir, integrityCheck, migrate, openDatabase } from '../src/persistence/db.ts';
 import { auth, registerUser, setupTest } from './helpers.ts';
 
 test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', () => {
@@ -12,8 +12,8 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
   try {
     const db = openDatabase(path);
     const first = migrate(db);
-    assert.equal(first.schemaVersion, 2);
-    assert.equal(first.applied.length, 2);
+    assert.equal(first.schemaVersion, 3);
+    assert.equal(first.applied.length, 3);
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
     assert.equal(db.pragma('busy_timeout', { simple: true }), 5000);
     assert.equal(db.pragma('synchronous', { simple: true }), 2);
@@ -22,7 +22,7 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
 
     const second = migrate(db);
     assert.equal(second.applied.length, 0);
-    assert.equal(second.alreadyApplied, 2);
+    assert.equal(second.alreadyApplied, 3);
 
     db.prepare(
       `INSERT INTO users (id, email, password_hash, display_name, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)
@@ -45,6 +45,32 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
 function reintegrity(db: ReturnType<typeof openDatabase>): string {
   return integrityCheck(db);
 }
+
+test('migration 003 preserves existing tasks and requires migration before serving', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'alarmat-upgrade-'));
+  const legacy = join(dir, 'migrations');
+  mkdirSync(legacy);
+  for (const file of ['001_init.sql', '002_product_integration.sql'])
+    copyFileSync(join(findMigrationsDir(), file), join(legacy, file));
+  const db = openDatabase(join(dir, 'legacy.db'));
+  try {
+    migrate(db, legacy);
+    db.exec(`
+      INSERT INTO users(id,email,password_hash,display_name,device_epoch,created_at_epoch_ms,updated_at_epoch_ms)
+        VALUES('usr-legacy','legacy@example.test','unused','Legacy',0,1,1);
+      INSERT INTO groups(id,name,time_zone,created_by,created_at_epoch_ms,updated_at_epoch_ms)
+        VALUES('grp-legacy','Piso','Europe/Madrid','usr-legacy',1,1);
+      INSERT INTO tasks(id,group_id,title,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid)
+        VALUES('task-legacy','grp-legacy','Tarea anterior','PENDING',1,1,1,'usr-legacy');
+    `);
+    assert.throws(() => assertSchemaReady(db), /003/);
+    assert.equal(migrate(db).applied.length, 1);
+    assertSchemaReady(db);
+    assert.deepEqual(db.prepare('SELECT title,description,category FROM tasks WHERE id=?').get('task-legacy'),
+      { title: 'Tarea anterior', description: null, category: null });
+    assert.equal(integrityCheck(db), 'ok');
+  } finally { db.close(); rmSync(dir, { recursive: true, force: true }); }
+});
 
 test('el dispositivo principal y su epoch controlan los acuses', async () => {
   const ctx = await setupTest();

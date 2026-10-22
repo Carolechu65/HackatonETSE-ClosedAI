@@ -274,6 +274,13 @@ export async function proposeAlarm(
       throw error;
     }
 
+    // Model calls yield to other requests: logout/expiry must take effect before
+    // storing or returning generated content, on both public agent endpoints.
+    const completedAtEpochMs = Date.now();
+    const activeSession = db.prepare(
+      'SELECT 1 FROM sessions WHERE id=? AND user_id=? AND revoked_at_epoch_ms IS NULL AND expires_at_epoch_ms>?',
+    ).get(actor.sessionId, actor.uid, completedAtEpochMs);
+    if (!activeSession) throw new DomainError('UNAUTHENTICATED', 'Sesión no válida o caducada.');
     requireActiveMembership(db,input.groupId,actor.uid);
     const type = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>).type : undefined;
     try {
@@ -289,7 +296,7 @@ export async function proposeAlarm(
         };
       }
       if (type === 'draft') {
-        const draft = parseDraft(raw, input.groupId, actor.uid, db, nowEpochMs);
+        const draft = parseDraft(raw, input.groupId, actor.uid, db, completedAtEpochMs);
         db.prepare("UPDATE agent_sessions SET status = 'COMPLETED', collected_json = ?, updated_at_epoch_ms = ? WHERE id = ?")
           .run(JSON.stringify({ conversation, draft }), nowEpochMs, session.id);
         return {

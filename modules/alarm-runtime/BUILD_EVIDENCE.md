@@ -26,3 +26,22 @@ cd android
 Usar Node 22 y JDK compatibles con el Gradle del proyecto. La validación aislada adicional se ejecutó con `org.jetbrains.kotlin.cli.jvm.K2JVMCompiler`, `-jvm-target 17` y las dependencias reales descritas arriba. El artefacto local de comprobación quedó en `/home/kripta/.local/share/alarmat-kotlin-check/alarm-runtime-checked.jar`; no es un APK ni un entregable instalable.
 
 Los tests y fuentes están versionados dentro del proyecto; no dependen de archivos en `/tmp`. Las pruebas de reglas no acreditan por sí solas durabilidad de SharedPreferences, ejecución del servicio o entrega del sistema. Para esos recorridos sigue pendiente la matriz de `docs/qa/ALARM_RUNTIME.md`, usando las nuevas semánticas de parada y revisión descritas en el README del módulo.
+
+## Intento de release para producción, 22-10-2026
+
+- Prebuild Android completo correcto, con autolinking `alarm-runtime`,
+  `expo-widgets` y `AlarmaTWidgetProvider` real, firma release externa y backups
+  desactivados para impedir restaurar el registro de otro dispositivo.
+- 22/22 pruebas TS de widgets y notificaciones aprobadas con Node 22.
+- Gradle 9.4.1, SDK 37.0, NDK 27.1, JDK 25 (toolchain 17), ARM64, un worker,
+  heap 768 MB, metaspace 384 MB y Kotlin en proceso. El build llegó a
+  `react-native-worklets:configureCMakeRelWithDebInfo[arm64-v8a]`.
+- **Sin APK**: el guard de disco terminó ese daemon al consumir la reserva del VPS.
+  Se retiró únicamente el NDK descargado en ese intento, recuperando unos 2 GB;
+  los servicios y archivos ajenos se conservaron. El fallo observado no se
+  presenta como prueba de error de Kotlin ni como ensamblado completado.
+- `adb devices` devolvió lista vacía; sonido/launcher/reinicio siguen pendientes
+  de teléfono físico. El API final confirmado es
+  `https://gex-dashboard.hopto.org/alarmat/api`.
+- Flujo reproducible y fallback GitHub Actions: `docs/ANDROID_RELEASE.md`.
+  El workflow está preparado; no fue ejecutado ni generó un artifact todavía.

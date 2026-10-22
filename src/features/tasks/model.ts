@@ -21,6 +21,8 @@ export type HouseholdTask = {
   readonly id: string;
   readonly groupId: string;
   readonly title: string;
+  readonly description?: string | null;
+  readonly category?: string | null;
   /** UID del miembro activo; `null` si aún no tiene responsable. */
   readonly assigneeUid: string | null;
   readonly createdByUid: string;
@@ -40,6 +42,8 @@ export type TaskMember = {
 
 export type TaskDraft = {
   readonly title: string;
+  readonly description?: string | null;
+  readonly category?: string | null;
   readonly assigneeUid: string | null;
   readonly activateAtEpochMs: number | null;
   readonly dueAtEpochMs: number | null;
@@ -99,6 +103,13 @@ export function normalizeTaskTitle(value: unknown): string {
  */
 export function validateTaskDraft(draft: TaskDraft, members: readonly TaskMember[]): TaskDraft {
   const title = normalizeTaskTitle(draft.title);
+  const metadata = (value: unknown, limit: number, label: string): string | null => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'string' || value.trim().length > limit) throw new DomainError('INVALID_ARGUMENT', `${label} inválida (máximo ${limit} caracteres).`);
+    return value.trim() || null;
+  };
+  const description = metadata(draft.description, 2000, 'Descripción');
+  const category = metadata(draft.category, 80, 'Categoría');
 
   if (draft.assigneeUid !== null) {
     if (typeof draft.assigneeUid !== 'string' || draft.assigneeUid.length === 0) {
@@ -121,6 +132,8 @@ export function validateTaskDraft(draft: TaskDraft, members: readonly TaskMember
 
   return {
     title,
+    description,
+    category,
     assigneeUid: draft.assigneeUid,
     activateAtEpochMs: draft.activateAtEpochMs,
     dueAtEpochMs: draft.dueAtEpochMs,
@@ -145,6 +158,8 @@ export function createTask(input: {
     id: input.id,
     groupId: input.groupId,
     title: draft.title,
+    description: draft.description,
+    category: draft.category,
     assigneeUid: draft.assigneeUid,
     createdByUid: input.createdByUid,
     activateAtEpochMs: draft.activateAtEpochMs,
@@ -295,13 +310,14 @@ export function describeTaskDue(
   const due = localDate(task.dueAtEpochMs, timeZone);
   const today = localDate(nowEpochMs, timeZone);
   const time = localTime(task.dueAtEpochMs, timeZone);
-  if (due === today) return `Vence hoy · ${time}`;
+  if (task.status !== 'pending') return `Fecha límite: ${due} · ${time}`;
+  if (due === today) return `${task.dueAtEpochMs < nowEpochMs ? 'Venció' : 'Vence'} hoy · ${time}`;
   const dueDay = Date.parse(`${due}T00:00:00Z`);
   const todayDay = Date.parse(`${today}T00:00:00Z`);
   const diff = Math.round((dueDay - todayDay) / 86_400_000);
   if (diff === 1) return `Vence mañana · ${time}`;
-  if (diff < 0) return `Venció el ${due.slice(8, 10)} · ${time}`;
-  return `Vence el ${due.slice(8, 10)} · ${time}`;
+  if (diff < 0) return `Venció el ${due} · ${time}`;
+  return `Vence el ${due} · ${time}`;
 }
 
 /** Inicial para avatar cuando el miembro no tiene nombre visible resuelto por P2. */

@@ -1,0 +1,87 @@
+name: Android release candidate APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'modules/**'
+      - 'plugins/**'
+      - 'assets/**'
+      - 'app.config.ts'
+      - 'index.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'babel.config.*'
+      - 'metro.config.*'
+      - 'scripts/android-release.sh'
+      - '.github/workflows/android-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-main
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPO_PUBLIC_API_URL: https://gex-dashboard.hopto.org/alarmat/api
+      ALARMAT_ANDROID_KEYSTORE: ${{ runner.temp }}/alarmat-release.jks
+      ALARMAT_ANDROID_STORE_PASSWORD: candidate-only
+      ALARMAT_ANDROID_KEY_ALIAS: alarmat-build-candidate
+      ALARMAT_ANDROID_KEY_PASSWORD: candidate-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # This identity only transports a valid APK artifact. The VPS re-signs it
+      # with the permanent production key before publishing any download link.
+      - name: Generate disposable candidate signing identity
+        run: |
+          umask 077
+          keytool -genkeypair -keystore "$ALARMAT_ANDROID_KEYSTORE" \
+            -storepass:env ALARMAT_ANDROID_STORE_PASSWORD \
+            -keypass:env ALARMAT_ANDROID_KEY_PASSWORD \
+            -alias "$ALARMAT_ANDROID_KEY_ALIAS" -keyalg RSA -keysize 3072 \
+            -validity 2 -dname 'CN=AlarmaT Build Candidate, O=ClosedAI, C=ES'
+      - name: Install Android toolchain
+        run: |
+          sdkmanager --install 'cmdline-tools;latest'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            'platforms;android-37.0' 'build-tools;37.0.0' 'build-tools;36.0.0' \
+            'ndk;27.1.12297006' 'cmake;3.22.1'
+      - name: Install and check application
+        run: npm ci && npm run typecheck
+      - name: Build standalone ARM64 candidate (not for distribution)
+        run: ./scripts/android-release.sh
+      - name: Verify APK signature and checksum
+        run: |
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs \
+            android/app/build/outputs/apk/release/app-release.apk
+          cd android/app/build/outputs/apk/release
+          sha256sum app-release.apk > app-release.apk.sha256
+      - name: Upload candidate for production re-signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: alarmat-android-candidate-arm64-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/app-release.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$ALARMAT_ANDROID_KEYSTORE"

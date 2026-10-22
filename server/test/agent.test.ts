@@ -195,3 +195,38 @@ test('piso con propietario único explica que falta invitar a alguien, sin pedir
     assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM alarm_requests').get() as { n: number }).n, 0);
   } finally { await ctx.close(); }
 });
+
+test('logout while the provider responds prevents content and completed drafts on both agent routes', async () => {
+  for (const route of ['/v1/agent/propose', '/v1/agent/draft']) {
+    let release!: () => void;
+    let started!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const reached = new Promise<void>(resolve => { started = resolve; });
+    const provider: AgentProvider = {
+      label: 'delayed-test-provider',
+      async next(context) {
+        started();
+        await pending;
+        return { type: 'draft', title: 'Sacar basura', recipientUids: [context.members[0]!.uid],
+          timeSpec: { timeZone: 'Europe/Madrid', localDate: '2030-01-15', localTime: '21:00',
+            effectiveAtEpochMs: Date.UTC(2030, 0, 15, 20, 0) }, mode: 'ALARM', reason: 'Aviso solicitado' };
+      },
+    };
+    const ctx = await setupTest({ agentProvider: provider });
+    try {
+      const owner = await registerUser(ctx.app, 'Luis');
+      const ana = await registerUser(ctx.app, 'Ana');
+      const groupId = await createGroup(ctx.app, owner);
+      await inviteAndJoin(ctx.app, owner, groupId, ana);
+      const response = ctx.app.inject({ method: 'POST', url: route, headers: auth(owner.token),
+        payload: { groupId, text: 'Avisa a Ana mañana a las 21:00' } }).then(value => value);
+      await reached;
+      await ctx.app.inject({ method: 'POST', url: '/v1/auth/logout', headers: auth(owner.token) });
+      release();
+      const result = await response;
+      assert.equal(result.statusCode, 401, result.body);
+      assert.equal(result.json().draft, undefined);
+      assert.equal((ctx.db.prepare("SELECT count(*) AS n FROM agent_sessions WHERE status='COMPLETED'").get() as { n: number }).n, 0);
+    } finally { release(); await ctx.close(); }
+  }
+});

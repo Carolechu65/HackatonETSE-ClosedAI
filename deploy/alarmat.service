@@ -1,0 +1,28 @@
+[Unit]
+Description=AlarmaT production API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=alarmat
+Group=alarmat
+WorkingDirectory=/opt/alarmat/current/server
+EnvironmentFile=/etc/alarmat/alarmat.env
+ExecStartPre=/opt/alarmat/runtime/node dist/server/src/migrate-cli.js
+ExecStart=/opt/alarmat/runtime/node dist/server/src/index.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/alarmat
+UMask=0077
+MemoryMax=384M
+MemorySwapMax=256M
+CPUQuota=75%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

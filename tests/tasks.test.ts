@@ -178,7 +178,7 @@ test('tareas: vencimiento legible en la zona inyectada', () => {
   const tomorrow = seedTask({ dueAtEpochMs: Date.parse('2026-10-23T07:00:00.000Z') });
   assert.equal(describeTaskDue(tomorrow, NOW, TZ), 'Vence mañana · 09:00');
   const past = seedTask({ dueAtEpochMs: Date.parse('2026-10-21T07:00:00.000Z') });
-  assert.equal(describeTaskDue(past, NOW, TZ), 'Venció el 21 · 09:00');
+  assert.equal(describeTaskDue(past, NOW, TZ), 'Venció el 2026-10-21 · 09:00');
   assert.equal(describeTaskDue(seedTask({ dueAtEpochMs: null }), NOW, TZ), 'Sin fecha');
 });
 
@@ -265,4 +265,21 @@ test('terminal tasks retain unconfirmed writes and device withdrawal warnings', 
     const confirmed = describeTaskCardState(task, { sync: 'CONFIRMED', alarmWithdrawal: 'confirmed' });
     assert.equal(confirmed.detail, null);
   }
+});
+
+
+test('task metadata is normalized, bounded and preserved on completion', () => {
+  const task = createTask({ id: 'metadata', groupId: 'piso-4b', createdByUid: 'u-marta', members: MEMBERS, draft: { ...DRAFT, description: '  Limpiar también el horno.  ', category: ' Limpieza ' } });
+  assert.equal(task.description, 'Limpiar también el horno.');
+  assert.equal(task.category, 'Limpieza');
+  assert.equal(completeTask(task, { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW }).task.description, task.description);
+  assert.throws(() => validateTaskDraft({ ...DRAFT, description: 'x'.repeat(2001) }, MEMBERS));
+  assert.throws(() => validateTaskDraft({ ...DRAFT, category: 'x'.repeat(81) }, MEMBERS));
+  assert.equal(validateTaskDraft({ ...DRAFT, category: '  ' }, MEMBERS).category, null);
+});
+
+test('task due labels identify an elapsed time today and avoid overdue claims for completed history', () => {
+  const task = seedTask({ dueAtEpochMs: NOW - 60_000 });
+  assert.match(describeTaskDue(task, NOW, TZ), /^Venció hoy/);
+  assert.match(describeTaskDue({ ...task, status: 'completed' }, NOW, TZ), /^Fecha límite: 2026-10-22/);
 });
