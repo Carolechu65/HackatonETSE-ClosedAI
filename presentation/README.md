@@ -28,7 +28,7 @@ Imprimir a PDF: `Ctrl/Cmd + P` (una diapositiva por página, sin barra ni notas)
 
 ## Contenido
 
-8 diapositivas: portada, problema, idea, los cuatro menús, interacción, tecnologías con logos, estado real (hecho y pendiente) y cierre.
+9 diapositivas: portada, problema, idea, los cuatro menús, interacción, agente en lenguaje natural, tecnologías con logos, estado real (hecho y pendiente) y cierre.
 
 Criterio editorial: **nada se presenta como terminado sin evidencia**. Las capturas salen de la app real; los datos de la UI son de ejemplo.
 
