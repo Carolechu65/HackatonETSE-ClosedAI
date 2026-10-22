@@ -63,7 +63,10 @@ export default function TareasRoute() {
             <TaskRow
               key={task.id}
               task={task}
-              onToggle={() => actions.toggleTask(task.id)}
+              onToggle={() => {
+                actions.toggleTask(task.id);
+                setFlash({ id: Date.now(), text: task.done ? 'Desmarcada' : 'Hecha' });
+              }}
               onRemove={() => actions.removeTask(task.id)}
             />
           ))
@@ -78,7 +81,7 @@ export default function TareasRoute() {
             maxLength={60}
             style={styles.input}
           />
-          <IconButton name="plus" onPress={submit} disabled={!canAdd} accessibilityLabel="Añadir tarea" />
+          <IconButton name="plus" onPress={submit} disabled={!canAdd} accessibilityLabel="Añadir tarea al piso" />
         </View>
       </Note>
 

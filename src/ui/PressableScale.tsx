@@ -6,12 +6,14 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { USE_NATIVE_DRIVER } from './animation.ts';
 
 export type PressableScaleProps = {
   children: ReactNode;
   onPress?: () => void;
   onLongPress?: () => void;
   disabled?: boolean;
+  /** Estilo del área pulsable: tamaño, relleno, borde y alineación. */
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   accessibilityRole?: AccessibilityProps['accessibilityRole'];
@@ -36,14 +38,14 @@ export function PressableScale({
   const animateTo = (toValue: number) => {
     Animated.spring(scale, {
       toValue,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 45,
       bounciness: 5,
     }).start();
   };
 
   return (
-    <Animated.View style={[style, { transform: [{ scale }] }]}>
+    <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
         accessibilityRole={accessibilityRole}
         accessibilityLabel={accessibilityLabel}
@@ -54,6 +56,7 @@ export function PressableScale({
         onLongPress={onLongPress}
         onPressIn={() => animateTo(0.95)}
         onPressOut={() => animateTo(1)}
+        style={style}
       >
         {children}
       </Pressable>

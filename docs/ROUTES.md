@@ -8,10 +8,14 @@
 
 | Ruta | Contenido | Owner |
 |---|---|---|
+| `/(tabs)` | Navegación principal con barra inferior (implementada en la rama `P1-Esqueleto`) | P1 → P2 |
 | `/` | Tablón con propuestas y próximas alarmas | P2 |
 | `/alarm/[requestId]` | Detalle de una propuesta: quién la propone, hora, estado por eje y acciones | P2 |
 | `/alarm/[requestId]/respond` | Formulario de aceptar / otra hora / rechazar (opcional; puede ser un modal) | P2 |
 | `/group/invite/[inviteId]` | Aceptar invitación al piso | P2 + P3 |
+| `/gastos` | Deuda, movimientos y alta rápida de gasto | P1 → P2 |
+| `/tareas` | Lista accionable: añadir, marcar y quitar | P1 → P2 |
+| `/piso` | Miembros y preferencias de avisos | P1 → P2 |
 | `/task/[taskId]` | Detalle de tarea vinculada | P6 |
 | `/design` | Catálogo de componentes del estilo (solo referencia; no es producto) | P1 |
 | `/+not-found` | Enlace roto o entidad ya no visible | P1 |

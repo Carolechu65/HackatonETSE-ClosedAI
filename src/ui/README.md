@@ -15,6 +15,11 @@ Implementación de [`nevera-retro.md`](../../nevera-retro.md) para React Native.
 | `Sheet.tsx` | Hoja grande menta con imán rojo para detalle y formularios. |
 | `PrimaryAction.tsx` | Botón rojo a todo el ancho, fuera de la hoja. |
 | `Magnet.tsx` | Imán redondo con brillo; solo decoración. |
+| `RetroTabBar.tsx` | Barra inferior con iconos de línea, etiquetas y subrayado animado. |
+| `Checkbox.tsx`, `Toggle.tsx`, `Chip.tsx` | Controles con estado y animación de muelle. |
+| `TextField.tsx`, `IconButton.tsx` | Formulario sin caja (solo línea inferior) y acción compacta. |
+| `PressableScale.tsx`, `AnimatedIn.tsx`, `FlashMessage.tsx` | Feedback táctil, entrada de bloques y confirmación efímera. |
+| `Avatar.tsx` | Círculo con inicial; relleno = presente. |
 
 Referencia viva: `app/design.tsx` (ruta `/design`) muestra tablón, hoja de detalle, botón y pestañas con estos primitivos.
 

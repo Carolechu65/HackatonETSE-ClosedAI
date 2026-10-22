@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { PressableScale } from './PressableScale.tsx';
 import { colors, layout, paper } from './tokens.ts';
 import { typography } from './theme.ts';
 
@@ -14,21 +15,22 @@ export function Chip({
   onPress?: () => void;
   accessibilityLabel?: string;
 }) {
+  const chipStyle = [styles.chip, selected && styles.selected, !onPress && styles.static];
+  const content = <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>;
+
+  if (!onPress) {
+    return <View style={chipStyle}>{content}</View>;
+  }
+
   return (
-    <Pressable
-      accessibilityRole={onPress ? 'button' : 'text'}
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={onPress ? { selected } : undefined}
-      hitSlop={8}
+    <PressableScale
       onPress={onPress}
-      style={[
-        styles.chip,
-        selected && styles.selected,
-        !onPress && styles.static,
-      ]}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ selected }}
+      style={chipStyle}
     >
-      <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
-    </Pressable>
+      {content}
+    </PressableScale>
   );
 }
 
