@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { USE_NATIVE_DRIVER } from '../../ui/animation.ts';
 import {
   Checkbox,
   Chip,
@@ -56,7 +57,7 @@ export function TaskRow({
       toValue: 1,
       duration: 180,
       easing: Easing.in(Easing.quad),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start(({ finished }) => {
       if (finished) onRemove();
     });
@@ -105,9 +106,8 @@ export function ExpenseRow({
         <Text style={[typography.body, expense.settled && styles.done]} numberOfLines={1}>
           {expense.title}
         </Text>
-        <Text style={typography.labelOnNote}>{expense.settled ? 'Pagado' : 'Pendiente'}</Text>
       </View>
-      <Text style={[typography.bodyStrong, expense.settled && styles.done, tabularNums]}>
+      <Text style={[typography.bodyStrong, styles.amount, expense.settled && styles.done, tabularNums]}>
         {formatEuros(expense.amountCents)}
       </Text>
       <Chip
@@ -143,6 +143,9 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: 1,
+  },
+  amount: {
+    marginLeft: 'auto',
   },
   done: {
     color: colors.noteLabel,

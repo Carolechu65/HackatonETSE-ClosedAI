@@ -69,8 +69,7 @@ export default function PisoRoute() {
       <AnimatedIn delay={130}>
         <Note index={5} wide label="Alarma sonora" title="Todavía no suena">
           <Text style={typography.support}>
-            El recordatorio estándar ya se puede mostrar. La alarma audible con el proceso cerrado
-            necesita el runtime Android; no se presenta como activa.
+            La alarma audible con el proceso cerrado necesita el runtime Android (P4).
           </Text>
         </Note>
       </AnimatedIn>

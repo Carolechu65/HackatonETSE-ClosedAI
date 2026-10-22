@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { USE_NATIVE_DRIVER } from './animation.ts';
 import { Magnet } from './Magnet.tsx';
 import { layout, noteStyleFor, shadows, typography } from './theme.ts';
 
@@ -42,7 +43,7 @@ export function Note({
     if (!onPress) return;
     Animated.spring(pressed, {
       toValue,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 35,
       bounciness: 4,
     }).start();

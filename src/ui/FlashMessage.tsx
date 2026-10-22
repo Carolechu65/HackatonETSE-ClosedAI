@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
+import { USE_NATIVE_DRIVER } from './animation.ts';
 import { colors } from './tokens.ts';
 import { typography } from './theme.ts';
 
@@ -20,8 +21,8 @@ export function FlashMessage({
   useEffect(() => {
     if (!message) return;
     const animation = Animated.sequence([
-      Animated.timing(opacity, { toValue: 1, duration: 140, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: 260, delay: 1500, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 140, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(opacity, { toValue: 0, duration: 260, delay: 1500, useNativeDriver: USE_NATIVE_DRIVER }),
     ]);
     animation.start();
     return () => animation.stop();
