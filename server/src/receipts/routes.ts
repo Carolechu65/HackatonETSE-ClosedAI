@@ -53,7 +53,7 @@ export function receiptRoutes(app:FastifyInstance,db:Db,config:ReceiptConfig, fe
     if(!mime)throw invalid();
     const hash=createHash('sha256').update(content).digest('hex');
     const prior=db.prepare('SELECT * FROM expense_receipts WHERE group_id=? AND actor_uid=? AND sha256=?').get(groupId,actor.uid,hash) as Row|undefined;
-    if(prior)return {receipt:dto(prior)};
+    if(prior){const existing=db.prepare('SELECT id FROM shared_expenses WHERE receipt_id=? AND group_id=?').get(prior.id,groupId) as {id:string}|undefined;return {receipt:dto(prior),...(existing?{existingExpenseId:existing.id}:{})};}
     limiter.check(actor.uid);
     const queued=(db.prepare("SELECT count(*) AS n FROM expense_receipts WHERE status IN ('queued','reading')").get() as {n:number}).n;
     if(queued>=20)throw new DomainError('RATE_LIMITED','Hay varios tickets en espera. Vuelve a intentarlo en unos minutos.');

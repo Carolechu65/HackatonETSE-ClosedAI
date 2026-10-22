@@ -37,7 +37,7 @@ export function ExpenseForm({expense,onSaved,onCancel}:{expense?:Expense;onSaved
  },[receipt,client,groupId]);
  async function upload(file:PickedReceipt){if(!alive.current)return;const seq=++sequence.current;setUploading(true);setError(null);setReviewed(false);setPreview(file.preview??null);
   try{const r=await client.finance.uploadReceipt(groupId,{filename:file.filename,base64:file.base64});if(alive.current&&seq===sequence.current){applied.current=null;setReceipt(r);}}
-  catch(e){if(alive.current&&seq===sequence.current)setError(e instanceof Error?e.message:'No se pudo subir el ticket.');}
+  catch(e){if(alive.current&&seq===sequence.current){setPreview(null);setError(e instanceof Error?e.message:'No se pudo subir el ticket.');}}
   finally{if(alive.current&&seq===sequence.current)setUploading(false);}}
  function choose(r:Receipt){const seq=++sequence.current;applied.current=null;setReceipt(r);setReviewed(false);setPreview(null);setError(null);void client.finance.previewReceipt(groupId,r.id).then(p=>{if(alive.current&&seq===sequence.current)setPreview(p);}).catch(()=>{});}
  const cents=parseEuros(amount);let shares:Array<{uid:string;amountCents:number}>=[],splitError:string|null=null;
