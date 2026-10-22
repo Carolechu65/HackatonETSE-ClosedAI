@@ -1,6 +1,8 @@
 # Esqueleto de menús (rama `P1-Esqueleto`)
 
-Prototipo navegable de P1 para acordar estructura visual e interacciones antes de conectar Firebase. **No hay datos reales**: todo el estado vive en memoria y se pierde al recargar. Ningún botón programa alarmas ni envía propuestas.
+> Este esqueleto se conserva en `/preview`. El producto conectado usa las rutas de [ROUTES](ROUTES.md); [estado actual](qa/PRODUCT_INTEGRATION.md).
+
+Prototipo navegable de P1 para acordar estructura visual e interacciones antes de conectar la API SQLite. **No hay datos reales**: todo el estado vive en memoria y se pierde al recargar. Ningún botón programa alarmas ni envía propuestas.
 
 ## Menús
 
@@ -18,8 +20,8 @@ Las pantallas ocupan el alto disponible **sin scroll**: el contenido está acota
 ## Dónde está cada cosa
 
 ```text
-app/(tabs)/_layout.tsx      Tabs + barra propia
-app/(tabs)/{index,gastos,tareas,piso}.tsx
+app/preview/_layout.tsx      Tabs + barra propia
+app/preview/{index,gastos,tareas,piso}.tsx
 src/features/skeleton/model.ts    estado puro, reducer, selectores y formato de euros
 src/features/skeleton/store.tsx   provider + acciones (memoria)
 src/features/skeleton/components.tsx  ProgressBar, TaskRow, ExpenseRow
@@ -43,7 +45,7 @@ src/ui/{Checkbox,Toggle,Chip,TextField,IconButton,FlashMessage,PressableScale,An
 - P2 sustituye el contenido por propuestas reales y conserva esta navegación; `src/features/alarms/AlarmInboxScreen.tsx` sigue existiendo como referencia antigua.
 - P5 cambia el store en memoria por SQLite + repositorio (`AlarmRepository`).
 - P4 aporta la programación real; la nota de «alarma sonora» está marcada como no disponible a propósito.
-- P3 valida las acciones de escritura con los contratos de `contracts/` antes de conectar Firebase.
+- P3 valida las acciones de escritura con los contratos de `contracts/` antes de conectar la API SQLite.
 - Cuando haya datos reales, revisar el límite de 4 filas visibles y decidir si el tablón necesita scroll o páginas.
 
 ## Comprobar

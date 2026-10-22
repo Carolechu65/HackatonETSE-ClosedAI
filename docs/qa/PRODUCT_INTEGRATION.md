@@ -1,7 +1,7 @@
 # Integración P1–P6 · 22 de octubre de 2026
 
 La rama `feat/p1-p6-product-integration` integra main, dAlarmas, P6, MERGES y
-el commit compartido P5 `81fce36`. El checkout de otras personas se conserva.
+el commit compartido P5 `81fce36`, y las mejoras visuales/presentación de P1 `13e09b4` y `474a710`. El checkout de otras personas se conserva.
 No se han desplegado cambios sobre J&A Automation.
 
 ## Recorrido disponible
@@ -38,6 +38,8 @@ La revisión local usó API `127.0.0.1:8787`, Expo web `127.0.0.1:8091` y CORS
 explícito. Son procesos de desarrollo; no constituyen un despliegue público.
 
 ## Evidencia y límites
+
+`npm run check`: 221 pruebas de app/datos y 27 de API aprobadas; 42 fixtures y 15 esquemas válidos. La prueba externa del modelo se omite por defecto y se ejecutó explícitamente con resultado correcto.
 
 Los tests de dominio/datos incluyen SQLite real, aislamiento de cuentas,
 idempotencia, respuesta tardía de una sesión anterior, rechazo de datos ajenos,
