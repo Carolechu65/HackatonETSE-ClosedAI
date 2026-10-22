@@ -12,5 +12,11 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["tests/**/*.ts", "src/domain/**/*.ts"]
+  "include": [
+    "tests/**/*.ts",
+    "src/domain/**/*.ts",
+    "src/widgets/**/*.ts",
+    "src/features/tasks/**/*.ts"
+  ],
+  "exclude": ["src/widgets/publisher.ts", "src/widgets/**/*.tsx"]
 }
