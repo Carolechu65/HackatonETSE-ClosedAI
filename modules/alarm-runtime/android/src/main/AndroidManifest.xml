@@ -1,1 +1,48 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <application>
+    <receiver
+      android:name="expo.modules.alarmruntime.AlarmFiredReceiver"
+      android:exported="false" />
+
+    <receiver
+      android:name="expo.modules.alarmruntime.AlarmActionReceiver"
+      android:exported="false" />
+
+    <receiver
+      android:name="expo.modules.alarmruntime.BootReceiver"
+      android:enabled="true"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+
+    <service
+      android:name="expo.modules.alarmruntime.AlarmService"
+      android:exported="false"
+      android:foregroundServiceType="mediaPlayback"
+      android:stopWithTask="false" />
+
+    <activity
+      android:name="expo.modules.alarmruntime.AlarmActivity"
+      android:excludeFromRecents="true"
+      android:exported="false"
+      android:launchMode="singleInstance"
+      android:showWhenLocked="true"
+      android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+      android:turnScreenOn="true" />
+  </application>
+</manifest>

@@ -1,6 +1,6 @@
 # Empezar a implementar alarmaT
 
-Base pequeña para seis personas. Hay pantalla Expo con aceptar/rechazar en memoria, contratos, adaptadores pendientes, un módulo Kotlin mínimo y funciones Firebase que rechazan operaciones todavía no implementadas. Ningún botón activa alarmas reales.
+Base pequeña para seis personas. Hay pantalla Expo con aceptar/rechazar en memoria, contratos, adaptadores, un módulo Kotlin con un prototipo de alarma real y funciones Firebase que rechazan operaciones todavía no implementadas. La pantalla de demo sigue siendo en memoria; el banco de pruebas `/alarm-runtime` sí programa alarmas reales en una development build Android.
 
 ## Arranque
 
@@ -36,7 +36,7 @@ Verificado en este arranque: TypeScript de la app, compilación del backend y ex
 | P1 · Base y contratos | `package.json`, `app.config.ts`, `src/domain/alarms.ts`, `contracts/` | Instalar development build; fijar payloads y fixtures con P3. |
 | P2 · Pantallas | `app/index.tsx`, `src/features/alarms/AlarmInboxScreen.tsx`, `src/features/auth/`, `groups/` | Formulario de propuesta y sesión real; sustituir datos de ejemplo. |
 | P3 · Firebase y agente | `functions/src/index.ts`, `functions/src/operations/`, `functions/src/agents/`, `firebase/` | Crear/responder con transacciones y autorización; concretar borrador/clarificación del agente. |
-| P4 · Alarmas Android | `src/platform/alarms/index.ts`, `modules/alarm-runtime/` | Programar, sonar y detener una alarma consentida sin JS vivo. |
+| P4 · Alarmas Android | `src/platform/alarms/index.ts`, `modules/alarm-runtime/`, `docs/qa/ALARM_RUNTIME.md` | Prototipo implementado: permisos, programación exacta, sonido, detener, posponer y recuperación. Falta compilar y validar en teléfono. |
 | P5 · Datos y sincronización | `src/data/alarmRepository.ts`, `src/platform/sync/outbox.ts`, `src/bootstrap/index.ts` | SQLite + RNFirebase; conservar estados pendientes y conciliar versiones. |
 | P6 · Widget, tareas e integración | `src/widgets/snapshot.ts`, `src/features/tasks/TaskPreview.tsx` | Widget Android mínimo con deep link y tarea vinculada; prueba entre dos móviles. |
 
@@ -46,7 +46,7 @@ Cada área incluye comentarios o README con el siguiente paso. El [TDD](TDD.md) 
 
 - **Firebase cliente:** todavía no se instalan ni configuran RNFirebase, credenciales cliente ni handlers FCM. P3/P5 los añaden juntos y reconstruyen la app.
 - **Backend:** los callable tienen validación inicial y devuelven `unimplemented`; no guardan ni envían propuestas. Las Rules deniegan todo hasta implementar permisos y sus pruebas.
-- **Alarma sonora:** el módulo nativo declara sus capacidades como no disponibles y rechaza programar/cancelar. La interfaz TypeScript funciona como punto de conexión.
+- **Alarma sonora:** el módulo nativo ya implementa programación exacta, store privado, foreground service con sonido, detener/posponer y recuperación. Queda compilar y ejecutar la matriz de [QA](qa/ALARM_RUNTIME.md) en dispositivos reales antes de presentarla como terminada. La pantalla principal de demo sigue sin programar nada.
 - **Widgets:** hay una proyección pura; no se registra todavía un widget en el launcher. P6 instala/configura expo-widgets y valida el runtime aislado.
 - **Agente:** existe su punto de entrada y contrato de borrador/clarificación; falta conectar un modelo, herramientas autorizadas y confirmación humana.
 - **Automatizaciones:** el outbox es un contrato inicial; recurrencia, reintentos y cancelaciones por tareas están pendientes.
