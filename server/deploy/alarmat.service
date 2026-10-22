@@ -1,0 +1,22 @@
+[Unit]
+Description=alarmaT HTTP API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=alarmat
+Group=alarmat
+WorkingDirectory=/opt/alarmat/server
+EnvironmentFile=/etc/alarmat/server.env
+ExecStart=/usr/bin/node /opt/alarmat/server/dist/index.js
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/alarmat
+
+[Install]
+WantedBy=multi-user.target

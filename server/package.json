@@ -1,0 +1,32 @@
+{
+  "name": "alarmat-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "esbuild src/index.ts src/persistence/cli.ts --bundle --platform=node --format=esm --packages=external --outdir=dist",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "migrate": "tsx src/persistence/cli.ts migrate",
+    "backup": "tsx src/persistence/cli.ts backup"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "argon2": "^0.44.0",
+    "better-sqlite3": "^12.4.1",
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.18.0",
+    "esbuild": "^0.25.11",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
