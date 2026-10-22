@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>alarmaT · presentación</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="stage" id="stage">
+
+    <!-- 01 · Portada -->
+    <section class="slide slide--cover" data-title="Portada">
+      <div class="cover">
+        <p class="eyebrow">HACKATHON ETSE · CLOSEDAI · 22 OCT 2026</p>
+        <h1 class="display">alarmaT</h1>
+        <p class="lead">Alarmas compartidas, bajo el control de quien las recibe.</p>
+        <div class="cover-note note note--1">
+          <span class="magnet magnet--3"></span>
+          <p class="note-label">LA IDEA EN UNA FRASE</p>
+          <p class="quote">«¿Te pongo una alarma?»</p>
+          <p class="support">Con alarmaT sabes si la ha aceptado, si la ha cambiado y si suena.</p>
+        </div>
+        <ul class="cover-meta">
+          <li>6 personas · 4 días</li>
+          <li>Expo + TypeScript · API Node + SQLite</li>
+          <li>Android primero</li>
+        </ul>
+      </div>
+      <aside class="notes">
+        <p>Abrir con la pregunta: «¿cuántas veces has puesto una alarma a alguien por WhatsApp?».</p>
+        <p>En 30 segundos: qué es, para quién y qué vamos a enseñar hoy.</p>
+      </aside>
+    </section>
+
+    <!-- 02 · Problema -->
+    <section class="slide" data-title="Problema">
+      <header class="head">
+        <p class="eyebrow">EL PROBLEMA</p>
+        <h2 class="title">El aviso se pierde en el chat</h2>
+      </header>
+      <div class="grid grid--3">
+        <article class="note note--2">
+          <span class="magnet magnet--2"></span>
+          <p class="note-label">MENSAJE</p>
+          <h3 class="note-title">Una propuesta no es una alarma</h3>
+          <p class="body">Escribir «baja la basura» no programa nada ni confirma que se haya leído.</p>
+        </article>
+        <article class="note note--3">
+          <span class="magnet magnet--3"></span>
+          <p class="note-label">CONTROL</p>
+          <h3 class="note-title">Quien recibe no decide</h3>
+          <p class="body">Que otra persona active un aviso en tu móvil no es consentimiento.</p>
+        </article>
+        <article class="note note--4">
+          <span class="magnet magnet--4"></span>
+          <p class="note-label">REALIDAD</p>
+          <h3 class="note-title">Aceptar no es sonar</h3>
+          <p class="body">Aceptación, permisos y programación local son hechos distintos.</p>
+        </article>
+      </div>
+      <p class="footnote">En un piso de 2 a 6 personas, el aviso vive en tres sitios distintos: el chat, la cabeza de cada uno y el móvil de quien lo pidió.</p>
+      <aside class="notes">
+        <p>No atacar al chat: el problema es que no distingue intención, permiso y ejecución.</p>
+        <p>Introducir la regla de producto: solo el destinatario decide.</p>
+      </aside>
+    </section>
+
+    <!-- 03 · Idea -->
+    <section class="slide" data-title="La idea">
+      <header class="head">
+        <p class="eyebrow">LA IDEA</p>
+        <h2 class="title">Proponer, decidir, programar</h2>
+      </header>
+      <ol class="flow">
+        <li class="flow-step"><span class="step-n">1</span><strong>A propone</strong><span class="support">Motivo, hora y modalidad.</span></li>
+        <li class="flow-step"><span class="step-n">2</span><strong>B recibe</strong><span class="support">La propuesta aparece en la app.</span></li>
+        <li class="flow-step"><span class="step-n">3</span><strong>B decide</strong><span class="support">Acepta, rechaza o elige otra hora.</span></li>
+        <li class="flow-step"><span class="step-n">4</span><strong>Suena en su móvil</strong><span class="support">Programación local, sin depender de la red.</span></li>
+        <li class="flow-step"><span class="step-n">5</span><strong>A ve la confirmación</strong><span class="support">Solo con el acuse del dispositivo.</span></li>
+      </ol>
+      <div class="row-note note note--1">
+        <span class="magnet magnet--1"></span>
+        <p class="note-title">El servidor avisa. El móvil suena. La persona decide.</p>
+        <p class="support">Sin activación unilateral y sin prometer lo que Android no permite: nada de sonar con el teléfono apagado o tras un force-stop.</p>
+      </div>
+      <aside class="notes">
+        <p>Insistir en el orden: consentimiento confirmado → programación local → acuse.</p>
+        <p>La propuesta puede ser independiente o ir ligada a una tarea.</p>
+      </aside>
+    </section>
+
+    <!-- 04 · Producto -->
+    <section class="slide" data-title="Menús">
+      <header class="head">
+        <p class="eyebrow">ESQUELETO NAVEGABLE · RAMA P1-ESQUELETO</p>
+        <h2 class="title">Cuatro menús, sin scroll</h2>
+      </header>
+      <div class="product">
+        <div class="product-copy">
+          <ul class="menu-list">
+            <li class="menu-item">
+              <span class="menu-icon" data-icon="home"></span>
+              <span><strong>Tablón</strong><span class="support">Lo de hoy: próxima tarea, progreso y saldo.</span></span>
+            </li>
+            <li class="menu-item">
+              <span class="menu-icon" data-icon="check-square"></span>
+              <span><strong>Tareas</strong><span class="support">Añadir, marcar y quitar en la misma nota.</span></span>
+            </li>
+            <li class="menu-item">
+              <span class="menu-icon" data-icon="credit-card"></span>
+              <span><strong>Gastos</strong><span class="support">Deuda del piso y liquidar por fila.</span></span>
+            </li>
+            <li class="menu-item">
+              <span class="menu-icon" data-icon="users"></span>
+              <span><strong>Piso</strong><span class="support">Quién está y qué avisos acepta cada uno.</span></span>
+            </li>
+          </ul>
+          <div class="tabbar-demo" aria-hidden="true">
+            <span class="tab is-active"><span class="menu-icon" data-icon="home"></span>Tablón</span>
+            <span class="tab"><span class="menu-icon" data-icon="credit-card"></span>Gastos</span>
+            <span class="tab"><span class="menu-icon" data-icon="check-square"></span>Tareas</span>
+            <span class="tab"><span class="menu-icon" data-icon="users"></span>Piso</span>
+          </div>
+          <p class="footnote">Barra fija, iconos de línea y pestaña activa subrayada en rojo.</p>
+        </div>
+        <div class="product-shots">
+          <figure class="shot"><img src="img/tablon.png" alt="Pantalla Tablón" /><figcaption>Tablón</figcaption></figure>
+          <figure class="shot"><img src="img/tareas.png" alt="Pantalla Tareas" /><figcaption>Tareas</figcaption></figure>
+        </div>
+      </div>
+      <aside class="notes">
+        <p>Es un esqueleto real y navegable, no una maqueta: se puede tocar.</p>
+        <p>Los datos viven en memoria; P5 los llevará a SQLite y a la API.</p>
+      </aside>
+    </section>
+
+    <!-- 05 · Gastos y piso -->
+    <section class="slide" data-title="Gastos y piso">
+      <header class="head">
+        <p class="eyebrow">ESQUELETO INTERACTIVO</p>
+        <h2 class="title">Tocar y ver qué pasa</h2>
+      </header>
+      <div class="product product--reverse">
+        <div class="product-shots product-shots--wide">
+          <figure class="shot"><img src="img/gastos.png" alt="Pantalla Gastos" /><figcaption>Gastos</figcaption></figure>
+          <figure class="shot"><img src="img/piso.png" alt="Pantalla Piso" /><figcaption>Piso</figcaption></figure>
+        </div>
+        <div class="product-copy">
+          <ul class="bullets">
+            <li><strong>Añadir</strong> la fila entra cayendo y confirma «Gasto añadido».</li>
+            <li><strong>Liquidar</strong> el chip cambia a Pagado y el total baja animado.</li>
+            <li><strong>Marcar</strong> quién está en casa actualiza el reparto al momento.</li>
+            <li><strong>Quitar</strong> la tarea se desliza antes de desaparecer.</li>
+            <li><strong>Siempre</strong> 48 dp de objetivo táctil, estados accesibles y «reducir movimiento» respetado.</li>
+          </ul>
+        </div>
+      </div>
+      <aside class="notes">
+        <p>Hacer la demo en vivo si hay tiempo: añadir, marcar y quitar.</p>
+        <p>El feedback evita la duda de «¿se habrá guardado?».</p>
+      </aside>
+    </section>
+
+    <!-- 06 · Demo -->
+    <section class="slide" data-title="Demo">
+      <header class="head">
+        <p class="eyebrow">EL GUION DE LA DEMO</p>
+        <h2 class="title">Tres minutos, dos móviles</h2>
+      </header>
+      <ol class="script">
+        <li class="script-row"><span class="when">HOY</span><span class="what">Enseñar los cuatro menús, el alta de tarea y la liquidación de un gasto.</span></li>
+        <li class="script-row"><span class="when">HOY</span><span class="what">Mostrar en el contrato que aceptar deja «activación pendiente», no «programada».</span></li>
+        <li class="script-row"><span class="when when--next">P3/P5</span><span class="what">A propone a B desde otro móvil; B recibe y elige otra hora.</span></li>
+        <li class="script-row"><span class="when when--next">P4</span><span class="what">B acepta; la alarma se programa y suena con la app cerrada.</span></li>
+        <li class="script-row"><span class="when when--next">P4/P5</span><span class="what">B la detiene o pospone; A ve la confirmación del dispositivo.</span></li>
+        <li class="script-row"><span class="when">HOY</span><span class="what">Rechazar una propuesta: nunca aparece como alarma activa.</span></li>
+      </ol>
+      <p class="footnote">Marcamos lo que ya se puede enseñar y lo que falta. Un push recibido no cuenta como alarma.</p>
+      <aside class="notes">
+        <p>Si el runtime aún no está, no fingir sonido: enseñar el estado pendiente y el contrato.</p>
+        <p>El objetivo del día 3 es el recorrido completo en dos teléfonos.</p>
+      </aside>
+    </section>
+
+    <!-- 07 · Arquitectura -->
+    <section class="slide" data-title="Arquitectura">
+      <header class="head">
+        <p class="eyebrow">DECISIÓN VIGENTE · ADR-004</p>
+        <h2 class="title">Una API propia y SQLite en el VPS</h2>
+      </header>
+      <div class="arch">
+        <div class="arch-col">
+          <div class="node node--paper">
+            <p class="note-label">MÓVIL</p>
+            <strong>Expo + React Native</strong>
+            <span class="support">Pantallas, SQLite local y outbox.</span>
+          </div>
+          <div class="node node--paper">
+            <p class="note-label">ANDROID</p>
+            <strong>Runtime Kotlin</strong>
+            <span class="support">AlarmManager, sonido y detener sin JS.</span>
+          </div>
+        </div>
+        <div class="arch-arrow">
+          <span class="arch-label">HTTPS · Bearer</span>
+          <span class="arrow">→</span>
+          <span class="arch-label">operaciones v1</span>
+        </div>
+        <div class="arch-col">
+          <div class="node node--mint">
+            <p class="note-label">VPS</p>
+            <strong>Fastify + Node 22</strong>
+            <span class="support">Sesiones Argon2id, autorización, transacciones.</span>
+          </div>
+          <div class="node node--mint">
+            <p class="note-label">DATOS</p>
+            <strong>SQLite + migraciones</strong>
+            <span class="support">Feed incremental, outbox y backups.</span>
+          </div>
+        </div>
+      </div>
+      <ul class="bullets bullets--tight">
+        <li>El teléfono nunca abre la base del servidor: SQLite local y SQLite del VPS son almacenes distintos.</li>
+        <li>Push opcional para avisar de cambios; una alarma ya programada no depende de la red.</li>
+        <li>El agente solo propone borradores: no acepta, no programa y no cambia permisos.</li>
+      </ul>
+      <aside class="notes">
+        <p>Motivo del cambio: VPS propio, coste controlado y un solo lenguaje en el equipo.</p>
+        <p>Firebase queda como legado identificado; no se mezclan dos clientes.</p>
+      </aside>
+    </section>
+
+    <!-- 08 · Estados -->
+    <section class="slide" data-title="Estados">
+      <header class="head">
+        <p class="eyebrow">CONTRATO V1</p>
+        <h2 class="title">Aceptar no es programar</h2>
+      </header>
+      <div class="states">
+        <table class="state-table">
+          <thead><tr><th>Eje</th><th>Valores</th></tr></thead>
+          <tbody>
+            <tr><td>Propuesta</td><td><code>ACTIVE</code> · <code>WITHDRAWN</code> · <code>EXPIRED</code></td></tr>
+            <tr><td>Recepción</td><td><code>NOT_ACKNOWLEDGED</code> · <code>RECEIVED</code></td></tr>
+            <tr><td>Decisión</td><td><code>PENDING</code> · <code>ACCEPTED</code> · <code>REJECTED</code> · <code>DISABLED</code> · <code>NEEDS_REVIEW</code></td></tr>
+            <tr><td>Programación</td><td><code>NOT_SCHEDULED</code> · <code>PENDING_PERMISSION</code> · <code>SCHEDULED</code> · <code>CANCELLED</code> · <code>FIRED</code>…</td></tr>
+            <tr><td>Sincronización</td><td><code>QUEUED</code> · <code>SENDING</code> · <code>CONFIRMED</code> · <code>CONFLICT</code></td></tr>
+          </tbody>
+        </table>
+        <div class="rules">
+          <p class="rule"><span class="rule-k">Versiona</span> <code>requestVersion</code> y <code>decisionRevision</code>: un cambio de términos exige consentimiento nuevo.</p>
+          <p class="rule"><span class="rule-k">Identifica</span> cada ocurrencia con <code>occ-&lt;epochMs&gt;</code> y el dispositivo con <code>deviceEpoch</code>.</p>
+          <p class="rule"><span class="rule-k">Deduplica</span> con <code>operationId</code>: repetir no duplica; el mismo ID con otro payload es 409.</p>
+          <p class="rule"><span class="rule-k">No revive</span> un ACK atrasado una cancelación: el estado terminal gana.</p>
+        </div>
+      </div>
+      <aside class="notes">
+        <p>Ejemplo: A acepta v2, llega una cancelación v3 y un ACK v2; gana v3.</p>
+        <p>Este contrato está en `contracts/` con fixtures válidos e inválidos.</p>
+      </aside>
+    </section>
+
+    <!-- 09 · Estado real -->
+    <section class="slide" data-title="Estado real">
+      <header class="head">
+        <p class="eyebrow">SIN HUMO</p>
+        <h2 class="title">Qué hay hoy, qué falta</h2>
+      </header>
+      <div class="grid grid--2">
+        <article class="note note--2 note--plain">
+          <span class="magnet magnet--2"></span>
+          <p class="note-label">YA FUNCIONA · CON EVIDENCIA</p>
+          <ul class="checklist">
+            <li>UI esqueleto: 4 menús, interacciones y 19 tests del modelo.</li>
+            <li>Contratos v1: 15 esquemas, 42 fixtures, 59 tests en la app.</li>
+            <li>API local Fastify + SQLite con 22 pruebas: sesiones, operaciones, feed y agente.</li>
+            <li>APK debug compila e incluye el módulo Kotlin.</li>
+            <li>CI: tipos, contratos, tests, backend y export Android.</li>
+          </ul>
+        </article>
+        <article class="note note--3 note--plain">
+          <span class="magnet magnet--3"></span>
+          <p class="note-label">PENDIENTE · SIN MAQUILLAJE</p>
+          <ul class="crosslist">
+            <li>Conectar la app a la API y la sesión real.</li>
+            <li>Alarma audible sin proceso JS en un móvil físico.</li>
+            <li>Widget y prueba entre dos teléfonos.</li>
+            <li>VPS desplegado con HTTPS, secretos y backups.</li>
+            <li>Push real y permisos revocados.</li>
+          </ul>
+        </article>
+      </div>
+      <p class="footnote">No presentamos una notificación como alarma ni una migración documental como backend operativo.</p>
+      <aside class="notes">
+        <p>Este slide protege al equipo: lo que no está, se dice antes de que lo pregunten.</p>
+        <p>Los 22 tests del servidor se ejecutan en local; no hay VPS todavía.</p>
+      </aside>
+    </section>
+
+    <!-- 10 · Diseño -->
+    <section class="slide" data-title="Diseño">
+      <header class="head">
+        <p class="eyebrow">SISTEMA VISUAL</p>
+        <h2 class="title">Una nevera, no un panel</h2>
+      </header>
+      <div class="grid grid--3">
+        <article class="note note--1 note--plain">
+          <span class="magnet magnet--1"></span>
+          <p class="note-label">COLOR</p>
+          <h3 class="note-title">Puerta crema, papel pastel</h3>
+          <p class="body">El rojo solo en el botón, el subrayado activo y los imanes. Sin negro ni blanco puros.</p>
+        </article>
+        <article class="note note--5 note--plain">
+          <span class="magnet magnet--2"></span>
+          <p class="note-label">TIPOGRAFÍA</p>
+          <h3 class="note-title">Fraunces y DM Mono</h3>
+          <p class="body">Títulos sin mayúsculas; etiquetas siempre en mayúsculas; cifras tabulares.</p>
+        </article>
+        <article class="note note--4 note--plain">
+          <span class="magnet magnet--4"></span>
+          <p class="note-label">FORMA Y MOVIMIENTO</p>
+          <h3 class="note-title">Papel pegado a la puerta</h3>
+          <p class="body">Radio 2 px, un imán por nota, inclinación ≤ 2° y sombras cálidas y cortas.</p>
+        </article>
+      </div>
+      <p class="footnote">Contraste AA/AAA verificado sobre los seis papeles · iconos de línea, sin emojis · movimiento reducido respetado.</p>
+      <aside class="notes">
+        <p>La estética está implementada en `src/ui/tokens.ts` y verificada por tests de contraste.</p>
+        <p>No se inventan colores fuera de los tokens.</p>
+      </aside>
+    </section>
+
+    <!-- 11 · Equipo -->
+    <section class="slide" data-title="Equipo">
+      <header class="head">
+        <p class="eyebrow">REPARTO</p>
+        <h2 class="title">Seis personas, un recorrido</h2>
+      </header>
+      <div class="team">
+        <div class="person"><span class="who">P1</span><strong>Base y contratos</strong><span class="state state--done">contratos y esqueleto</span></div>
+        <div class="person"><span class="who">P2</span><strong>Pantallas</strong><span class="state state--next">conectar sesión y formularios</span></div>
+        <div class="person"><span class="who">P3</span><strong>API y agente</strong><span class="state state--done">servidor local con tests</span></div>
+        <div class="person"><span class="who">P4</span><strong>Alarmas Android</strong><span class="state state--next">sonido y detener sin JS</span></div>
+        <div class="person"><span class="who">P5</span><strong>Datos y sincronización</strong><span class="state state--next">SQLite local + HTTP</span></div>
+        <div class="person"><span class="who">P6</span><strong>Widget y demo</strong><span class="state state--next">deep link y dos móviles</span></div>
+      </div>
+      <div class="next">
+        <p class="note-label">SIGUIENTE PASO</p>
+        <p class="next-line"><strong>1.</strong> Conectar la API y la sesión · <strong>2.</strong> Alarma audible en un móvil · <strong>3.</strong> Widget y ensayo de la demo.</p>
+      </div>
+      <aside class="notes">
+        <p>El plan está en `docs/TEAM_PLAN.md`; los gates del día 2 y 3 no se saltan.</p>
+        <p>Congelar alcance el día 3 y ensayar dos veces el recorrido.</p>
+      </aside>
+    </section>
+
+    <!-- 12 · Cierre -->
+    <section class="slide slide--end" data-title="Cierre">
+      <div class="end">
+        <p class="eyebrow">GRACIAS</p>
+        <h2 class="display display--end">«¿Te pongo una alarma?»</h2>
+        <p class="lead">Ahora la pregunta tiene respuesta: quién la propone, quién decide y si suena.</p>
+        <div class="end-note note note--1">
+          <span class="magnet magnet--1"></span>
+          <p class="note-label">REPOSITORIO</p>
+          <p class="body">github.com/Carolechu65/HackatonETSE-ClosedAI</p>
+          <p class="support">Rama <code>P1-Esqueleto</code> · presentación en <code>presentation/</code></p>
+        </div>
+      </div>
+      <aside class="notes">
+        <p>Cerrar con la demo si está disponible; si no, con el estado real y el siguiente paso.</p>
+      </aside>
+    </section>
+
+  </div>
+
+  <footer class="chrome">
+    <div class="chrome-left">
+      <span class="mark">alarmaT</span>
+      <span class="chrome-sep">·</span>
+      <span id="slide-title">Portada</span>
+    </div>
+    <div class="chrome-center">
+      <div class="dots" id="dots" role="tablist" aria-label="Diapositivas"></div>
+    </div>
+    <div class="chrome-right">
+      <span class="counter"><span id="current">01</span> / <span id="total">12</span></span>
+      <button class="nav-btn" id="prev" aria-label="Diapositiva anterior">←</button>
+      <button class="nav-btn" id="next" aria-label="Diapositiva siguiente">→</button>
+    </div>
+  </footer>
+
+  <p class="hint" id="hint">← → para navegar · N notas del ponente · F pantalla completa</p>
+
+  <script src="deck.js"></script>
+</body>
+</html>
