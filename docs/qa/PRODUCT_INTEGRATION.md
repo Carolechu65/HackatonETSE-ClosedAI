@@ -39,7 +39,7 @@ explícito. Son procesos de desarrollo; no constituyen un despliegue público.
 
 ## Evidencia y límites
 
-`npm run check`: 224 pruebas de app/datos y 40 de API aprobadas; 42 fixtures y 15 esquemas válidos. La prueba externa del modelo se omite por defecto y se ejecutó explícitamente con resultado correcto.
+`npm run check`: 225 pruebas de app/datos y 40 de API aprobadas; 42 fixtures y 15 esquemas válidos. La prueba externa del modelo se omite por defecto y se ejecutó explícitamente con resultado correcto.
 
 Los tests de dominio/datos incluyen SQLite real, aislamiento de cuentas,
 idempotencia, respuesta tardía de una sesión anterior, rechazo de datos ajenos,
