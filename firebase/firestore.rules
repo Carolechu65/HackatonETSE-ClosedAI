@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // P3: añadir lecturas por pertenencia y destinatario con tests de emulador.
+    // Las mutaciones de dominio pasarán por callables autorizadas.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

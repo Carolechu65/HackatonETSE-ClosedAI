@@ -4,6 +4,8 @@
 
 Producto y alcance en [FEATURES](../FEATURES.md); contratos, arquitectura y pruebas en [TDD](TDD.md). El primer resultado competitivo es enviar una alarma entre dos móviles, aceptar/rechazar/cambiar hora y mostrar programación real en un widget.
 
+Ya hay puntos de entrada para cada persona: [estructura inicial y comandos](START_HERE.md). Las rutas de este plan son el objetivo completo; parte existe como scaffold y el resto sigue pendiente.
+
 ## 1. Reparto de responsabilidad
 
 Se utiliza **un proyecto Expo + React Native + TypeScript**, Expo Router, backend Firebase y un módulo Expo nativo local acotado para las alarmas audibles. Se trabaja con development builds, no Expo Go. Cada persona tiene una zona principal y una entrega consumible por las demás. Ser owner significa mantener la coherencia de esa zona, no bloquear revisiones ni trabajar aislado.

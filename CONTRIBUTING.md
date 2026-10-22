@@ -1,6 +1,6 @@
 # Contribuir a alarmaT
 
-Este repositorio contiene el diseño; las carpetas de código y las comprobaciones descritas aquí se crearán durante la implementación. El stack acordado es Expo, React Native, TypeScript, Expo Router y Firebase. Consulta el [TDD](docs/TDD.md) antes de programar y el [plan de seis personas](docs/TEAM_PLAN.md) para identificar responsables.
+Este repositorio contiene el diseño y una estructura inicial. Los comandos disponibles y límites del scaffold están en [START_HERE](docs/START_HERE.md). El stack acordado es Expo, React Native, TypeScript, Expo Router y Firebase. Consulta el [TDD](docs/TDD.md) antes de programar y el [plan de seis personas](docs/TEAM_PLAN.md) para identificar responsables.
 
 ## Organización y dependencias
 
@@ -52,7 +52,7 @@ Para cada PR de código:
 - Actualizar documentación y ejemplos de contratos si cambia el comportamiento.
 - Explicar limitaciones conocidas y distinguir resultados reales de simulaciones.
 
-La persona de integración incorporará a CI las tareas reales de TypeScript, lint, tests, emuladores y compilación de development builds cuando exista el código. Los cambios nativos requieren reconstruir la app; una recarga JS no basta. No hay actualmente un workflow ni un comando de tests implementado. No presentar comprobaciones pendientes como ejecutadas.
+La persona de integración incorporará a CI TypeScript, lint, tests, emuladores y compilación de development builds. Ya existen scripts de typecheck, build del backend y export Android; todavía faltan workflow y suites de tests. Los cambios nativos requieren reconstruir la app; una recarga JS no basta. No presentar comprobaciones pendientes como ejecutadas.
 
 ## Definición de terminado
 

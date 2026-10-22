@@ -4,6 +4,8 @@
 
 Prácticas verificadas y límites del stack: [Android/Expo](ANDROID_PRACTICES.md) y [Firebase](FIREBASE_PRACTICES.md).
 
+La estructura inicial ya está disponible en [START_HERE](START_HERE.md). Este TDD sigue describiendo la implementación objetivo; los adaptadores de arranque todavía no completan sus garantías.
+
 Referencias de producto: [README](../README.md), [funcionalidades](../FEATURES.md). Responsables, horas y entregas: [plan para seis personas](TEAM_PLAN.md).
 
 ## 1. Objetivo y alcance

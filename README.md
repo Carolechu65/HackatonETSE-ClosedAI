@@ -4,7 +4,9 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 > Nombre propuesto de la app: **alarmaT**. Repositorio: **HackatonETSE-ClosedAI**. Aplicación Android para proponer alarmas y notificaciones a otras personas, que pueden aceptarlas, rechazarlas o elegir otra hora antes de activarlas en su móvil.
 
-**Estado: definición del proyecto.** Este documento describe el producto y su implementación propuesta. No implica que las funcionalidades estén construidas ni que exista una aplicación ejecutable.
+**Estado: estructura inicial de desarrollo.** Existe una app Expo de demostración, contratos, repositorio en memoria, funciones Firebase y módulo nativo de arranque. Firebase, widgets y alarmas reales todavía no están conectados. El resto del documento define el producto objetivo, no funcionalidades ya completadas.
+
+**Empieza aquí:** [guía de arranque y reparto por persona](docs/START_HERE.md). Incluye comandos reales y el primer archivo que debe modificar cada responsable.
 
 ## Documentación
 
@@ -322,7 +324,7 @@ La [caché offline de Firestore](https://firebase.google.com/docs/firestore/mana
 
 Las Security Rules protegen el acceso cliente. Las funciones con Admin SDK validan además identidad, pertenencia, destinatario y versión. Los [triggers pueden repetirse y llegar fuera de orden](https://firebase.google.com/docs/functions/firestore-events); las operaciones y los avisos se deduplican mediante identificadores y revisiones.
 
-Se validarán reglas y funciones con Emulator Suite. El [despliegue de Cloud Functions requiere Blaze](https://firebase.google.com/docs/functions/get-started); debe estar disponible antes de preparar la demo remota. Este repositorio todavía no incluye una app, un backend desplegado ni comandos propios de ejecución.
+Se validarán reglas y funciones con Emulator Suite. El [despliegue de Cloud Functions requiere Blaze](https://firebase.google.com/docs/functions/get-started); debe estar disponible antes de preparar la demo remota. Hay una base Expo y funciones locales de arranque; no hay backend desplegado. Los comandos están en [START_HERE](docs/START_HERE.md).
 
 ### Prueba técnica del primer día
 
@@ -465,7 +467,7 @@ Métricas: tiempo desde propuesta hasta programación, decisiones respetadas, du
 
 ## Preparación del desarrollo
 
-Este repositorio contiene la definición del producto, el TDD, el plan de equipo, guías técnicas y la licencia. Todavía no se incluyen comandos de instalación o ejecución propios de una aplicación implementada.
+El repositorio incluye una estructura inicial con scripts de arranque, comprobación TypeScript y compilación del backend. Sigue [START_HERE](docs/START_HERE.md) para ejecutarla. Las siguientes integraciones siguen pendientes.
 
 Antes de desarrollar:
 
