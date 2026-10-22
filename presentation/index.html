@@ -159,51 +159,61 @@
       </aside>
     </section>
 
-    <!-- 06 · Arquitectura -->
-    <section class="slide" data-title="Arquitectura">
+    <!-- 06 · Tecnologías -->
+    <section class="slide" data-title="Tecnologías">
       <header class="head">
-        <p class="eyebrow">DECISIÓN VIGENTE · ADR-004</p>
-        <h2 class="title">Una API propia y SQLite en el VPS</h2>
+        <p class="eyebrow">CON QUÉ ESTÁ HECHO</p>
+        <h2 class="title">Tecnologías que usamos</h2>
       </header>
-      <div class="arch">
-        <div class="arch-col">
-          <div class="node node--paper">
-            <p class="note-label">MÓVIL</p>
-            <strong>Expo + React Native</strong>
-            <span class="support">Pantallas, SQLite local y outbox.</span>
+      <div class="tech-sheet">
+        <span class="magnet magnet--1"></span>
+        <div class="tech-grid">
+          <div class="tech">
+            <img src="img/logos/react.svg" alt="React Native" />
+            <strong>React Native</strong>
+            <span>Interfaz Android</span>
           </div>
-          <div class="node node--paper">
-            <p class="note-label">ANDROID</p>
-            <strong>Runtime Kotlin</strong>
-            <span class="support">AlarmManager, sonido y detener sin JS.</span>
+          <div class="tech">
+            <img src="img/logos/expo.svg" alt="Expo" />
+            <strong>Expo</strong>
+            <span>Dev client y base de widgets</span>
           </div>
-        </div>
-        <div class="arch-arrow">
-          <span class="arch-label">HTTPS · Bearer</span>
-          <span class="arrow">→</span>
-          <span class="arch-label">operaciones v1</span>
-        </div>
-        <div class="arch-col">
-          <div class="node node--mint">
-            <p class="note-label">VPS</p>
-            <strong>Fastify + Node 22</strong>
-            <span class="support">Sesiones Argon2id, autorización, transacciones.</span>
+          <div class="tech">
+            <img src="img/logos/typescript.svg" alt="TypeScript" />
+            <strong>TypeScript</strong>
+            <span>Tipos estrictos y contratos</span>
           </div>
-          <div class="node node--mint">
-            <p class="note-label">DATOS</p>
-            <strong>SQLite + migraciones</strong>
-            <span class="support">Feed incremental, outbox y backups.</span>
+          <div class="tech">
+            <img src="img/logos/nodedotjs.svg" alt="Node.js" />
+            <strong>Node.js</strong>
+            <span>API del servidor</span>
+          </div>
+          <div class="tech">
+            <img src="img/logos/fastify.svg" alt="Fastify" />
+            <strong>Fastify</strong>
+            <span>HTTP, sesiones y validación</span>
+          </div>
+          <div class="tech">
+            <img src="img/logos/sqlite.svg" alt="SQLite" />
+            <strong>SQLite</strong>
+            <span>Datos del piso y del móvil</span>
+          </div>
+          <div class="tech">
+            <img src="img/logos/kotlin.svg" alt="Kotlin" />
+            <strong>Kotlin</strong>
+            <span>Alarma y AlarmManager</span>
+          </div>
+          <div class="tech">
+            <img src="img/logos/github.svg" alt="GitHub" />
+            <strong>GitHub</strong>
+            <span>Repositorio y CI</span>
           </div>
         </div>
       </div>
-      <ul class="bullets bullets--tight">
-        <li>El teléfono nunca abre la base del servidor: SQLite local y SQLite del VPS son almacenes distintos.</li>
-        <li>Push opcional para avisar de cambios; una alarma ya programada no depende de la red.</li>
-        <li>El agente solo propone borradores: no acepta, no programa y no cambia permisos.</li>
-      </ul>
+      <p class="footnote">También: better-sqlite3, Argon2id, expo-sqlite, expo-font y GitHub Actions. Logos de Simple Icons (CC0).</p>
       <aside class="notes">
-        <p>Motivo del cambio: VPS propio, coste controlado y un solo lenguaje en el equipo.</p>
-        <p>Firebase queda como legado identificado; no se mezclan dos clientes.</p>
+        <p>Expo no solo compila: aporta dev client, fuentes y la base de los widgets.</p>
+        <p>Kotlin queda acotado al runtime de alarmas; el resto del producto es TypeScript.</p>
       </aside>
     </section>
 

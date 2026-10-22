@@ -488,6 +488,52 @@ code {
   text-transform: uppercase;
 }
 
+/* ---------- Tecnologías ---------- */
+
+.tech-sheet {
+  position: relative;
+  max-width: 1140px;
+  width: 100%;
+  background: var(--paper-2);
+  border-radius: 2px;
+  box-shadow: var(--sheet-shadow);
+  padding: 34px 28px 26px;
+  transform: rotate(-0.4deg);
+}
+
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px 20px;
+}
+
+.tech {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 6px 4px 8px;
+  border-bottom: 1px solid rgba(43, 39, 35, 0.16);
+}
+
+.tech img { width: 44px; height: 44px; }
+
+.tech strong {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.05;
+  color: var(--ntx);
+}
+
+.tech span {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgba(43, 39, 35, 0.78);
+}
+
 /* ---------- Estados ---------- */
 
 .states {
@@ -720,6 +766,11 @@ body.show-notes .notes p:last-child { margin-bottom: 0; }
   .note-title { font-size: 19px; }
   .body, .bullets, .script-row { font-size: 12px; }
   .menu-grid { gap: 10px; }
+  .tech-sheet { padding: 26px 20px 18px; }
+  .tech-grid { gap: 16px; }
+  .tech img { width: 32px; height: 32px; }
+  .tech strong { font-size: 16px; }
+  .tech span { font-size: 9px; }
   .menu-head strong { font-size: 15px; }
   .menu-card .support { font-size: 9.5px; }
   .tabbar-demo { padding-top: 7px; }
@@ -741,6 +792,7 @@ body.show-notes .notes p:last-child { margin-bottom: 0; }
   .slide { padding: 28px 22px 96px; }
   .grid--2, .grid--3, .team, .states, .split { grid-template-columns: 1fr; }
   .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tech-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .flow { flex-direction: column; }
   .arch { grid-template-columns: 1fr; }
   .arch-arrow { flex-direction: row; justify-content: center; gap: 10px; }
