@@ -4,7 +4,7 @@ Alarmas compartidas, bajo el control de quien las recibe.
 
 > Nombre propuesto de la app: **alarmaT**. Repositorio: **HackatonETSE-ClosedAI**. Aplicación Android para proponer alarmas y notificaciones a otras personas, que pueden aceptarlas, rechazarlas o elegir otra hora antes de activarlas en su móvil.
 
-**Estado: estructura inicial de desarrollo.** Existe una app Expo de demostración, contratos, repositorio en memoria, funciones Firebase y módulo nativo de arranque. Firebase, widgets y alarmas reales todavía no están conectados. El resto del documento define el producto objetivo, no funcionalidades ya completadas.
+**Estado: estructura inicial y cambio de arquitectura documentado.** El backend objetivo es una API propia con SQLite en el VPS. El código de `functions/` y la configuración `firebase/` siguen siendo el scaffold anterior, pendiente de migración por P3 a `server/`. La app, widgets y alarmas reales todavía requieren integración. Este cambio de documentación no despliega ni migra datos.
 
 **Empieza aquí:** [guía de arranque y reparto por persona](docs/START_HERE.md). Incluye comandos reales y el primer archivo que debe modificar cada responsable.
 
@@ -19,8 +19,9 @@ Alarmas compartidas, bajo el control de quien las recibe.
 - [Decisiones (ADR)](docs/adr/): base Expo y lockfile, ejes de estado y política de cambio horario.
 - [Plan para seis personas](docs/TEAM_PLAN.md): responsables, dependencias y entregas diarias.
 - [Estado de las prácticas a octubre de 2026](docs/STATE_OF_THE_ART.md): investigación y decisiones aplicadas al proyecto.
-- [Buenas prácticas Android](docs/ANDROID_PRACTICES.md) y [Firebase](docs/FIREBASE_PRACTICES.md): referencias técnicas verificadas.
+- [Buenas prácticas Android](docs/ANDROID_PRACTICES.md) y [SQLite/VPS](docs/SQLITE_VPS_PRACTICES.md): referencias técnicas verificadas.
 - [CONTRIBUTING.md](CONTRIBUTING.md): organización del código, colaboración y criterios de revisión.
+- [Cambio a SQLite/VPS](docs/MIGRATION_SQLITE.md): cambios por persona y trabajo de migración pendiente.
 - Este README: alcance, decisiones técnicas, arquitectura, criterios de aceptación y plan de desarrollo.
 - [LICENSE](LICENSE): licencia MIT del repositorio.
 
@@ -288,48 +289,44 @@ Quedan fuera del MVP los pagos bancarios reales, la lectura automática de conve
 
 ## Tecnologías: rapidez de desarrollo, ejecución y ligereza
 
-**Stack elegido: Expo + React Native + TypeScript + Expo Router + Firebase.** Priorizamos desarrollar rápido con un equipo familiarizado con React/TypeScript. La integración específica de alarmas Android se concentra en un módulo nativo pequeño si las APIs de notificación no cubren el comportamiento requerido.
+**Stack elegido: Expo + React Native + TypeScript + Expo Router, API Node.js/Fastify y SQLite en el VPS disponible.** La aplicación consulta una API HTTPS; nunca abre ni descarga el archivo SQLite del servidor. P3 implementa backend y agente; P5 integra cliente HTTP y almacenamiento local.
 
-| Capa | Tecnología | Motivo y límite |
+| Capa | Tecnología propuesta | Responsabilidad |
 |---|---|---|
-| Pantallas y lógica | React Native + TypeScript sobre Expo | Compartir lenguaje y componentes; desarrollo rápido para un equipo React. |
-| Navegación | Expo Router | Rutas por archivos y enlaces hacia propuestas concretas. |
-| Widgets Android | `expo-widgets` | Validar soporte y acciones Android en development build. El widget tiene un entorno separado de React Native. |
-| Datos locales de la app | `expo-sqlite` | Proyecciones, intenciones pendientes y datos para vistas/widgets. No es por sí solo un motor de alarmas. |
-| Recordatorios | `expo-notifications` | Notificaciones locales, canales y acciones. No equivale por sí solo a un despertador con sonido sostenido. |
-| Alarmas sonoras | Módulo local con Expo Modules API y Kotlin/AlarmManager | Programación, registro nativo, reproducción y detener/posponer sin depender de la pantalla ni del runtime JS. Alcance a validar el día 1. |
-| SDK Firebase cliente | React Native Firebase: app, auth, firestore, functions y messaging | Integración con SDK nativo y FCM; necesita development build. Usar una única familia de SDK cliente. |
-| Identidad | Firebase Authentication | Cuentas e identidad de cada miembro. |
-| Datos compartidos | Cloud Firestore + Security Rules | Grupos, propuestas, respuestas, tareas y después gastos; acceso por usuario y destinatario. |
-| Operaciones de servidor | Cloud Functions for Firebase en TypeScript | Validación, autorización, transacciones y envío de propuestas mediante FCM. |
-| Entrega remota | Firebase Cloud Messaging | Comunicar cambios; no garantiza entrega inmediata ni sustituye la programación local. |
-| Cálculos | Funciones TypeScript deterministas | Versiones, reglas y repartos de dinero; independientes de IA. |
+| Pantallas y navegación | Expo, React Native, TypeScript y Expo Router | Desarrollo móvil con el stack ya fijado. |
+| Widgets | expo-widgets | Proyección y enlaces en development build; entorno aislado. |
+| Datos locales del móvil | expo-sqlite | Caché/proyección e intenciones pendientes de ese usuario. |
+| Sesión móvil | Cliente HTTP + Expo SecureStore | Token de sesión; nunca contraseñas persistidas ni claves de servidor. |
+| Backend | Node 22, TypeScript y Fastify | Endpoints HTTPS, validación y autorización en cada operación. |
+| Base compartida | SQLite + better-sqlite3 en disco local del VPS | Usuarios, grupos, propuestas, decisiones, versiones, operaciones y outbox. |
+| Identidad | Auth propia y sesiones opacas | Contraseñas con Argon2id, hash de token en servidor, expiración y revocación. |
+| Sincronización | Lecturas HTTP y cursor por usuario; SSE opcional en primer plano | Recuperar cambios y conciliar al abrir/reanudar; no garantizar ejecución con app cerrada. |
+| Recordatorios | expo-notifications | Programación/presentación de notificaciones locales según capacidades comprobadas. |
+| Alarma sonora | Módulo Expo local + Kotlin/AlarmManager | Registro y ejecución nativos independientes del runtime JS. |
+| Push opcional | Expo Push Service + expo-notifications | Aviso de cambios; Android utiliza FCM como transporte y necesita configuración Google. No se usa Firebase como backend ni RNFirebase. |
+| Cálculos | Código determinista | Consentimiento, versiones, horarios y repartos; separados del modelo de IA. |
 
-La elección de React Native Firebase responde a la necesidad de mensajería nativa; no instalaremos además Firebase JS SDK para las mismas operaciones. Expo documenta [ambas alternativas de integración](https://docs.expo.dev/guides/using-firebase/). Se fijarán versiones compatibles con el SDK Expo seleccionado y un lockfile al crear el proyecto.
+### Rapidez, ligereza y límites
 
-### Qué aporta rapidez y qué hay que medir
+Se reutiliza el VPS y una base SQLite local al servidor para evitar operar una base externa durante el hackathon. Eso añade responsabilidad de autenticación, TLS, backups y mantenimiento. La decisión de implementación es un servicio sencillo en un único host, consultas indexadas y transacciones cortas; no se prometen benchmarks ni escalado horizontal automático.
 
-- **Desarrollo:** una base TypeScript para pantallas, contratos y backend; componentes existentes y un recorrido completo temprano.
-- **Ejecución:** leer estado local, limitar consultas a Firestore y mantener IA fuera del recorrido de activación.
-- **Ligereza:** evitar temporizadores permanentes, agentes en ejecución continua y dependencias innecesarias. Expo no garantiza un APK menor que Kotlin: tamaño, memoria y batería se medirán en una compilación de distribución.
+Los componentes leen proyecciones locales y utilizan puertos de repositorio. Se mantienen los contratos JSON del dominio, incluidos `operationId`, versiones y acuses. Los errores HTTP se traducen al contrato de aplicación en el adaptador; el móvil no recibe SQL ni rutas internas.
 
-**No hace falta reescribir toda la app en Kotlin.** Kotlin queda para la parte Android que requiera control nativo. Una app completamente nativa se evaluó por ese control, pero no es el plan de implementación elegido para este equipo y plazo.
+SQLite del VPS, SQLite del móvil y registro nativo de alarmas son **tres almacenamientos con funciones distintas**. P5 implementa sincronización explícita; los archivos no se replican entre sí. Una nueva aceptación offline queda pendiente de confirmación del servidor, mientras una alarma ya programada puede ejecutarse sin red.
 
-### Development build y límites del widget
+### Desarrollo y notificaciones
 
-Se utilizará una development build propia desde el principio, no Expo Go. [Expo Widgets](https://docs.expo.dev/versions/latest/sdk/widgets/) requiere configuración nativa y tiene un entorno de ejecución separado. Una actualización visual desde un botón no demuestra que se haya persistido, sincronizado o programado una alarma. Las acciones que no puedan ejecutar el contrato completo abrirán la pantalla correspondiente.
+Las integraciones nativas requieren development build. La ejecución del widget, el estado React y la programación del sistema no comparten automáticamente memoria ni almacenamiento. Las acciones que necesiten consentimiento, sesión o permisos abren la pantalla correspondiente.
 
-[Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/) cubre recordatorios. La modalidad de alarma sonora debe demostrar disparo, sonido y acciones con el proceso cerrado. Si necesita código Android adicional se implementará mediante [Expo Modules API](https://docs.expo.dev/modules/get-started/); no se presentará una notificación breve como sustituto de esa modalidad.
+El push es opcional para validar el recorrido con ambos móviles abiertos. Si se habilita Expo Push Service, se documentarán sus credenciales y el transporte FCM de Android. Prescindir también de ese transporte permite sincronizar al abrir/reanudar y ejecutar alarmas ya aceptadas, pero no garantiza recibir invitaciones con la app cerrada. SQLite y un socket no sustituyen un servicio push del sistema.
 
-### Persistencia, sincronización y backend
+### Persistencia y operación del VPS
 
-Firestore conserva el estado compartido; `expo-sqlite` mantiene proyecciones e intenciones pendientes de la app. El módulo de alarma conserva el registro operativo nativo necesario para disparar o detener sin JS. La app consulta ese registro por una interfaz y reconcilia resultados: ninguna fila local aislada acredita una programación efectiva.
+P3 define migraciones SQL, claves foráneas, índices y restricciones únicas para idempotencia, activa WAL y un tiempo de espera acotado para bloqueos. Se utiliza disco persistente local al servidor; no compartir el archivo entre hosts mediante una unidad de red. Las transacciones guardan cambio, resultado idempotente y evento de outbox juntos; el worker envía push después de confirmar la transacción.
 
-La [caché offline de Firestore](https://firebase.google.com/docs/firestore/manage-data/enable-offline) facilita vistas sin red, pero no sustituye el consentimiento ni la comprobación de versión. Una aceptación nueva necesita confirmación de servidor; sin ella queda pendiente. Detener una alarma propia ya programada funciona localmente. Las [transacciones necesitan conexión](https://firebase.google.com/docs/firestore/manage-data/transactions).
+Los tests del nuevo backend usarán API HTTP y bases SQLite temporales con migraciones reales. El despliegue requiere dominio/HTTPS, configuración privada, supervisión del proceso, backups consistentes y prueba de restauración. No se han facilitado aquí IP, dominio ni credenciales: quedan como configuración del entorno, sin inventar valores.
 
-Las Security Rules protegen el acceso cliente. Las funciones con Admin SDK validan además identidad, pertenencia, destinatario y versión. Los [triggers pueden repetirse y llegar fuera de orden](https://firebase.google.com/docs/functions/firestore-events); las operaciones y los avisos se deduplican mediante identificadores y revisiones.
-
-Se validarán reglas y funciones con Emulator Suite. El [despliegue de Cloud Functions requiere Blaze](https://firebase.google.com/docs/functions/get-started); debe estar disponible antes de preparar la demo remota. Hay una base Expo y funciones locales de arranque; no hay backend desplegado. Los comandos están en [START_HERE](docs/START_HERE.md).
+El diseño detallado y las fuentes están en [SQLite/VPS](docs/SQLITE_VPS_PRACTICES.md) y [ADR-004](docs/adr/004-vps-sqlite.md). `functions/` sigue presente como legado: pasar su compilación no valida el backend nuevo. Los comandos actuales se explican en [START_HERE](docs/START_HERE.md).
 
 ### Prueba técnica del primer día
 
@@ -363,10 +360,10 @@ Son criterios de evaluación previstos, no resultados obtenidos. Los objetivos n
 
 ```mermaid
 flowchart TD
-    A[Emisor: crear propuesta] --> API[Cloud Functions + Firebase Auth]
-    API --> DB[(Propuesta y versión en Firestore)]
-    DB --> EVENT[Función de envío idempotente]
-    EVENT --> PUSH[Aviso remoto mediante FCM]
+    A[Emisor: crear propuesta] --> API[API HTTPS + sesión propia]
+    API --> DB[(SQLite del VPS)]
+    DB --> EVENT[Worker de outbox]
+    EVENT --> PUSH[Push opcional o lectura de cambios]
     PUSH --> B[Destinatario: recuperar propuesta]
     B --> D{Decisión personal}
     D -->|Rechazar| OFF[Aviso inactivo]
@@ -386,26 +383,25 @@ Un aviso remoto comunica que hay cambios; el dispositivo recupera y valida la pr
 
 Una aceptación y su programación son operaciones distintas: se conserva el estado intermedio para recuperarse de errores. El evento de disparo tampoco demuestra que una persona oyera el sonido o completara su tarea; únicamente una acción explícita permite registrar su respuesta.
 
-Las asignaciones de tareas pueden seguir una rotación acordada. Cambiar compromisos existentes requiere la aceptación correspondiente. Las claves de IA y FCM permanecen en servidor y cada operación comprueba identidad, pertenencia y permisos.
+Las asignaciones de tareas pueden seguir una rotación acordada. Cambiar compromisos existentes requiere la aceptación correspondiente. Los secretos de IA y del proveedor push permanecen en el entorno de servidor y cada operación comprueba identidad, pertenencia y permisos.
 
 ## Modelo de datos inicial
 
-Firestore conserva documentos y subcolecciones. Los contratos y campos normativos están en el [TDD](docs/TDD.md), y las reglas de acceso en la [guía Firebase](docs/FIREBASE_PRACTICES.md). Esta tabla es un mapa de responsabilidades, no un segundo esquema independiente.
+El [TDD](docs/TDD.md) y [SQLite/VPS](docs/SQLITE_VPS_PRACTICES.md) describen tablas y API. Los DTO de dominio mantienen sus nombres y validadores; una fila SQL no se expone directamente como respuesta pública.
 
-| Ruta o registro | Contenido y responsabilidad |
+| Tabla o registro | Contenido |
 |---|---|
-| `users/{uid}` y `users/{uid}/devices/{deviceId}` | Perfil propio, dispositivos y tokens privados. |
-| `groups/{groupId}` y `members/{uid}` dentro del grupo | Piso, miembros y roles. |
-| `groups/{groupId}/alarmRequests/{alarmId}` | Propuesta, emisor, destinatarios, horario, zona, modo y versión de sus términos. |
-| `recipients/{uid}` dentro de cada propuesta | Decisión individual, revisión propia y acuse de recepción. |
-| `schedules/{occurrenceId}` dentro de cada destinatario | Acuse de programación por ocurrencia, dispositivo y versiones. |
-| `groups/{groupId}/tasks/{taskId}` | Responsable, asignación, vencimiento, recurrencia y estado. |
-| `operations/{operationKey}` | Deduplicación de comandos, solo servidor. |
-| `outbox/{eventId}` | Envíos remotos pendientes, solo servidor. |
-| SQLite de la app | Proyecciones para pantallas/widgets e intenciones pendientes de sincronizar. |
-| Registro del módulo nativo | Ocurrencias efectivamente programadas, revisiones y cancelaciones; accesible sin runtime JS. |
+| `users`, `sessions` | Usuarios, verificación de contraseña y sesiones con token hasheado. |
+| `groups`, `memberships`, `invitations` | Grupos, roles y acceso por invitación. |
+| `alarm_requests`, `alarm_recipients` | Propuesta, destinatarios, decisión individual y versiones. |
+| `device_schedules` | Acuse por ocurrencia/dispositivo, estado y revisiones. |
+| `devices` | Tokens push privados e identidad de instalación; principal/epoch asociados al usuario. |
+| `tasks` | Tareas y vínculo con propuestas. |
+| `operations`, `outbox_events`, `change_events` | Idempotencia, trabajo de entrega y sincronización autorizada. |
+| SQLite móvil | Proyección e intenciones de la sesión local. |
+| Registro nativo | Ocurrencias realmente programadas y cancelaciones locales. |
 
-Gastos, repartos, liquidaciones, categorías, presupuestos, huchas y movimientos se añadirán en P1 con contratos específicos. Cada destinatario tiene su propia revisión; responder a una propuesta no invalida la respuesta de otro miembro.
+Los módulos financieros siguen en P1 y se incorporarán con migraciones específicas. Las decisiones de un destinatario no invalidan las de otro.
 
 ## Criterios de aceptación
 
@@ -476,12 +472,12 @@ El repositorio incluye una estructura inicial con scripts de arranque, comprobac
 
 Antes de desarrollar:
 
-1. Validar Expo y Firebase con la prueba completa de alarma entre dos móviles con la app cerrada.
+1. Validar Expo y la API del VPS con la prueba completa de alarma entre dos móviles con la app cerrada.
 2. Preparar un teléfono Android real y el entorno de compilación.
 3. Crear el proyecto Expo con TypeScript y Router, fijar dependencias y generar una development build Android.
-4. Configurar Firebase Authentication, Firestore, índices, Security Rules y Emulator Suite.
+4. Implementar API, sesiones, migraciones e índices SQLite y pruebas de autorización con bases temporales.
 5. Crear cuentas de demo y datos de ejemplo.
-6. Configurar Cloud Functions y FCM para propuestas remotas y, posteriormente, el proveedor de IA únicamente en el backend.
+6. Preparar HTTPS, volumen persistente, backups y worker del VPS; habilitar push opcional y proveedor de IA solo desde configuración de servidor.
 7. Añadir al README los comandos reales de instalación, compilación y pruebas cuando existan.
 
 ## Referencias
@@ -490,11 +486,11 @@ Antes de desarrollar:
 - [Expo Widgets](https://docs.expo.dev/versions/latest/sdk/widgets/): compatibilidad, configuración y límites de widgets.
 - [Jetpack Glance](https://developer.android.com/develop/ui/compose/glance): alternativa nativa Android.
 - [Actualización de widgets Android](https://developer.android.com/develop/ui/views/appwidgets/advanced): actualización por eventos y restricciones periódicas.
-- [Firebase para Android](https://firebase.google.com/docs/android/setup): integración y dependencias.
-- [Firestore Security Rules](https://firebase.google.com/docs/firestore/security/get-started): acceso por usuario y grupo.
+- [SQLite WAL](https://sqlite.org/wal.html): concurrencia y límites del archivo compartido.
+- [Fastify](https://fastify.dev/docs/latest/): API HTTP del servidor.
 - [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/): persistencia local.
 - [Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/): programación y gestión de avisos.
-- [Cloud Functions for Firebase](https://firebase.google.com/docs/functions/get-started): funciones de backend y emulación.
+- [SQLite Backup API](https://sqlite.org/backup.html): copias consistentes de la base.
 
 ## Pitch
 

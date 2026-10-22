@@ -32,3 +32,7 @@ Reglas asociadas:
 - P5 proyecta los ejes en SQLite y conserva tombstones de cancelación.
 - P3 rechaza acuses de versiones o `deviceEpoch` anteriores.
 - Añadir un estado requiere actualizar `states.ts`, `contracts/schemas/common.schema.json`, los fixtures y este documento en el mismo cambio. Cambiar el significado de uno existente exige versión nueva del contrato.
+
+## Persistencia tras el cambio a VPS
+
+Los ejes y versiones no cambian con el backend: SQLite del VPS conserva propuesta/decisión confirmadas; `expo-sqlite` conserva la proyección/outbox de P5; el store nativo de P4 conserva programación y tombstones. La API obtiene el actor de su sesión verificada. P3 acepta acuses solo para la pareja vigente de versiones y `deviceEpoch`, dentro de una transacción; no se presume atomicidad con el móvil.

@@ -24,7 +24,7 @@ Las rutas de gastos y huchas se añadirán con su contrato P1; no se crean carpe
 2. **Sin sesión no se muestran entidades.** El layout redirige a acceso y no reutiliza datos de una cuenta anterior.
 3. **Una propuesta retirada, caducada o de otro miembro** termina en `/+not-found`, nunca en una pantalla con datos vacíos o ajenos.
 4. **El widget abre la ruta del detalle**, no un formulario que responda solo. Las acciones directas se habilitan cuando P4/P5 puedan ejecutar el contrato completo.
-5. Las rutas son finas: validan el parámetro y delegan en `src/features/*`. No contienen reglas de negocio ni llamadas a Firestore.
+5. Las rutas son finas: validan el parámetro y delegan en `src/features/*`. No contienen reglas de negocio ni llamadas directas a la API o a SQLite del servidor.
 
 ## Pendiente de acuerdo con P2/P6
 

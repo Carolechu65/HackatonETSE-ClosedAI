@@ -4,9 +4,9 @@
 
 ## 1. Stack elegido y motivo
 
-**Expo + React Native + TypeScript + Expo Router + Firebase**, con `expo-widgets`, `expo-sqlite` y `expo-notifications`. Se prioriza rapidez para un equipo React/TypeScript. El módulo local `modules/alarm-runtime` concentra Kotlin y APIs Android necesarias para la alarma sonora, sin reescribir las pantallas en Compose.
+**Expo + React Native + TypeScript + Expo Router + API HTTPS + SQLite en VPS**, con `expo-widgets`, `expo-sqlite` y `expo-notifications`. Se prioriza rapidez para un equipo React/TypeScript. El módulo local `modules/alarm-runtime` concentra Kotlin y APIs Android necesarias para la alarma sonora, sin reescribir las pantallas en Compose.
 
-React Native Firebase integra Auth, Firestore, Functions y Messaging nativos. No se combina con Firebase JS SDK para los mismos servicios. Se requiere una development build; Expo Go no contiene estas integraciones personalizadas. Las versiones se fijan al inicializar el proyecto, verificando compatibilidad. [Firebase en Expo](https://docs.expo.dev/guides/using-firebase/), [development builds](https://docs.expo.dev/develop/development-builds/introduction/).
+La API objetivo usa Node 22, Fastify y better-sqlite3; P3 implementará autenticación, autorización y persistencia. P5 consume HTTPS con fetch y guarda el token bearer opaco en expo-secure-store. La app no accede al archivo del VPS. No se añaden SDK de Firebase ni RNFirebase. Se requiere una development build para el módulo nativo y los widgets. Fijar versiones compatibles y reconstruir tras cambios nativos. [SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/), [development builds](https://docs.expo.dev/develop/development-builds/introduction/).
 
 `expo-notifications` permite programar recordatorios locales. Una alarma de despertador con sonido sostenido, detener y posponer requiere demostrar el comportamiento del runtime nativo. No basta una notificación con sonido breve. [Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/), [módulos locales Expo](https://docs.expo.dev/modules/get-started/).
 
@@ -18,18 +18,19 @@ La estructura normativa y los contratos están en el [TDD](TDD.md); los seis pro
 app/                         # rutas y layouts Expo Router
 src/features/                # auth, groups, alarms, tasks; gastos en P1
 src/domain/                  # modelos, reglas, tiempo y contratos
-src/data/                    # SQLite, RNFirebase y repositorios
+src/data/                    # SQLite local, HTTPS/SecureStore y repositorios
 src/platform/alarms/         # interfaz TypeScript hacia runtime
 src/platform/notifications/  # recordatorios estándar
 src/platform/sync/           # conciliación y reintentos
 src/widgets/                 # vistas y snapshots expo-widgets
-src/bootstrap/               # registro FCM antes de Router
+src/bootstrap/               # sesión, ciclo de app y eventos push opcionales
 modules/alarm-runtime/       # Kotlin, registro durable y componentes Android
-functions/                   # backend TypeScript
+server/                      # objetivo: API Node/Fastify + SQLite del VPS
+functions/                   # código heredado pendiente de migración
 contracts/                   # esquemas y fixtures comunes
 ```
 
-Son rutas previstas, no código existente. Mantener pantallas pequeñas, efectos con limpieza de listeners y dominio independiente de React. Los componentes no llaman directamente a Firestore ni mantienen temporizadores para hacer sonar alarmas. Inyectar reloj, repositorio y runtime facilita probar estados y fallos.
+La estructura mezcla bases existentes y rutas objetivo; `server/` debe implementarlo P3. Compilar `functions/` solo comprueba el backend heredado, no valida la API nueva. Mantener pantallas pequeñas, efectos con limpieza de listeners y dominio independiente de React. Los componentes no llaman directamente a la API ni mantienen temporizadores para hacer sonar alarmas. Inyectar reloj, repositorio y runtime facilita probar estados y fallos.
 
 Los permisos, servicios y receptores se configuran mediante plugins/configuración reproducible. Un cambio nativo obliga a reconstruir el binario; Fast Refresh no lo instala. No depender de modificaciones manuales en archivos generados que se perderían al regenerarlos. [Generación nativa continua](https://docs.expo.dev/workflow/continuous-native-generation/).
 
@@ -37,11 +38,11 @@ Los permisos, servicios y receptores se configuran mediante plugins/configuraci�
 
 | Registro | Autoridad |
 |---|---|
-| Firestore | Propuesta vigente, pertenencia y consentimiento confirmado. |
+| SQLite del VPS, detrás de API HTTPS | Propuesta vigente, pertenencia y consentimiento confirmado; autorización de cada operación y lectura en servidor. |
 | expo-sqlite | Proyecciones de la app, formularios y comandos pendientes. |
 | Registro privado de alarm-runtime | Ocurrencias sonoras, versiones, cancelaciones y ejecución local sin JS. |
 
-Una base abierta mediante `expo-sqlite` no garantiza acceso desde un receptor Kotlin. El módulo mantiene su propio registro operativo y expone snapshots y resultados a TypeScript. SQLite no sobrescribe una cancelación nativa con datos antiguos. El runtime no necesita Firebase ni React para detener una alarma. [SQLite de Expo](https://docs.expo.dev/versions/latest/sdk/sqlite/).
+Una base abierta mediante `expo-sqlite` no garantiza acceso desde un receptor Kotlin. El módulo mantiene su propio registro operativo y expone snapshots y resultados a TypeScript. SQLite no sobrescribe una cancelación nativa con datos antiguos. El runtime no necesita conexión al VPS ni React para detener una alarma. [SQLite de Expo](https://docs.expo.dev/versions/latest/sdk/sqlite/).
 
 Secuencia: confirmar consentimiento en servidor → persistir comando nativo → programar Android → registrar resultado → actualizar proyección SQLite → enviar acuse. No existe transacción atómica entre esas piezas: identificadores estables y reconciliación recuperan fallos intermedios.
 
@@ -49,11 +50,11 @@ Una aceptación nueva sin red queda pendiente; una alarma ya programada puede ej
 
 Para recordatorios estándar, el adaptador conserva el ID que devuelve expo-notifications. Para alarmas sonoras, el propietario es alarm-runtime. No programar la misma ocurrencia por ambos caminos. La UI distingue modalidades y capacidades.
 
-## 4. FCM y widgets no sustituyen al runtime
+## 4. Sincronización, push y widgets no sustituyen al runtime
 
-RNFirebase es el propietario de tokens y recepción FCM. El handler background se registra antes de Expo Router, fuera del árbol React, y realiza trabajo acotado. Headless JS está sujeto a las restricciones de Android; no garantiza ejecución inmediata. FCM comunica novedades, no es el reloj del aviso. [Mensajería React Native Firebase](https://rnfirebase.io/messaging/usage), [prioridad FCM](https://firebase.google.com/docs/cloud-messaging/android-message-priority).
+P5 sincroniza mediante GET /v1/sync con cursor por usuario/alcance al abrir, reanudar y recuperar red. Mientras la app esté activa puede usar polling acotado; SSE es opcional y no garantiza recepción con la app cerrada. P3 filtra todas las lecturas. El móvil persiste cada página antes de avanzar cursor y descarta respuestas de sesiones anteriores.
 
-El spike del primer día verifica también la coexistencia de RNFirebase Messaging y expo-notifications: manifiesto combinado, recepción, apertura y ausencia de presentación duplicada. No se presupone que declarar responsabilidades en TypeScript resuelva conflictos nativos. Si hace falta, se concentra la presentación local en el módulo nativo y se actualiza el contrato.
+Expo Push Service con expo-notifications es una mejora opcional para avisar de novedades. P5 gestiona tokens/listeners y P3 envía desde servidor; no instalar RNFirebase ni Firebase Admin. En Android el transporte sigue siendo FCM y requiere credenciales Google configuradas; cambiar la base a SQLite no elimina esa dependencia del push. Sin ellas, validar propuesta y respuesta con las dos apps abiertas, y probar por separado la alarma ya programada con el proceso cerrado. Un push invita a sincronizar, nunca concede consentimiento ni garantiza ejecutar JS en segundo plano. Comprobar presentación única y limpieza al cerrar sesión. [Configuración de push Expo](https://docs.expo.dev/push-notifications/push-notifications-setup/).
 
 ## 5. Permisos y ejecución Android
 
@@ -90,7 +91,7 @@ Full-screen intent está sujeto a elegibilidad y permiso. Si no está disponible
 
 La documentación actual incluye soporte Android opt-in mediante `enableAndroid`, `android.package` y componentes compatibles de `@expo/ui/jetpack-compose`. Tras configurar el plugin hay que reconstruir. La actualización desde la app usa `updateSnapshot`; no asumir que las funciones documentadas solo para iOS estén disponibles en Android. [Expo Widgets](https://docs.expo.dev/versions/latest/sdk/widgets/).
 
-El widget recibe props pequeñas y se ejecuta en un entorno separado. No consulta Firestore ni espera promesas durante el render. Tampoco se da por hecho que un callback visual persista una aceptación o programe Android. Para el MVP, los botones que necesiten ejecutar el contrato completo abren la propuesta mediante un enlace a la app. El widget muestra última sincronización y datos pendientes.
+El widget recibe props pequeñas y se ejecuta en un entorno separado. No consulta la API ni espera promesas durante el render. Tampoco se da por hecho que un callback visual persista una aceptación o programe Android. Para el MVP, los botones que necesiten ejecutar el contrato completo abren la propuesta mediante un enlace a la app. El widget muestra última sincronización y datos pendientes.
 
 Una acción directa con la app cerrada solo se habilita después de comprobar persistencia, permisos, programación y acuse. No basarse en un listener que únicamente funciona mientras vive el proceso de la app.
 
@@ -106,10 +107,10 @@ Si la alarma sonora no funciona, sigue bloqueada: se reduce primero IA, finanzas
 |---|---|
 | TypeScript puro | Consentimiento por versión, reintentos, caducidad y fixtures de cambios horarios. |
 | Runtime Kotlin | Identidad estable, cancelación, sustitución, recuperación y snapshot tras fallos intermedios. |
-| Backend emulado | Autorización, idempotencia, conflictos y rechazo de acuses antiguos. |
+| API con SQLite temporal | Autorización, idempotencia, conflictos y rechazo de acuses antiguos. |
 | UI/widget | Estados pendientes, otra hora, rechazo, permisos y deep links. |
 | Dispositivos físicos | Pantalla bloqueada, cierre de proceso, Doze, reinicio tras desbloqueo, offline, revocación y force-stop. |
 
 Probar versiones que cubran los cambios de permisos y las de los móviles disponibles; registrar fabricante, API, permisos, hora prevista/real y resultado. Los mocks de AlarmManager no demuestran que suene el teléfono. [Fundamentos de pruebas Android](https://developer.android.com/training/testing/fundamentals).
 
-CI prevista: TypeScript, lint, pruebas de dominio/contratos, backend con Emulator Suite y build Android; pruebas del módulo nativo cuando exista. Medir tamaño instalado, arranque, RAM, batería y desviación de horario en build de distribución. No se afirma que Expo sea más ligero que Kotlin sin mediciones.
+CI prevista: TypeScript, lint, pruebas de dominio/contratos, API HTTP con una SQLite temporal y aislamiento de usuarios y build Android; pruebas del módulo nativo cuando exista. Medir tamaño instalado, arranque, RAM, batería y desviación de horario en build de distribución. No se afirma que Expo sea más ligero que Kotlin sin mediciones.

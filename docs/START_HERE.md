@@ -1,6 +1,6 @@
 # Empezar a implementar alarmaT
 
-Base pequeña para seis personas. Hay pantalla Expo con aceptar/rechazar en memoria, contratos, adaptadores pendientes, un módulo Kotlin mínimo y funciones Firebase que rechazan operaciones todavía no implementadas. Ningún botón activa alarmas reales.
+Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. Ningún botón de demo activa alarmas reales.
 
 ## Arranque
 
@@ -13,7 +13,7 @@ npm --prefix functions ci
 npm run check
 ```
 
-`npm run check` encadena TypeScript de la app y de los tests, la verificación de contratos, la suite de Node y la compilación del backend. Comandos sueltos:
+`npm run check` encadena TypeScript, contratos, tests y la compilación del scaffold antiguo de `functions/`. Se conserva este comando porque el código aún no se ha migrado: **no verifica el futuro servidor SQLite**. P1/P3 actualizarán scripts y CI al crear `server/`. Comandos actuales:
 
 ```sh
 npm run typecheck        # app + tests
@@ -47,7 +47,7 @@ cd android && ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug
 
 Esa build incluye `expo-dev-client` y compila el módulo local: se genera `modules/alarm-runtime/android/build/outputs/aar/alarm-runtime-debug.aar`. **Pendiente:** instalar el APK en un teléfono Android real y validar permisos, sonido y detención con la pantalla bloqueada (P1/P4). El tamaño de 254 MB es de debug con todas las ABI; no representa el de release.
 
-Verificado en este arranque: `npm ci` limpio con Node 22/26, TypeScript estricto, contratos y 40 tests de dominio y diseño, compilación del backend, exportación JavaScript Android y APK de debug con Kotlin (`assembleDebug`, 15 min 55 s). La auditoría npm de la app señala avisos altos transitivos en `braces` y `node-forge` y sus dependientes; no ofrece una corrección compatible con el stack actual. Queda revisar parches compatibles antes de distribuir; no aplicar el downgrade de Expo/React Native que propone `audit fix --force`. El backend actualizado no presenta avisos en su auditoría de instalación.
+Validación registrada en la entrega A01 recibida de main, no repetida por esta edición documental: `npm ci` limpio con Node 22/26, TypeScript estricto, contratos y 40 tests de dominio y diseño, compilación del backend heredado en `functions/`, exportación JavaScript Android y APK de debug con Kotlin (`assembleDebug`, 15 min 55 s). La auditoría npm de la app señala avisos altos transitivos en `braces` y `node-forge` y sus dependientes; no ofrece una corrección compatible con el stack actual. Queda revisar parches compatibles antes de distribuir; no aplicar el downgrade de Expo/React Native que propone `audit fix --force`. La auditoría registrada del backend heredado no presenta avisos; esto no valida el futuro servidor SQLite.
 
 ## Una entrada por persona
 
@@ -55,9 +55,9 @@ Verificado en este arranque: `npm ci` limpio con Node 22/26, TypeScript estricto
 |---|---|---|
 | P1 · Base y contratos | `package.json`, `app.config.ts`, `src/domain/`, `contracts/`, `src/ui/` | Build reproducible, contratos v1, tipos/puertos, fixtures, Clock y composición. |
 | P2 · Pantallas | `app/index.tsx`, `src/features/alarms/AlarmInboxScreen.tsx`, `src/features/auth/`, `groups/` | Formulario de propuesta y sesión real; sustituir datos de ejemplo. |
-| P3 · Firebase y agente | `functions/src/index.ts`, `functions/src/operations/`, `functions/src/agents/`, `firebase/` | Crear/responder con transacciones y autorización; concretar borrador/clarificación del agente. |
+| P3 · Backend SQLite/VPS y agente | [Prompt P3](prompts/03_SQLITE_VPS_AGENT.md); migrar `functions/` a `server/src/` y crear migraciones SQL | API propia, sesiones, autorización/transacciones; borrador y aclarificación del agente. |
 | P4 · Alarmas Android | `src/platform/alarms/index.ts`, `modules/alarm-runtime/` | Programar, sonar y detener una alarma consentida sin JS vivo. |
-| P5 · Datos y sincronización | `src/data/alarmRepository.ts`, `src/platform/sync/outbox.ts`, `src/bootstrap/index.ts` | SQLite + RNFirebase; conservar estados pendientes y conciliar versiones. |
+| P5 · Datos y sincronización | `src/data/alarmRepository.ts`, `src/platform/sync/outbox.ts`, `src/bootstrap/index.ts` | SQLite local + API HTTP + SecureStore; conservar pendientes y conciliar versiones. |
 | P6 · Widget, tareas e integración | `src/widgets/snapshot.ts`, `src/features/tasks/TaskPreview.tsx` | Widget Android mínimo con deep link y tarea vinculada; prueba entre dos móviles. |
 
 Cada área incluye comentarios o README con el siguiente paso. El [TDD](TDD.md) define el contrato objetivo y [TEAM_PLAN](TEAM_PLAN.md) las horas/dependencias.
@@ -90,8 +90,8 @@ No importar adaptadores concretos desde las pantallas: usar `src/composition/ind
 
 ## Qué está deliberadamente pendiente
 
-- **Firebase cliente:** todavía no se instalan ni configuran RNFirebase, credenciales cliente ni handlers FCM. P3/P5 los añaden juntos y reconstruyen la app.
-- **Backend:** los callable tienen validación inicial y devuelven `unimplemented`; no guardan ni envían propuestas. Las Rules deniegan todo hasta implementar permisos y sus pruebas.
+- **Cliente remoto:** P5 implementará HTTP, sesión en SecureStore, sincronización por cursor y push Expo opcional. No instalar RNFirebase para el nuevo backend.
+- **Backend:** las funciones antiguas siguen devolviendo `unimplemented`; las Rules antiguas deniegan todo. P3 debe reemplazarlas por API HTTP, sesiones propias, migraciones SQLite y autorización probada; después retirará el legado con P1. No hay servidor SQLite ejecutable todavía.
 - **Alarma sonora:** el módulo nativo declara sus capacidades como no disponibles y rechaza programar/cancelar. La interfaz TypeScript funciona como punto de conexión.
 - **Widgets:** hay una proyección pura; no se registra todavía un widget en el launcher. P6 instala/configura expo-widgets y valida el runtime aislado.
 - **Agente:** existe su punto de entrada y contrato de borrador/clarificación; falta conectar un modelo, herramientas autorizadas y confirmación humana.
@@ -101,4 +101,4 @@ La demo en memoria pierde cambios al reiniciar. Aceptar produce «activación pe
 
 ## Integración breve
 
-Ramas cortas por entrega, revisión cruzada de contratos y push frecuente. Evitar cambios simultáneos de lockfile/configuración: P1 los integra. Antes de conectar Firebase, seguir la [guía del backend](../functions/README.md). No subir credenciales de servidor ni archivos de servicios privados.
+Ramas cortas por entrega, revisión cruzada de contratos y push frecuente. Evitar cambios simultáneos de lockfile/configuración: P1 los integra. Antes de conectar el VPS, seguir la [guía SQLite/VPS](SQLITE_VPS_PRACTICES.md) y el [registro de migración](MIGRATION_SQLITE.md). No subir credenciales de servidor ni archivos de servicios privados.

@@ -2,6 +2,8 @@
 
 **Fecha:** 2026-10-22 · **Owner:** P1 · **Estado:** aceptado
 
+> Nota posterior: [ADR-004](004-vps-sqlite.md) sustituye Firebase/RNFirebase por API propia y SQLite en VPS. Las referencias a `functions/` y RNFirebase en esta decisión describen la base histórica; no son instrucciones para instalar el backend antiguo.
+
 ## Contexto
 
 El scaffold fijaba Expo SDK 58, React Native 0.88, React 19.3.0 y Node 22.13 (`package.json`, `.nvmrc`). Al ejecutar el comando documentado `npm ci` la instalación fallaba con `ERESOLVE`: el lockfile resolvía `react-dom@19.3.1` como peer de `expo-router`/Radix, pero la app fija `react@19.3.0` y `react-dom@19.3.1` exige `react ^19.3.1`. Sin instalación limpia no hay build ni CI para nadie.

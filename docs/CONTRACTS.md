@@ -18,7 +18,7 @@ Guía de uso de [`contracts/`](../contracts/README.md) para P2, P3, P4, P5 y P6.
 
 - `operationId` lo genera el cliente **una vez por acción** y se conserva en cada reintento. Reutilizarlo con otro payload es un error.
 - `entityId` y las versiones esperadas solo son obligatorias en las operaciones que modifican una propuesta existente.
-- El servidor obtiene el actor de `request.auth.uid`. `actorUid` en el cuerpo se rechaza (`invalid/operation-envelope.client-actor-uid.json`).
+- El servidor obtiene el actor de la sesión bearer opaca validada contra `sessions` en SQLite del VPS; no existe `request.auth.uid` de Firebase en la API objetivo. `actorUid` en el cuerpo se rechaza (`invalid/operation-envelope.client-actor-uid.json`).
 - Respuesta común: `OperationReceipt` (`APPLIED` o `REPLAYED`, `serverTimeEpochMs`, versiones nuevas). Los fallos usan `AppError` con un `code` del contrato.
 
 ## 2. Operaciones
@@ -37,7 +37,7 @@ Reglas que el validador ya impone:
 - `FAILED` y `PENDING_PERMISSION` exigen motivo.
 - Los destinatarios no se repiten y un aviso tiene como máximo seis.
 - `timeSpec.effectiveAtEpochMs` debe ser exactamente el instante de `localDate` + `localTime` en `timeZone`.
-- Cada documento de destinatario nace con `decisionRevision = 1`; la primera respuesta envía `expectedDecisionRevision: 1` y el servidor guarda `2`. Toda respuesta incrementa la revisión y nunca se retrocede.
+- Cada registro de destinatario nace con `decisionRevision = 1`; la primera respuesta envía `expectedDecisionRevision: 1` y el servidor guarda `2`. Toda respuesta incrementa la revisión y nunca se retrocede.
 
 ## 3. Estados por eje
 
@@ -97,24 +97,39 @@ const command: RespondToAlarm = parseRespondToAlarm(input, { nowEpochMs: clock.n
 const receipt = await repository.submit(command);
 ```
 
-- Los componentes no llaman a Firestore ni al runtime: usan `AlarmRepository` (`src/domain/ports.ts`).
+- Los componentes no hacen SQL ni HTTP ni llaman al runtime: usan `AlarmRepository` (`src/domain/ports.ts`).
 - En tests y en la UI sin backend: `createInMemoryAlarmRepository`, `createFakeClock`, `createFakeAlarmRuntime` (`src/domain/fakes.ts`).
 - La composición de dependencias está en `src/composition/index.ts`; el runtime y las notificaciones arrancan en su adaptador de indisponibilidad.
 
 ## 8. Fuera de esta versión
 
-Rotaciones e intercambios, gastos, presupuestos, huchas y salida estructurada del agente. El contrato del agente (`proposeAlarm`) mantiene su forma `draft`/`needs_clarification` en `functions/src/agents/`; su payload se cerrará con P3 y P2 antes de conectarlo.
+Rotaciones e intercambios, gastos, presupuestos, huchas y salida estructurada del agente. El contrato del agente (`proposeAlarm`) mantiene su forma `draft`/`needs_clarification` en el scaffold heredado `functions/src/agents/`; P3 lo llevará a `server/src/agents/` sin atribuirle permiso para aceptar alarmas. Su payload se cerrará con P3 y P2 antes de conectarlo.
 
-## 9. Divergencias actuales con el scaffold
+## 9. Transporte HTTPS y almacenamiento objetivo
 
-Estado real al cerrar A01; P3 las resuelve en B02:
+La v1 conserva `operationId`, `groupId`, `entityId`, versiones, payloads, enums y `OperationReceipt`/`AppError`. El cambio de Firebase a VPS no renombra campos ni convierte nombres de tabla SQL en rutas de dominio. Los títulos de algunos JSON Schema siguen describiendo rutas históricas; se interpretan como DTO, no como instrucciones para consultar Firestore. En esta revisión no se modifican esos esquemas ni sus fixtures.
+
+- `POST /v1/operations/{operationName}` recibe el sobre v1 y devuelve directamente un `OperationReceipt`; en fallo, `AppError`, sin añadir campos que rompan `additionalProperties: false`.
+- `POST /v1/auth/register`, `/v1/auth/login`, `/v1/auth/logout` y `GET /v1/auth/me` cubren sesión propia. Bearer opaco en cabecera, hash y expiración en servidor, token en SecureStore. No enviar token en URL.
+- `GET /v1/groups/{groupId}/alarm-requests` y `/{requestId}` sobre esa ruta ofrecen lista paginada y detalle, filtrados por creador/destinatario y membresía activa. Los IDs adicionales van en un wrapper HTTP; `request`, `recipient` y `schedule` conservan sus esquemas. P1/P3 deben cerrar fixtures de esos wrappers antes de conectar consumidores.
+- `GET /v1/sync?cursor=<opaco>` entrega páginas autorizadas. Cursor ligado al actor/ámbito; base/cursor se actualizan juntos en SQLite local. Incluir revocaciones mínimas para retirar datos locales cuando el usuario pierde acceso, sin exponer contenido del grupo.
+- SSE opcional: `GET /v1/events?cursor=<opaco>` con bearer en cabecera; señal para consultar el feed. Polling acotado en primer plano y recuperación al abrir/reanudar son la base. Sin app activa no se garantiza recepción inmediata; push es una mejora opcional.
+
+HTTP `400/401/403/404/409/429/503` expresa transporte y conserva códigos de aplicación v1; ver [mapeo del TDD](TDD.md#transporte-http-objetivo). Un timeout después del envío conserva `operationId` al reintentar. Un error no JSON del proxy se normaliza en el adaptador. No devolver SQL, stacks ni secretos como `details`.
+
+SQLite del servidor es la autoridad compartida; `expo-sqlite` guarda proyección/outbox móvil; el store nativo gobierna programación/cancelación local. No comparten archivos ni una transacción distribuida. El servidor confirma estado, recibo idempotente y evento de cambio en una transacción corta. La red y el modelo quedan fuera de ella.
+
+## 10. Divergencias actuales con el scaffold
+
+**Esta revisión cambia documentación, no ejecuta la migración.** Estado de referencia A01: P3/P5 deben implementar y probar la arquitectura nueva antes de declarar disponibilidad.
 
 | Pieza | Situación | Qué hacer |
 |---|---|---|
-| `functions/src/contracts/operation.ts` | Acepta `schemaVersion`, `operationId`, `groupId` y `payload`, pero no `entityId` ni versiones esperadas; no hay idempotencia real. | Adoptar `parseOperationEnvelope` de `src/domain` (o generar el validador desde los esquemas) antes de implementar transacciones. |
-| `functions/src/operations/alarms.ts` | Las tres callables comprueban Auth y el sobre, y devuelven `unimplemented`. | Implementar con transacciones, autorización y deduplicación del `operationId`. |
-| `src/domain/alarms.ts` (`AlarmSummary`) | Proyección de UI del scaffold; no incluye versiones ni dispositivo. | No usarla como contrato de seguridad ni como estado de servidor. |
-| `src/data/alarmRepository.ts` (`demoAlarm`) | Repository en memoria; aceptar solo cambia la proyección. | P5 lo sustituye por SQLite + RNFirebase sobre `AlarmRepository`. |
-| `app.config.ts` | `android.package` fijado; no hay `googleServicesFile` ni plugins nativos de Firebase. | P3/P5 añaden la configuración del proyecto real fuera de Git (`google-services.json` está ignorado). |
-| `modules/alarm-runtime` | Declara capacidades no disponibles y rechaza programar. | P4 implementa; `OccurrenceKey` debe seguir la forma de `src/domain/ids.ts`. |
+| `functions/src/contracts/operation.ts` | Validador heredado: acepta un subconjunto del sobre; no tiene idempotencia real. | P3 usa contratos compartidos en `server/src/contracts/`; no mantener validadores divergentes. |
+| `functions/src/operations/alarms.ts` | Callables heredadas verifican Auth/sobre y devuelven `unimplemented`. | P3 crea handlers HTTP en `server/src/operations/` con transacciones SQLite, sesión, autorización y deduplicación. No devolver éxito mientras sea scaffold. |
+| `functions/`, `firebase/`, dependencias/scripts existentes | Infraestructura Firebase heredada todavía en repositorio. | P1/P3 retiran o sustituyen dependencias, CI y configuración en el cambio de implementación; compilarlas no valida el nuevo servidor. |
+| `src/domain/alarms.ts` (`AlarmSummary`) | Proyección de UI; no incluye versiones ni dispositivo. | No usarla como contrato de seguridad ni como estado de servidor. |
+| `src/data/alarmRepository.ts` (`demoAlarm`) | Repository en memoria; aceptar solo cambia la proyección. | P5 lo sustituye por `expo-sqlite` + API HTTPS mediante `fetch`, siguiendo `AlarmRepository`; sesión coordinada con P2. |
+| `app.config.ts` | Configuración de aplicación, sin un backend VPS operativo. | P1/P2/P5 configuran URL pública HTTPS y SecureStore; jamás credenciales SQLite en el móvil. Credenciales FCM solo si se activa push Android opcional. |
+| `modules/alarm-runtime` | Declara capacidades no disponibles y rechaza programar. | P4 implementa; `OccurrenceKey` sigue la forma de `src/domain/ids.ts`; no depende de Firebase ni del VPS al sonar. |
 
