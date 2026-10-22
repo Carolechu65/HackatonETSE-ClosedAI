@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "request": {
+        "creatorUid": "luis",
+        "title": "Sacar la basura",
+        "note": "La bolsa pesa, mejor bajar antes de las diez.",
+        "recipientUids": ["ana"],
+        "requestVersion": 1,
+        "status": "ACTIVE",
+        "timeSpec": {
+          "timeZone": "Europe/Madrid",
+          "localDate": "2026-10-23",
+          "localTime": "21:00",
+          "effectiveAtEpochMs": 1792782000000
+        },
+        "mode": "NOTIFICATION",
+        "createdAtEpochMs": 1792700400000,
+        "updatedAtEpochMs": 1792700400000
+      },
+      "recipient": {
+        "uid": "ana",
+        "receivedVersion": 1,
+        "reception": "RECEIVED",
+        "decision": "ACCEPTED",
+        "decisionRevision": 2,
+        "acceptedRequestVersion": 1,
+        "consentScope": "THIS_OCCURRENCE",
+        "updatedAtEpochMs": 1792701000000
+      }
+    }
+  ],
+  "nextCursor": null
+}

@@ -19,6 +19,10 @@ schemas/
   alarm-request.schema.json        # DTO compartido (persistido en SQLite servidor)
   recipient.schema.json            # decisión individual
   schedule.schema.json             # acuse por ocurrencia
+  session.schema.json              # token opaco + usuario público (auth/me)
+  sync-page.schema.json            # feed incremental por cursor
+  alarm-request-page.schema.json   # wrapper HTTP de lista paginada
+  alarm-request-detail.schema.json # wrapper HTTP de detalle
 fixtures/
   manifest.json                    # índice de casos: válidos, inválidos y semánticos
   operations/                      # sobres completos de ejemplo
@@ -33,6 +37,8 @@ fixtures/
 npm run test:contracts   # JSON Schema + fixtures + cobertura del manifiesto
 npm test                 # semántica del dominio (incluye estos mismos fixtures)
 ```
+
+Estado actual: **15 esquemas y 42 fixtures** entre operaciones, documentos y casos inválidos.
 
 `scripts/contracts/check.mjs` detecta además fixtures huérfanos: todo archivo de `fixtures/` debe estar en el manifiesto. Los casos `semantic` son válidos para JSON Schema a propósito: los rechaza `src/domain/contracts/validate.ts` (zona IANA inexistente, instante que no corresponde a la hora civil, título en blanco, `consentScope` en una decisión que no es `ACCEPTED`).
 

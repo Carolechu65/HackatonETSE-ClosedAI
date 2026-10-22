@@ -103,6 +103,41 @@
       "id": "schedule.scheduled",
       "file": "fixtures/documents/schedule.scheduled.json",
       "schema": "schemas/schedule.schema.json"
+    },
+    {
+      "id": "authResponse.register",
+      "file": "fixtures/documents/auth-response.json",
+      "schema": "schemas/session.schema.json#/$defs/authResponse"
+    },
+    {
+      "id": "authMe.session",
+      "file": "fixtures/documents/auth-me.json",
+      "schema": "schemas/session.schema.json#/$defs/meResponse"
+    },
+    {
+      "id": "syncPage.first",
+      "file": "fixtures/documents/sync-page.json",
+      "schema": "schemas/sync-page.schema.json"
+    },
+    {
+      "id": "alarmRequestPage.single",
+      "file": "fixtures/documents/alarm-request-page.json",
+      "schema": "schemas/alarm-request-page.schema.json"
+    },
+    {
+      "id": "alarmRequestDetail.scheduled",
+      "file": "fixtures/documents/alarm-request-detail.json",
+      "schema": "schemas/alarm-request-detail.schema.json"
+    },
+    {
+      "id": "appError.unauthorized",
+      "file": "fixtures/documents/app-error.unauthorized.json",
+      "schema": "schemas/app-error.schema.json"
+    },
+    {
+      "id": "appError.rate-limited",
+      "file": "fixtures/documents/app-error.rate-limited.json",
+      "schema": "schemas/app-error.schema.json"
     }
   ],
   "invalid": [
@@ -176,6 +211,18 @@
       "operation": "reportSchedule",
       "payloadSchema": "schemas/report-schedule.schema.json",
       "rule": "FAILED y PENDING_PERMISSION exigen motivo"
+    },
+    {
+      "id": "session.short-token",
+      "file": "fixtures/invalid/session.short-token.json",
+      "schema": "schemas/session.schema.json#/$defs/authResponse",
+      "rule": "el token de sesión tiene al menos 32 caracteres"
+    },
+    {
+      "id": "syncPage.unknown-entity",
+      "file": "fixtures/invalid/sync-page.unknown-entity.json",
+      "schema": "schemas/sync-page.schema.json",
+      "rule": "entityType solo admite los tipos del feed"
     }
   ],
   "semantic": [

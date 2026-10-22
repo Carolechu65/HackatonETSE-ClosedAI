@@ -1,0 +1,11 @@
+{
+  "session": {
+    "token": "tok-demo-0000000000000000000000000001",
+    "expiresAtEpochMs": 1795300000000
+  },
+  "user": {
+    "uid": "ana",
+    "email": "ana@example.invalid",
+    "displayName": "Ana"
+  }
+}

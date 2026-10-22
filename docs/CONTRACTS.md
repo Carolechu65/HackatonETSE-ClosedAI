@@ -107,7 +107,7 @@ Rotaciones e intercambios, gastos, presupuestos, huchas y salida estructurada de
 
 ## 9. Transporte HTTPS y almacenamiento objetivo
 
-La v1 conserva `operationId`, `groupId`, `entityId`, versiones, payloads, enums y `OperationReceipt`/`AppError`. El cambio de Firebase a VPS no renombra campos ni convierte nombres de tabla SQL en rutas de dominio. Los títulos de algunos JSON Schema siguen describiendo rutas históricas; se interpretan como DTO, no como instrucciones para consultar Firestore. En esta revisión no se modifican esos esquemas ni sus fixtures.
+La v1 conserva `operationId`, `groupId`, `entityId`, versiones, payloads, enums y `OperationReceipt`/`AppError`. El cambio de Firebase a VPS no renombra campos ni convierte nombres de tabla SQL en rutas de dominio. Los títulos de algunos JSON Schema siguen describiendo rutas históricas; se interpretan como DTO, no como instrucciones para consultar Firestore. Los esquemas y fixtures existentes no cambian de forma; los wrappers de transporte se añaden como documentos nuevos.
 
 - `POST /v1/operations/{operationName}` recibe el sobre v1 y devuelve directamente un `OperationReceipt`; en fallo, `AppError`, sin añadir campos que rompan `additionalProperties: false`.
 - `POST /v1/auth/register`, `/v1/auth/login`, `/v1/auth/logout` y `GET /v1/auth/me` cubren sesión propia. Bearer opaco en cabecera, hash y expiración en servidor, token en SecureStore. No enviar token en URL.
@@ -118,6 +118,38 @@ La v1 conserva `operationId`, `groupId`, `entityId`, versiones, payloads, enums 
 HTTP `400/401/403/404/409/429/503` expresa transporte y conserva códigos de aplicación v1; ver [mapeo del TDD](TDD.md#transporte-http-objetivo). Un timeout después del envío conserva `operationId` al reintentar. Un error no JSON del proxy se normaliza en el adaptador. No devolver SQL, stacks ni secretos como `details`.
 
 SQLite del servidor es la autoridad compartida; `expo-sqlite` guarda proyección/outbox móvil; el store nativo gobierna programación/cancelación local. No comparten archivos ni una transacción distribuida. El servidor confirma estado, recibo idempotente y evento de cambio en una transacción corta. La red y el modelo quedan fuera de ella.
+
+### Mapeo HTTP → código v1 (`src/domain/http.ts`)
+
+| HTTP | Código por defecto | Acción del cliente |
+|---|---|---|
+| 400 | `INVALID_ARGUMENT` | Corregir; no reintentar igual. |
+| 401 | `UNAUTHENTICATED` | Pausar la outbox de esa cuenta y pedir acceso. |
+| 403 | `FORBIDDEN` | No reintentar; mostrar el límite. |
+| 404 | `NOT_FOUND` | Tratar como no visible; no revelar existencia. |
+| 409 | `VERSION_CONFLICT` (o `EXPIRED` en el cuerpo) | Reconciliar y recargar antes de reintentar. |
+| 429 | `RATE_LIMITED` | Respetar `Retry-After` y backoff con jitter. |
+| 500 / 503 | `TEMPORARY_UNAVAILABLE` | Conservar la operación y reintentar acotado. |
+
+El cuerpo `AppError` manda cuando trae un `code` v1; un proxy sin JSON se normaliza sin filtrar HTML ni trazas. Solo `RATE_LIMITED` y `TEMPORARY_UNAVAILABLE` se reintentan. Un timeout tras enviar conserva el mismo `operationId`.
+
+### Fixtures y validadores de transporte
+
+| Contrato | Esquema | Fixture | Validador |
+|---|---|---|---|
+| Registro/login | `session.schema.json#/$defs/authResponse` | `documents/auth-response.json` | `parseAuthResponse` |
+| Sesión vigente | `session.schema.json#/$defs/meResponse` | `documents/auth-me.json` | `parseMeResponse` |
+| Feed por cursor | `sync-page.schema.json` | `documents/sync-page.json` | `parseSyncPage` |
+| Lista de propuestas | `alarm-request-page.schema.json` | `documents/alarm-request-page.json` | `parseAlarmRequestPage` |
+| Detalle de propuesta | `alarm-request-detail.schema.json` | `documents/alarm-request-detail.json` | `parseAlarmRequestDetail` |
+
+`nextCursor: null` termina el feed conocido. El cursor no concede acceso: el servidor lo liga a actor y ámbito. El token de sesión es un secreto opaco (≥ 32 caracteres) y no debe registrarse ni guardarse fuera de SecureStore.
+
+### Configuración del cliente
+
+- `EXPO_PUBLIC_API_URL` (ver `.env.example`) debe ser `https://…`; solo `localhost`, `127.0.0.1` y `10.0.2.2` aceptan `http` con `allowLocalHttp` en desarrollo.
+- `readApiBaseUrl` rechaza URL sin esquema, credenciales embebidas, query o fragmento, y falla si la variable no existe en vez de inventar un host.
+- Ninguna credencial del servidor (SQLite, tokens, claves push) va en la app ni en el bundle.
 
 ## 10. Divergencias actuales con el scaffold
 

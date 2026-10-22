@@ -25,7 +25,10 @@ import { assertTimeSpecConsistent, isPast, isValidTimeZone, parseLocalDate, pars
 import {
   CONTRACT_LIMITS,
   SCHEMA_VERSION,
+  SYNC_ENTITY_TYPES,
+  type AlarmRequestDetail,
   type AlarmRequestDocument,
+  type AlarmRequestPage,
   type AppErrorPayload,
   type CreateAlarmRequest,
   type OperationReceipt,
@@ -34,7 +37,14 @@ import {
   type ReportSchedulePayload,
   type RespondToAlarm,
   type RespondToAlarmPayload,
+  type AuthResponse,
+  type MeResponse,
+  type PublicUser,
   type ScheduleDocument,
+  type SessionToken,
+  type SyncChange,
+  type SyncEntityType,
+  type SyncPage,
   type TimeSpec,
   type WeeklyRecurrence,
   type WithdrawAlarmRequest,
@@ -538,4 +548,138 @@ export function parseOperation(name: OperationName, data: unknown, options: Vali
     case 'withdrawAlarmRequest':
       return parseWithdrawAlarmRequest(data);
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * Transporte HTTPS: sesión, feed y wrappers de consulta                *
+ * ------------------------------------------------------------------ */
+
+function readEmail(value: unknown, path: string): string {
+  const email = readString(value, path, { max: 254 }).toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) invalid(`${path}: correo no válido`, { path });
+  return email;
+}
+
+/** El token no se recorta ni se normaliza: es un secreto opaco. */
+function readSessionToken(value: unknown, path: string): string {
+  if (typeof value !== 'string' || value.length < 32 || value.length > 256 || /\s/.test(value)) {
+    invalid(`${path}: token de sesión no válido`, { path });
+  }
+  return value;
+}
+
+function readCursor(value: unknown, path: string): string | null {
+  if (value === null) return null;
+  if (typeof value !== 'string') invalid(`${path}: cursor opaco o null`, { path });
+  const trimmed = value.trim();
+  if (trimmed.length < 1 || trimmed.length > 512) invalid(`${path}: cursor fuera de rango`, { path });
+  return trimmed;
+}
+
+export function parsePublicUser(data: unknown): PublicUser {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['uid', 'email', 'displayName'], '$');
+  const user: PublicUser = {
+    uid: readIdentifier(record.uid, '$.uid'),
+    email: readEmail(record.email, '$.email'),
+  };
+  if (record.displayName !== undefined) {
+    user.displayName = readString(record.displayName, '$.displayName', { max: 60 });
+  }
+  return user;
+}
+
+export function parseSessionToken(data: unknown): SessionToken {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['token', 'expiresAtEpochMs'], '$');
+  return {
+    token: readSessionToken(record.token, '$.token'),
+    expiresAtEpochMs: readEpochMs(record.expiresAtEpochMs, '$.expiresAtEpochMs'),
+  };
+}
+
+/** `POST /v1/auth/register` y `/login`. El token se guarda en SecureStore, no en SQLite. */
+export function parseAuthResponse(data: unknown): AuthResponse {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['session', 'user'], '$');
+  return {
+    session: parseSessionToken(record.session),
+    user: parsePublicUser(record.user),
+  };
+}
+
+export function parseMeResponse(data: unknown): MeResponse {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['user'], '$');
+  return { user: parsePublicUser(record.user) };
+}
+
+function readSyncEntityType(value: unknown, path: string): SyncEntityType {
+  if (typeof value !== 'string' || !(SYNC_ENTITY_TYPES as readonly string[]).includes(value)) {
+    invalid(`${path}: tipo de entidad desconocido`, { path, received: value });
+  }
+  return value as SyncEntityType;
+}
+
+export function parseSyncChange(data: unknown, path = '$'): SyncChange {
+  const record = asRecord(data, path);
+  assertNoExtraKeys(record, ['sequence', 'entityType', 'entityId', 'kind', 'version', 'updatedAtEpochMs'], path);
+  if (record.kind !== 'UPSERT' && record.kind !== 'DELETE') {
+    invalid(`${path}.kind: solo UPSERT o DELETE`, { path });
+  }
+  return {
+    sequence: readPositiveInt(record.sequence, `${path}.sequence`),
+    entityType: readSyncEntityType(record.entityType, `${path}.entityType`),
+    entityId: readIdentifier(record.entityId, `${path}.entityId`),
+    kind: record.kind,
+    version: readPositiveInt(record.version, `${path}.version`),
+    updatedAtEpochMs: readEpochMs(record.updatedAtEpochMs, `${path}.updatedAtEpochMs`),
+  };
+}
+
+/** `GET /v1/sync?cursor=`: página autorizada y siguiente cursor opaco. */
+export function parseSyncPage(data: unknown): SyncPage {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['changes', 'nextCursor'], '$');
+  if (!Array.isArray(record.changes) || record.changes.length > 200) {
+    invalid('$.changes: array de como máximo 200 cambios');
+  }
+  return {
+    changes: record.changes.map((change, index) => parseSyncChange(change, `$.changes/${index}`)),
+    nextCursor: readCursor(record.nextCursor, '$.nextCursor'),
+  };
+}
+
+/** `GET /v1/groups/{groupId}/alarm-requests`: wrapper de paginación. */
+export function parseAlarmRequestPage(data: unknown): AlarmRequestPage {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['items', 'nextCursor'], '$');
+  if (!Array.isArray(record.items) || record.items.length > 100) {
+    invalid('$.items: array de como máximo 100 propuestas');
+  }
+  return {
+    items: record.items.map((item, index) => {
+      const entry = asRecord(item, `$.items/${index}`);
+      assertNoExtraKeys(entry, ['request', 'recipient'], `$.items/${index}`);
+      return {
+        request: parseAlarmRequestDocument(entry.request),
+        recipient: parseRecipientDocument(entry.recipient),
+      };
+    }),
+    nextCursor: readCursor(record.nextCursor, '$.nextCursor'),
+  };
+}
+
+/** `GET /v1/groups/{groupId}/alarm-requests/{requestId}`: detalle del actor. */
+export function parseAlarmRequestDetail(data: unknown): AlarmRequestDetail {
+  const record = asRecord(data, '$');
+  assertNoExtraKeys(record, ['request', 'recipient', 'schedules'], '$');
+  if (!Array.isArray(record.schedules) || record.schedules.length > 100) {
+    invalid('$.schedules: array de como máximo 100 acuses');
+  }
+  return {
+    request: parseAlarmRequestDocument(record.request),
+    recipient: parseRecipientDocument(record.recipient),
+    schedules: record.schedules.map((schedule) => parseScheduleDocument(schedule)),
+  };
 }
