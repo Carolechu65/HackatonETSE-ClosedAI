@@ -183,12 +183,12 @@ test('view model: frescura, pendientes y estados vacíos', () => {
   });
   assert.equal(formatPendingLine(snapshot), '2 propuestas · 1 por activar · 1 sin acuse');
 
-  const props = toWidgetProps(snapshot, NOW + 3 * 3_600_000, { timeZone: TZ });
+  const props = toWidgetProps(snapshot, NOW + 3_600_000, { timeZone: TZ });
   assert.equal(props.headline, 'Pagar la luz');
   assert.equal(props.when, 'Hoy · 21:30');
   assert.equal(props.stale, true);
-  assert.equal(props.updated, 'Actualizado hace 3 h');
-  assert.equal(props.freshness, 'hace 3 h');
+  assert.match(props.updated, /Lectura:.*22\/10.*19:05/);
+  assert.equal(props.freshness, 'hace 1 h');
   assert.equal(props.alarmUrl, 'alarmat://alarm/next');
   assert.equal(props.inboxUrl, 'alarmat:///');
 
@@ -234,4 +234,31 @@ test('enlaces: construyen rutas válidas y rechazan cualquier intento de decisi�
 
   assert.throws(() => alarmLink('../escape'), /inválido/);
   assert.throws(() => taskLink('a/b'), /inválido/);
+});
+
+
+test('widget: corrupted or incompatible disk snapshots clear private content', () => {
+  const snapshot = buildWidgetSnapshot({ nowEpochMs: NOW, scope: SCOPE, alarms: [alarm({ requestId: 'private' })] });
+  for (const broken of [
+    { ...snapshot, schemaVersion: 1 },
+    { ...snapshot, generatedAtEpochMs: Number.NaN },
+    { ...snapshot, counts: { ...snapshot.counts, pendingProposals: -1 } },
+    { ...snapshot, nextAlarm: { ...snapshot.nextAlarm, scheduledAtEpochMs: Number.POSITIVE_INFINITY } },
+    { ...snapshot, nextAlarm: { ...snapshot.nextAlarm, requestId: '../private' } },
+  ]) {
+    const restored = adoptSnapshotForSession(broken as typeof snapshot, SCOPE, NOW);
+    assert.equal(restored.scope, null);
+    assert.equal(restored.nextAlarm, null);
+  }
+});
+
+test('widget: invalid scheduled data and elapsed occurrences never become upcoming', () => {
+  for (const invalid of [Number.POSITIVE_INFINITY, Number.NaN, Number.MAX_SAFE_INTEGER]) {
+    const snapshot = buildWidgetSnapshot({ nowEpochMs: NOW, scope: SCOPE, alarms: [alarm({ requestId: 'invalid', scheduledAtEpochMs: invalid })] });
+    assert.equal(snapshot.nextAlarm, null);
+  }
+  const snapshot = buildWidgetSnapshot({ nowEpochMs: NOW, scope: SCOPE, alarms: [alarm({ requestId: 'elapsed', scheduledAtEpochMs: NOW + 1 })] });
+  const props = toWidgetProps(snapshot, NOW + 2, { timeZone: TZ });
+  assert.equal(props.alarmUrl, null);
+  assert.equal(props.headline, 'Nada a la vista');
 });

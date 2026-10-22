@@ -113,7 +113,7 @@ export function TaskDetail({
 
       {closed ? (
         <Text style={[typography.bodyOnDoor, styles.closedNote]}>
-          {task.status === 'completed' ? 'Esta tarea ya está completada.' : 'Esta tarea está cancelada.'}
+          {write !== undefined && write.sync !== 'CONFIRMED' ? 'El cambio todavía no está confirmado.' : task.status === 'completed' ? 'Esta tarea ya está completada.' : 'Esta tarea está cancelada.'}
         </Text>
       ) : (
         <View style={styles.actions}>

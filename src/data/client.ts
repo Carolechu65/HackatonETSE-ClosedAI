@@ -18,6 +18,8 @@ export type DataClientOptions = {
   codec: HttpWireCodec;
   /** Stable installation identity registered with P3, never regenerated on startup. */
   deviceId: string;
+  /** Account-scoped installation identity; prevents reusing another account's server device. */
+  deviceIdForUser?: (userId: string) => string;
   runtime: AlarmRuntime;
   notificationRuntime?: AlarmRuntime;
   clock?: Clock;
@@ -144,7 +146,9 @@ export class DataClient {
 
   private buildRepository(userId: string, assertCurrent: () => void): PersistentAlarmRepository {
     const epoch = this.epoch;
-    return new PersistentAlarmRepository({ userId, deviceId: this.options.deviceId, store: this.store, gateway: this.gateway,
+    const deviceId = this.options.deviceIdForUser?.(userId) ?? this.options.deviceId;
+    if (!/^[A-Za-z0-9_:.-]{1,128}$/.test(deviceId)) throw new DomainError('INVALID_ARGUMENT', 'Identidad de dispositivo inválida.');
+    return new PersistentAlarmRepository({ userId, deviceId, store: this.store, gateway: this.gateway,
       runtime: this.options.runtime, notificationRuntime: this.options.notificationRuntime, clock: this.clock, ids: this.ids,
       assertCurrent, publishWidget: snapshot => this.publishWidget(snapshot, epoch) });
   }

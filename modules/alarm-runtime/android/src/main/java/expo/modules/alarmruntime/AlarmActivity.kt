@@ -21,6 +21,12 @@ import java.util.Date
 class AlarmActivity : Activity() {
   private var occurrenceKey: String? = null
 
+  override fun onNewIntent(intent: android.content.Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    recreate()
+  }
+
   @Suppress("DEPRECATION")
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)

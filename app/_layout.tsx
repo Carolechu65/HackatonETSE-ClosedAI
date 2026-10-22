@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SkeletonProvider } from '../src/features/skeleton/store.tsx';
+import { ProductProvider } from '../src/composition/ProductProvider.tsx';
+import { productClient } from '../src/composition/app.ts';
 import { colors, useNeveraFonts } from '../src/ui/index.ts';
 
 /**
@@ -15,7 +16,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SkeletonProvider>
+      <ProductProvider client={productClient}>
         <StatusBar style="dark" />
         <View style={{ flex: 1, backgroundColor: colors.wall }}>
           {loaded ? (
@@ -27,7 +28,7 @@ export default function RootLayout() {
             />
           ) : null}
         </View>
-      </SkeletonProvider>
+      </ProductProvider>
     </SafeAreaProvider>
   );
 }

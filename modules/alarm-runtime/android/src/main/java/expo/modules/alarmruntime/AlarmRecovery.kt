@@ -20,7 +20,7 @@ data class RecoverySummary(
  * ni EXPIRED.
  */
 object AlarmRecovery {
-  fun reconcile(context: Context): RecoverySummary {
+  fun reconcile(context: Context): RecoverySummary = synchronized(AlarmStore.lock) {
     val store = AlarmStore(context)
     val now = System.currentTimeMillis()
     var rescheduled = 0
@@ -40,6 +40,7 @@ object AlarmRecovery {
       }
 
       if (occurrence.effectiveAtEpochMs <= now) {
+        AlarmScheduler.cancel(context, occurrence)
         store.update(occurrence.key) { record ->
           record.copy(
             status = AlarmOccurrence.STATUS_EXPIRED,
@@ -63,6 +64,7 @@ object AlarmRecovery {
         }
         rescheduled += 1
       } else {
+        AlarmScheduler.cancel(context, occurrence)
         store.update(occurrence.key) { record ->
           record.copy(
             status = AlarmOccurrence.STATUS_FAILED,
@@ -74,7 +76,7 @@ object AlarmRecovery {
       }
     }
 
-    return RecoverySummary(rescheduled = rescheduled, expired = expired, failed = failed)
+    RecoverySummary(rescheduled = rescheduled, expired = expired, failed = failed)
   }
 
   private val PERMISSION_FAILURES = setOf(

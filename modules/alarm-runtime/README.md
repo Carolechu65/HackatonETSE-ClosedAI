@@ -1,86 +1,40 @@
-# Runtime Android — P4
+# Runtime Android y notificaciones — P4
 
-**Estado:** primer prototipo implementado en la rama `dAlarmas`. Programa alarmas exactas con `AlarmManager`, suenan en un foreground service sin React, se detienen/posponen desde la notificación o la pantalla de alarma y se recuperan tras reinicio. **Kotlin compila y el APK debug se ensambla correctamente; la validación física sigue pendiente** (ver [QA](../../docs/qa/ALARM_RUNTIME.md)).
+Se integra el prototipo de `origin/dAlarmas` con una revisión de cancelación, versiones y recuperación. La ejecución sonora usa Kotlin, AlarmManager y un servicio nativo: no necesita JavaScript ni red a la hora de sonar. **La matriz física sigue pendiente**; compilar no demuestra sonido con la pantalla bloqueada.
 
-El adaptador de la app es [`src/platform/alarms/index.ts`](../../../src/platform/alarms/index.ts). Si el módulo no está instalado (Expo Go, web o una build antigua), devuelve `unavailableAlarmRuntime` y la UI muestra «no disponible»; nunca simula una programación.
+## Composición
 
-## Qué implementa
+- `createCombinedAlarmRuntime()` en `src/platform/alarms/combined.ts` es el puerto de P5. Encauza `ALARM` al módulo nativo y `NOTIFICATION` a Expo Notifications. Nunca etiqueta AlarmManager como `EXPO_NOTIFICATIONS`.
+- `createAlarmRuntime()` expone además controles nativos para el laboratorio: detener, posponer, reconciliar y abrir ajustes. `AlarmRuntime` conserva sus cuatro métodos originales; los controles están en `NativeAlarmControls`.
+- `createNotifications()` en `src/platform/notifications/native.ts` presenta/retira propuestas con identificadores estables. No acepta alarmas ni instala listeners remotos. P5 conserva la recepción de push y la recuperación de estado autorizado.
+- Los permisos se solicitan exclusivamente desde una acción de UI: `createNotifications().requestPermission()` espera el resultado de Expo; `alarmRuntime.requestExactAlarmPermission()` abre ajustes y **no significa permiso concedido**. Volver a consultar capacidades al reanudar. Los métodos nativos que abren un diálogo devuelven que lo han abierto, no un consentimiento concedido.
 
-| Pieza | Archivo | Responsabilidad |
-|---|---|---|
-| Puente JS | `AlarmRuntimeModule.kt` | `getCapabilities`, `schedule`, `cancel`, `stop`, `snooze`, `getSnapshot`, `reconcile`, permisos y ajustes. |
-| Store privado | `AlarmStore.kt` | Persistencia **antes** de programar; revisión y tombstones de cancelación en SharedPreferences. |
-| Programación | `AlarmScheduler.kt` | `setAlarmClock()` con `AlarmClockInfo`; exige acceso a alarmas exactas. |
-| Disparo | `AlarmFiredReceiver.kt` | Sin JS: arranca el servicio (modo `ALARM`) o publica recordatorio (modo `NOTIFICATION`). |
-| Sonido | `AlarmService.kt` | Foreground service `mediaPlayback`, `MediaPlayer` con `USAGE_ALARM`, wake lock y tope de 10 min. |
-| Acciones | `AlarmActionReceiver.kt` / `AlarmActivity.kt` | Detener y posponer desde notificación o pantalla bloqueada. |
-| Recuperación | `BootReceiver.kt` / `AlarmRecovery.kt` | Reinicio, cambio de hora/zona, actualización; no resucita ocurrencias vencidas. |
-| Canales | `AlarmNotifications.kt` | Canal de alarma silencioso (el audio lo controla el servicio) y canal de recordatorios. |
+## Persistencia y seguridad de ejecución
 
-## Flujo de programación
+El store nativo privado usa SharedPreferences con `commit()` comprobado y un lock compartido por todas las instancias del puente, receptores y servicio. Un error de lectura no borra silenciosamente el registro. Se persiste intención antes de programar y resultado después. La recuperación vuelve a programar idempotentemente las futuras; Android no ofrece una consulta universal de sus alarmas registradas.
 
-1. JS valida y envía una `LocalOccurrence` con identidad estable `(userId, requestId, occurrenceId, deviceId, deviceEpoch)`.
-2. Kotlin persiste el registro como `SCHEDULING` (`commit()` en disco).
-3. Comprueba `canScheduleExactAlarms()`. Si falta, responde `PENDING_PERMISSION` y deja el registro `FAILED` con motivo; no miente con `SCHEDULED`.
-4. Llama a `setAlarmClock()` y solo entonces marca `SCHEDULED`.
-5. Al disparar, el receptor consulta el store; si la ocurrencia fue cancelada o venció, no hace nada.
-6. El servicio marca `FIRED` y conserva `firedAtEpochMs`; detener añade `dismissedAtEpochMs`. Posponer conserva la identidad y suma `snoozeCount`.
+Una cancelación se persiste **antes** de retirar AlarmManager/audio. Un reintento de la misma decisión no la revive. Una decisión confirmada posterior puede atravesar la barrera únicamente con `decisionRevision` mayor y `requestVersion` no inferior. Se rechazan versiones/epochs antiguos también entre distintas ocurrencias de la misma petición. Una cancelación de identidad nunca conocida conserva una barrera sin versión: el contrato `cancel(key)` no aporta una revisión que permita autorizar su reactivación; se rechaza de forma conservadora.
 
-No hay transacción atómica entre SharedPreferences, `AlarmManager`, el servicio y la API del VPS. La recuperación se apoya en persistir antes, identidad estable y reconciliación idempotente después.
+La identidad usa campos con prefijos de longitud y URI propia por PendingIntent, evitando colisiones por separadores o hashes. Los receptores/componentes internos no están exportados. El receptor acepta únicamente SCHEDULING/SCHEDULED vigentes, reclama FIRED antes de arrancar sonido y rechaza duplicados, fechas futuras y entregas con más de un minuto de retraso. Los reinicios y cambios de reloj nunca hacen sonar inmediatamente las vencidas.
 
-## Permisos y configuración nativa
+Detener conserva CANCELLED; posponer solo funciona sobre FIRED sin descartar, con duración explícita de 1–60 minutos (acción de notificación: 5 min). La hora aceptada original se conserva para que un replay no deshaga el snooze. Ninguna acción cambia tareas. El servicio libera reproductor/wake lock al finalizar y tiene límite de 10 minutos. Si coinciden alarmas, la más reciente sustituye el sonido anterior; la anterior conserva FIRED y dismissedAt en su snapshot.
 
-Declarados en `android/src/main/AndroidManifest.xml` y replicados en `app.config.ts`:
+## Mecanismos y permisos
 
-- `POST_NOTIFICATIONS` (Android 13+): sin aviso visible no se considera lista una alarma audible.
-- `SCHEDULE_EXACT_ALARM`: acceso especial; se solicita con `requestExactAlarmPermission()`.
-- `RECEIVE_BOOT_COMPLETED`: reprogramación tras reinicio.
-- `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK`: sonido sostenido.
-- `WAKE_LOCK`: mantener reproducción con pantalla apagada.
-- `USE_FULL_SCREEN_INTENT`: pantalla de alarma cuando Android lo concede; si no, queda la notificación.
-- `VIBRATE`.
+El manifiesto versionado del módulo declara `SCHEDULE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`, `WAKE_LOCK`, `USE_FULL_SCREEN_INTENT` y `VIBRATE`. La app debe conservar autolinking de módulos locales al regenerar Android.
 
-No se declara `USE_EXACT_ALARM` ni se piden permisos de superposición/accesibilidad. El manifiesto está en el módulo versionado, no en `android/` generado, para sobrevivir a `prebuild --clean`.
+Para Android 14+ se usa `systemExempted`: la documentación contempla apps con acceso exacto que continúan una alarma en un servicio. Para versiones anteriores se usa el servicio foreground sin ese tipo. Se comprueban permiso exacto, notificaciones y canal visible; el acceso a pantalla completa se trata por separado. Si el servicio/audio falla queda FAILED, sin convertir silenciosamente una alarma audible en un recordatorio.
 
-## Uso desde la app
+Los recordatorios estándar utilizan exclusivamente `expo-notifications`; un SQLite privado (`alarmat-notification-runtime.db`) conserva intención, revisión y barreras. La reconciliación consulta los identificadores registrados/presentados, repara futuras perdidas y no presume FIRED por haber pasado el reloj. Una notificación cuya presentación no puede observarse queda EXPIRED. La entrega estándar no promete precisión ni sonido sostenido de despertador.
 
-La pantalla [`AlarmRuntimeLabScreen`](../../../src/features/alarms/AlarmRuntimeLabScreen.tsx) (ruta `/alarm-runtime`, enlace «Alarma real» en la cabecera) permite:
+Fuentes oficiales consultadas: [AlarmManager y excepciones de inicio](https://developer.android.com/develop/background-work/services/alarms), [tipos de foreground service](https://developer.android.com/develop/background-work/services/fgs/service-types), [Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/).
 
-- ver capacidades y conceder permisos;
-- programar una alarma real a 10 s, 30 s o 1 min;
-- detenerla o posponerla 5 minutos;
-- inspeccionar el store nativo y ejecutar la reconciliación.
+## Verificación y límites
 
-Es un banco de pruebas: no crea propuestas ni escribe en la API del VPS.
-
-## Compilar y probar
-
-```sh
-npm ci
-npx expo prebuild --platform android --clean
-npm run android
-```
-
-Si `npm ci` falla por el conflicto de peers preexistente entre `react@19.3.0` y `react-dom@19.3.1`, usar `npm ci --legacy-peer-deps`; no cambia el lockfile.
-
-`npm run export:android` solo comprueba JavaScript: no compila Kotlin ni valida sonido. Requiere una development build; Expo Go no carga módulos locales. Verificado en esta rama: `tsc --noEmit`, `expo export --platform android`, `:app:compileDebugKotlin` y `:app:assembleDebug`.
-
-Prueba mínima en un Android físico:
-
-1. Conceder alarmas exactas y notificaciones.
-2. Programar a 30 s, bloquear la pantalla y cerrar la app desde recientes.
-3. Verificar sonido, notificación visible y pantalla de alarma.
-4. Detener desde la notificación; repetir y posponer 5 min.
-5. Reiniciar el móvil, desbloquear y comprobar que una alarma futura sigue programada.
-6. Revocar alarmas exactas y confirmar `PENDING_PERMISSION`, nunca `SCHEDULED`.
-
-## Límites reales de este prototipo
-
-- **No validado en hardware**: Kotlin y el APK debug compilan, pero falta ejecutar la matriz de [QA](../../docs/qa/ALARM_RUNTIME.md) en teléfonos reales.
-- **Force-stop**: Android cancela `PendingIntent`; no se promete resistencia. Es un caso distinto de matar el proceso.
-- **Direct Boot**: el store usa almacenamiento protegido por credenciales; no hay alarmas antes del primer desbloqueo.
-- **Recurrencia**: no implementada. El contrato P0 semanal requiere materializar la siguiente ocurrencia antes de disparar.
-- **Recordatorios estándar**: `expo-notifications` no está instalado; el modo `NOTIFICATION` del runtime publica un aviso sin sonido sostenido. `src/platform/notifications` no finge programarlos.
-- **Repetición de sonido**: usa el tono de alarma predeterminado en bucle; personalización de sonido queda pendiente.
-- **Doze, ahorro de batería y fabricantes**: `setAlarmClock` ayuda, pero el comportamiento final debe medirse por dispositivo.
-- **Política de distribución**: `SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT` y `mediaPlayback` tienen requisitos de Google Play; revisar antes de publicar.
+- Pruebas TS: `tests/p4-notifications.test.ts` cubre duplicado, permiso denegado, cancelación fallida, tombstones, nuevas revisiones, recuperación y caducidad.
+- Pruebas Kotlin: `AlarmPolicyTest` cubre barreras, ejes de versión y disparo de estados terminales/antiguos.
+- Compilación Android de esta integración: consultar `BUILD_EVIDENCE.md` al terminar la ejecución; no se heredan como prueba los resultados de otra rama.
+- Validación física: pendiente. Seguir `docs/qa/ALARM_RUNTIME.md`, añadiendo cancelación seguida de replay antiguo, canales bloqueados y fallos de audio. La parada ahora conserva CANCELLED (la tabla heredada que menciona FIRED debe interpretarse con este cambio).
+- El contrato recibe ocurrencias concretas, con instante UTC y zona. El runtime no inventa recurrencia semanal ni reglas DST: P5/dominio materializa las siguientes con consentimiento confirmado. Las ya materializadas sobreviven sin red; no hay generación nativa indefinida de próximas semanas.
+- No funciona antes del primer desbloqueo, con dispositivo apagado ni tras force-stop de Android. No modifica DND/volumen ni garantiza el comportamiento de todos los fabricantes.
+- No hay validación remota en Kotlin: P5 debe entregar solo comandos confirmados por servidor. El laboratorio es una prueba local explícita, nunca consentimiento de otra persona.

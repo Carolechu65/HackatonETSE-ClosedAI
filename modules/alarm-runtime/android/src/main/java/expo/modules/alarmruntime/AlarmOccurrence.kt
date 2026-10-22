@@ -27,6 +27,7 @@ data class AlarmOccurrence(
   val snoozeCount: Int = 0,
   val failureReason: String? = null,
   val updatedAtEpochMs: Long = System.currentTimeMillis(),
+  val acceptedAtEpochMs: Long = effectiveAtEpochMs,
 ) {
   val key: String
     get() = AlarmContract.keyOf(userId, requestId, occurrenceId, deviceId, deviceEpoch)
@@ -54,6 +55,7 @@ data class AlarmOccurrence(
       "status" to status,
       "scheduledAtEpochMs" to scheduledAtEpochMs,
       "snoozeCount" to snoozeCount,
+      "acceptedEffectiveAtEpochMs" to acceptedAtEpochMs,
     )
     firedAtEpochMs?.let { result["firedAtEpochMs"] = it }
     dismissedAtEpochMs?.let { result["dismissedAtEpochMs"] = it }
@@ -77,6 +79,7 @@ data class AlarmOccurrence(
     put("scheduledAtEpochMs", scheduledAtEpochMs)
     put("snoozeCount", snoozeCount)
     put("updatedAtEpochMs", updatedAtEpochMs)
+    put("acceptedAtEpochMs", acceptedAtEpochMs)
     firedAtEpochMs?.let { put("firedAtEpochMs", it) }
     dismissedAtEpochMs?.let { put("dismissedAtEpochMs", it) }
     failureReason?.let { put("failureReason", it) }
@@ -110,6 +113,8 @@ data class AlarmOccurrence(
         "mode must be ALARM or NOTIFICATION"
       }
       require(occurrence.effectiveAtEpochMs > 0) { "effectiveAtEpochMs must be positive" }
+      require(occurrence.title.length <= 500) { "title is too long" }
+      require(occurrence.timeZone in java.util.TimeZone.getAvailableIDs()) { "Unknown time zone" }
     }
 
     fun fromJson(json: JSONObject): AlarmOccurrence = AlarmOccurrence(
@@ -131,6 +136,7 @@ data class AlarmOccurrence(
       snoozeCount = json.optInt("snoozeCount", 0),
       failureReason = json.optString("failureReason").takeIf { it.isNotEmpty() },
       updatedAtEpochMs = json.optLong("updatedAtEpochMs", System.currentTimeMillis()),
+      acceptedAtEpochMs = json.optLong("acceptedAtEpochMs", json.getLong("effectiveAtEpochMs")),
     )
   }
 }

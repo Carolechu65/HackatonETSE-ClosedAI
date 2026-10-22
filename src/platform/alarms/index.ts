@@ -1,4 +1,6 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
+import { unavailableAlarmRuntime } from './unavailable.ts';
+export { unavailableAlarmRuntime, AlarmRuntimeNotImplementedError } from './unavailable.ts';
 
 /**
  * Frontera TypeScript → runtime Android.
@@ -54,6 +56,8 @@ export interface RuntimeOccurrence {
   firedAtEpochMs?: number;
   dismissedAtEpochMs?: number;
   snoozeCount?: number;
+  /** Original consented instant, retained when effectiveAtEpochMs changes through local snooze. */
+  acceptedEffectiveAtEpochMs?: number;
   failureReason?: string;
 }
 
@@ -62,7 +66,7 @@ export interface AlarmCapabilities {
   exactAlarms: boolean;
   audibleAlarms: boolean;
   notifications: boolean;
-  fullScreenIntent: boolean;
+  fullScreenIntent?: boolean;
   reason?: string | null;
 }
 
@@ -82,6 +86,12 @@ export interface RecoveryResult {
 export interface AlarmRuntime {
   schedule(spec: LocalOccurrence): Promise<ScheduleResult>;
   cancel(key: OccurrenceKey): Promise<CancelResult>;
+  getSnapshot(): Promise<RuntimeSnapshot>;
+  getCapabilities(): Promise<AlarmCapabilities>;
+}
+
+/** Optional native controls kept separate so the sync port remains backwards compatible. */
+export interface NativeAlarmControls extends AlarmRuntime {
   /** Detiene una alarma sonando o cancela una que aún no ha llegado. */
   stop(key: OccurrenceKey): Promise<boolean>;
   /** Reagenda la misma ocurrencia (identidad estable) dentro de N minutos. */
@@ -110,59 +120,6 @@ type NativeAlarmRuntime = {
   openFullScreenIntentSettings(): Promise<boolean>;
 };
 
-export class AlarmRuntimeNotImplementedError extends Error {
-  readonly code = 'E_NOT_IMPLEMENTED';
-
-  constructor() {
-    super('El runtime Android no está instalado. Usa una development build, no Expo Go.');
-    this.name = 'AlarmRuntimeNotImplementedError';
-  }
-}
-
-/** Arranque seguro sin módulo nativo. No simula éxito ni solicita permisos. */
-export const unavailableAlarmRuntime: AlarmRuntime = {
-  async schedule() {
-    throw new AlarmRuntimeNotImplementedError();
-  },
-  async cancel() {
-    throw new AlarmRuntimeNotImplementedError();
-  },
-  async stop() {
-    throw new AlarmRuntimeNotImplementedError();
-  },
-  async snooze() {
-    throw new AlarmRuntimeNotImplementedError();
-  },
-  async reconcile() {
-    return { rescheduled: 0, expired: 0, failed: 0, reason: 'E_NOT_IMPLEMENTED' };
-  },
-  async getSnapshot() {
-    return { available: false, revision: 0, occurrences: [] };
-  },
-  async getCapabilities() {
-    return {
-      available: false,
-      exactAlarms: false,
-      audibleAlarms: false,
-      notifications: false,
-      fullScreenIntent: false,
-      reason: 'E_NOT_IMPLEMENTED',
-    };
-  },
-  async requestExactAlarmPermission() {
-    return false;
-  },
-  async requestNotificationPermission() {
-    return false;
-  },
-  async openNotificationSettings() {
-    return false;
-  },
-  async openFullScreenIntentSettings() {
-    return false;
-  },
-};
-
 function loadNativeRuntime(): NativeAlarmRuntime | null {
   try {
     return requireOptionalNativeModule<NativeAlarmRuntime>('AlarmRuntime');
@@ -175,7 +132,7 @@ function loadNativeRuntime(): NativeAlarmRuntime | null {
  * Se resuelve una vez por proceso. Requiere development build: en Expo Go el
  * módulo local no existe y la UI debe mostrar «no disponible», no programar.
  */
-export function createAlarmRuntime(): AlarmRuntime {
+export function createAlarmRuntime(): NativeAlarmControls {
   const native = loadNativeRuntime();
   if (!native) return unavailableAlarmRuntime;
 
@@ -194,4 +151,4 @@ export function createAlarmRuntime(): AlarmRuntime {
   };
 }
 
-export const alarmRuntime: AlarmRuntime = createAlarmRuntime();
+export const alarmRuntime: NativeAlarmControls = createAlarmRuntime();

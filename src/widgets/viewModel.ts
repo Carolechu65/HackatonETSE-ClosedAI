@@ -10,6 +10,8 @@
 import { alarmLink, inboxLink, isSafeLinkId } from './links.ts';
 import {
   isWidgetSnapshotStale,
+  isValidWidgetSnapshot,
+  createSignedOutWidgetSnapshot,
   WIDGET_SNAPSHOT_MAX_AGE_MS,
   type WidgetSnapshot,
 } from './snapshot.ts';
@@ -130,11 +132,15 @@ export function toWidgetProps(
   nowEpochMs: number,
   options: WidgetViewModelOptions = {},
 ): AlarmaTWidgetProps {
+  if (!isValidWidgetSnapshot(snapshot)) snapshot = createSignedOutWidgetSnapshot(nowEpochMs);
   const timeZone = options.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
   const maxAgeMs = options.maxAgeMs ?? WIDGET_SNAPSHOT_MAX_AGE_MS;
   const stale = isWidgetSnapshotStale(snapshot, nowEpochMs, maxAgeMs);
   const freshness = describeFreshness(snapshot.generatedAtEpochMs, nowEpochMs);
-  const updated = `Actualizado ${freshness}`;
+  // Relative text freezes when the app is closed. An absolute date remains truthful.
+  const updated = `Lectura: ${new Intl.DateTimeFormat('es-ES', {
+    timeZone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date(snapshot.generatedAtEpochMs))}`;
 
   if (snapshot.scope === null) {
     return {
@@ -151,7 +157,8 @@ export function toWidgetProps(
     };
   }
 
-  const next = snapshot.nextAlarm;
+  const next = snapshot.nextAlarm !== null && snapshot.nextAlarm.scheduledAtEpochMs > nowEpochMs
+    ? snapshot.nextAlarm : null;
   const pending = formatPendingLine(snapshot);
 
   if (next === null) {

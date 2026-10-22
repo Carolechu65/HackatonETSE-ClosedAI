@@ -250,3 +250,19 @@ test('tareas: inicial del avatar sin inventar nombres', () => {
   assert.equal(memberInitial(null, 'u-luis'), 'U');
   assert.equal(memberInitial('  ', 'u-x'), '?');
 });
+
+
+test('terminal tasks retain unconfirmed writes and device withdrawal warnings', () => {
+  for (const status of ['completed', 'cancelled'] as const) {
+    const task = seedTask({ status });
+    assert.equal(describeTaskCardState(task, { sync: 'QUEUED', alarmWithdrawal: 'none' }).label, 'Guardando…');
+    assert.equal(describeTaskCardState(task, { sync: 'SENDING', alarmWithdrawal: 'none' }).tone, 'pending');
+    assert.equal(describeTaskCardState(task, { sync: 'CONFLICT', alarmWithdrawal: 'pending' }).tone, 'error');
+    assert.equal(describeTaskCardState(task, { sync: 'FAILED_PERMANENT', alarmWithdrawal: 'none' }).label, 'No se pudo guardar');
+    const waiting = describeTaskCardState(task, { sync: 'CONFIRMED', alarmWithdrawal: 'pending' });
+    assert.equal(waiting.tone, 'pending');
+    assert.match(waiting.detail!, /sin acuse/);
+    const confirmed = describeTaskCardState(task, { sync: 'CONFIRMED', alarmWithdrawal: 'confirmed' });
+    assert.equal(confirmed.detail, null);
+  }
+});

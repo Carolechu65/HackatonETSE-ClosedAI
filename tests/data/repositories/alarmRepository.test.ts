@@ -105,6 +105,7 @@ test('failed cancellation blocks replacement scheduling until the native cancell
   await s.repository.reconcile();
   assert.equal(s.runtime.scheduled.length, 1);
   assert.equal(s.repository.getSnapshot().alarms[0]!.scheduling, 'CANCEL_PENDING');
+  assert.equal(s.repository.widgetSnapshot().groups[0]!.cancelPending, 1);
   assert.equal(s.repository.widgetSnapshot().groups[0]!.nextAlarm, null);
   s.runtime.cancellationFails = false; await s.repository.reconcile();
   assert.equal(s.runtime.scheduled.length, 2);
@@ -316,6 +317,8 @@ for (const adapterAvailable of [true, false]) {
     assert.ok(reports.every(report => report.mode === 'NOTIFICATION' && report.mechanism === 'EXPO_NOTIFICATIONS'));
     assert.ok(reports.every(report => report.status === (adapterAvailable ? 'SCHEDULED' : 'FAILED')));
     if (adapterAvailable) {
+      assert.equal(repository.widgetSnapshot().groups[0]!.nextAlarm!.mode, 'NOTIFICATION');
+      assert.equal(repository.widgetSnapshot().groups[0]!.cancelPending, 0);
       await repository.enqueue({ ...response('disable-notification', 'DISABLED'), expectedDecisionRevision: 2 });
       assert.equal(s.runtime.cancelled.length, 0); assert.ok(notificationRuntime.cancelled.length >= 1);
     }

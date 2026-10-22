@@ -227,3 +227,28 @@ test('SecureStore deletion failure leaves a durable logout barrier even after na
   assert.equal(await ctx.store.accountOwner(), null);
   assert.equal(ctx.values.size, 0);
 });
+
+test('account switch uses a distinct device identity while cancelling the previous account first', async t => {
+  const ctx = await setup(t);
+  ctx.options.deviceIdForUser = userId => `installation.${userId}`;
+  const client = createDataClient(ctx.options);
+  const record = alarm(); record.request.mode = 'ALARM';
+  record.primaryDevice = { deviceId: 'installation.ana', deviceEpoch: 1 };
+  ctx.setPage(page(record, 'ana-event', 'ana-cursor'));
+  await client.login({ userId: 'ana' });
+  await client.sync.reconcile();
+  assert.equal(ctx.runtime.scheduled[0]!.deviceId, 'installation.ana');
+  await client.logout();
+  assert.ok([...ctx.runtime.entries.values()].every(entry => entry.status === 'CANCELLED'));
+  record.recipient.uid = 'bob'; record.request.recipientUids = ['bob'];
+  record.primaryDevice = { deviceId: 'installation.bob', deviceEpoch: 1 };
+  ctx.setPage(page(record, 'bob-event', 'bob-cursor'));
+  await client.login({ userId: 'bob' });
+  await client.sync.reconcile();
+  assert.equal(ctx.runtime.scheduled.length, 2);
+  assert.equal(ctx.runtime.scheduled[1]!.deviceId, 'installation.bob');
+  assert.equal(ctx.runtime.scheduled[1]!.userId, 'bob');
+  assert.equal((await ctx.store.schedules('ana')).length, 0);
+  assert.equal(ctx.runtime.cancelled[0]!.deviceId, 'installation.ana');
+  await client.logout();
+});

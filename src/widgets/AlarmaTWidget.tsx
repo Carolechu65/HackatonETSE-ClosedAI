@@ -1,4 +1,4 @@
-import { Column, Row, Spacer, Text } from '@expo/ui/jetpack-compose';
+import { Button, Column, Row, Spacer, Text } from '@expo/ui/jetpack-compose';
 import { background, cornerRadius, fillMaxWidth, height, padding, size, wrapContentHeight } from '@expo/ui/jetpack-compose/modifiers';
 import { createWidget } from 'expo-widgets';
 import type { AlarmaTWidgetProps } from './viewModel.ts';
@@ -16,10 +16,8 @@ import type { AlarmaTWidgetProps } from './viewModel.ts';
  * imán rojo, serif para el título y mono para datos. Los colores van literales
  * porque el bundle no puede referenciar constantes del módulo.
  *
- * Sin botones: en expo-widgets 58 los botones de un widget Android solo
- * reevalúan props (no abren la app). El enlace a la propuesta viaja en
- * `props.alarmUrl` para cuando P1/P4 habiliten la acción nativa; ver
- * `docs/demo.md` y el handoff.
+ * Los targets de apertura pasan al PendingIntent del config plugin
+ * with-widget-links. No hay callback JS ni mutación desde el launcher.
  */
 function AlarmaTWidget(props: AlarmaTWidgetProps) {
   'widget';
@@ -54,7 +52,7 @@ function AlarmaTWidget(props: AlarmaTWidgetProps) {
           maxLines={1}
           style={{ fontFamily: 'monospace', fontSize: 8, letterSpacing: 0.6 }}
         >
-          {props.stale ? 'SIN CONEXIÓN' : (props.freshness === 'ahora mismo' ? 'AHORA' : props.freshness.toUpperCase())}
+          {props.stale ? 'REVISAR DATOS' : 'ÚLTIMA LECTURA'}
         </Text>
       </Row>
 
@@ -97,6 +95,17 @@ function AlarmaTWidget(props: AlarmaTWidgetProps) {
       >
         {props.pending}
       </Text>
+      <Text color={muted} maxLines={1} style={{ fontSize: 9 }}>{props.updated}</Text>
+      <Row modifiers={[fillMaxWidth()]}>
+        {props.alarmUrl !== null ? (
+          <Button {...{ target: props.alarmUrl }} colors={{ containerColor: magnet, contentColor: '#ffffff' }}>
+            Ver alarma
+          </Button>
+        ) : null}
+        <Button {...{ target: props.inboxUrl }} colors={{ containerColor: paper, contentColor: ink }}>
+          {props.signedIn ? 'Ver propuestas' : 'Abrir AlarmaT'}
+        </Button>
+      </Row>
     </Column>
   );
 }

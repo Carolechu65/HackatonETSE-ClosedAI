@@ -1,87 +1,40 @@
 package expo.modules.alarmruntime
 
 import android.content.Context
-import android.content.Intent
 
-/** Acciones compartidas por notificación, pantalla de alarma y puente JS. */
+/** Explicit local actions; never mutate a task or server consent. */
 object AlarmActions {
-  fun stop(context: Context, key: String): Boolean {
-    context.stopService(Intent(context, AlarmService::class.java))
-
+  fun stop(context: Context, key: String): Boolean = synchronized(AlarmStore.lock) {
     val store = AlarmStore(context)
-    val occurrence = store.find(key)
-    if (occurrence != null) {
-      // Seguro si el usuario pulsa Detener antes de que llegue la hora:
-      // no debe quedar un PendingIntent que suene después.
-      AlarmScheduler.cancel(context, occurrence)
-    }
-
-    val now = System.currentTimeMillis()
-    val updated = store.update(key) { record ->
-      val wasRinging = record.status == AlarmOccurrence.STATUS_FIRED ||
-        record.firedAtEpochMs != null
-      record.copy(
-        status = if (wasRinging) {
-          AlarmOccurrence.STATUS_FIRED
-        } else {
-          AlarmOccurrence.STATUS_CANCELLED
-        },
-        dismissedAtEpochMs = now,
-        updatedAtEpochMs = now,
-      )
-    }
+    val occurrence = store.find(key) ?: return@synchronized false
+    // Persist first: a queued receiver cannot restart playback after the stop.
+    store.upsert(occurrence.copy(status = AlarmOccurrence.STATUS_CANCELLED,
+      dismissedAtEpochMs = System.currentTimeMillis(), updatedAtEpochMs = System.currentTimeMillis()))
+    val cancelled = AlarmScheduler.cancel(context, occurrence)
+    AlarmService.stopKey(key)
     AlarmNotifications.cancel(context, key)
-    return updated != null
+    cancelled
   }
 
-  fun snooze(context: Context, key: String, minutes: Int): ScheduleOutcome {
-    context.stopService(Intent(context, AlarmService::class.java))
-    AlarmNotifications.cancel(context, key)
-
+  fun snooze(context: Context, key: String, minutes: Int): ScheduleOutcome = synchronized(AlarmStore.lock) {
+    if (minutes !in 1..60) return@synchronized ScheduleOutcome(AlarmScheduler.STATUS_FAILED, "E_SNOOZE_DURATION")
     val store = AlarmStore(context)
-    val occurrence = store.find(key)
-      ?: return ScheduleOutcome(AlarmScheduler.STATUS_FAILED, "E_NOT_FOUND")
-    if (occurrence.status == AlarmOccurrence.STATUS_CANCELLED ||
-      occurrence.status == AlarmOccurrence.STATUS_EXPIRED
-    ) {
-      return ScheduleOutcome(AlarmScheduler.STATUS_FAILED, "E_NOT_ACTIVE")
-    }
-
+    val occurrence = store.find(key) ?: return@synchronized ScheduleOutcome(AlarmScheduler.STATUS_FAILED, "E_NOT_FOUND")
+    if (occurrence.status != AlarmOccurrence.STATUS_FIRED || occurrence.dismissedAtEpochMs != null)
+      return@synchronized ScheduleOutcome(AlarmScheduler.STATUS_FAILED, "E_NOT_RINGING")
     val now = System.currentTimeMillis()
-    val snoozeMs = minutes.coerceIn(1, 60) * 60_000L
-    val next = occurrence.copy(
-      status = AlarmOccurrence.STATUS_SCHEDULING,
-      effectiveAtEpochMs = now + snoozeMs,
-      scheduledAtEpochMs = now + snoozeMs,
-      firedAtEpochMs = null,
-      dismissedAtEpochMs = null,
-      snoozeCount = occurrence.snoozeCount + 1,
-      failureReason = null,
-      updatedAtEpochMs = now,
-    )
+    val next = occurrence.copy(status = AlarmOccurrence.STATUS_SCHEDULING,
+      effectiveAtEpochMs = now + minutes * 60_000L, scheduledAtEpochMs = now + minutes * 60_000L,
+      firedAtEpochMs = null, dismissedAtEpochMs = null, snoozeCount = occurrence.snoozeCount + 1,
+      failureReason = null, updatedAtEpochMs = now)
     store.upsert(next)
-
     val outcome = AlarmScheduler.schedule(context, next)
-    store.update(next.key) { saved ->
-      when (outcome.status) {
-        AlarmScheduler.STATUS_SCHEDULED -> saved.copy(
-          status = AlarmOccurrence.STATUS_SCHEDULED,
-          scheduledAtEpochMs = next.effectiveAtEpochMs,
-          failureReason = null,
-          updatedAtEpochMs = System.currentTimeMillis(),
-        )
-        AlarmScheduler.STATUS_EXPIRED -> saved.copy(
-          status = AlarmOccurrence.STATUS_EXPIRED,
-          failureReason = outcome.reason,
-          updatedAtEpochMs = System.currentTimeMillis(),
-        )
-        else -> saved.copy(
-          status = AlarmOccurrence.STATUS_FAILED,
-          failureReason = outcome.reason,
-          updatedAtEpochMs = System.currentTimeMillis(),
-        )
-      }
-    }
-    return outcome
+    try {
+      store.upsert(next.copy(status = if (outcome.status == AlarmScheduler.STATUS_SCHEDULED) AlarmOccurrence.STATUS_SCHEDULED else AlarmOccurrence.STATUS_FAILED,
+        failureReason = outcome.reason, updatedAtEpochMs = System.currentTimeMillis()))
+    } catch (error: Exception) { AlarmScheduler.cancel(context, next); throw error }
+    AlarmService.stopKey(key)
+    AlarmNotifications.cancel(context, key)
+    outcome
   }
 }

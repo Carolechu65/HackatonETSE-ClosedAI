@@ -23,9 +23,6 @@ class AlarmStore(context: Context) {
 
   fun find(key: String): AlarmOccurrence? = readItems(readRoot())[key]
 
-  fun findByOccurrenceId(occurrenceId: String): AlarmOccurrence? =
-    readItems(readRoot()).values.firstOrNull { it.occurrenceId == occurrenceId }
-
   fun upsert(occurrence: AlarmOccurrence) {
     mutate { items -> items[occurrence.key] = occurrence }
   }
@@ -41,13 +38,10 @@ class AlarmStore(context: Context) {
     return updated
   }
 
-  fun remove(key: String) {
-    mutate { items -> items.remove(key) }
-  }
-
   private fun readRoot(): JSONObject {
     val raw = prefs.getString(KEY_ROOT, null) ?: return JSONObject()
-    return runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
+    // Corruption must fail closed: discarding tombstones would resurrect alarms.
+    return JSONObject(raw)
   }
 
   private fun readItems(root: JSONObject): MutableMap<String, AlarmOccurrence> {
@@ -56,16 +50,15 @@ class AlarmStore(context: Context) {
     val names = stored.keys()
     while (names.hasNext()) {
       val name = names.next()
-      val item = stored.optJSONObject(name) ?: continue
-      runCatching { AlarmOccurrence.fromJson(item) }
-        .getOrNull()
-        ?.let { result[name] = it }
+      val item = stored.getJSONObject(name)
+      val occurrence = AlarmOccurrence.fromJson(item)
+      result[occurrence.key] = occurrence
     }
     return result
   }
 
   private fun mutate(block: (MutableMap<String, AlarmOccurrence>) -> Unit) {
-    synchronized(this) {
+    synchronized(lock) {
       val root = readRoot()
       val items = readItems(root)
       block(items)
@@ -77,15 +70,31 @@ class AlarmStore(context: Context) {
       val nextRoot = JSONObject().apply {
         put(KEY_ITEMS, storedItems)
         put(KEY_REVISION, root.optLong(KEY_REVISION, 0L) + 1L)
+        put("unknownCancellations", root.optJSONObject("unknownCancellations") ?: JSONObject())
       }
 
       // commit() es intencionado: el registro debe estar en disco antes de
       // devolver SCHEDULED o de lanzar AlarmManager.
-      prefs.edit().putString(KEY_ROOT, nextRoot.toString()).commit()
+      check(prefs.edit().putString(KEY_ROOT, nextRoot.toString()).commit()) { "E_STORE_COMMIT" }
     }
   }
 
-  private companion object {
+  fun isUnknownCancellation(key: String): Boolean = synchronized(lock) {
+    readRoot().optJSONObject("unknownCancellations")?.has(key) == true
+  }
+
+  fun cancelUnknown(key: String) = synchronized(lock) {
+    val root = readRoot()
+    val cancelled = root.optJSONObject("unknownCancellations") ?: JSONObject()
+    cancelled.put(key, true)
+    root.put("unknownCancellations", cancelled)
+    root.put(KEY_REVISION, root.optLong(KEY_REVISION, 0L) + 1L)
+    check(prefs.edit().putString(KEY_ROOT, root.toString()).commit()) { "E_STORE_COMMIT" }
+  }
+
+  companion object {
+    /** The receiver, bridge, service and recovery create separate AlarmStore instances. */
+    val lock = Any()
     const val PREFERENCES_NAME = "expo.modules.alarmruntime.store"
     const val KEY_ROOT = "root"
     const val KEY_ITEMS = "items"

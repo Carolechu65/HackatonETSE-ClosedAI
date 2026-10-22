@@ -38,6 +38,7 @@ for (const observedFired of [false, true]) {
     assert.equal(view.effectiveAtEpochMs, s.future);
     assert.equal(view.localSchedule!.spec.effectiveAtEpochMs, s.original.effectiveAtEpochMs);
     assert.equal(s.repository.widgetSnapshot().groups[0]!.nextAlarm!.effectiveAtEpochMs, s.future);
+    assert.equal(s.repository.widgetSnapshot().groups[0]!.nextAlarm!.occurrenceId, s.original.occurrenceId);
     const reports = s.server.commands.filter(item => item.kind === 'reportSchedule');
     assert.ok(reports.every(item => (item.command as ReportSchedule).payload.effectiveAtEpochMs === s.original.effectiveAtEpochMs), 'ACK retains original accepted time');
     assert.equal(reports.length, observedFired ? 3 : 1, 'unchanged snooze recovery never duplicates an ACK');

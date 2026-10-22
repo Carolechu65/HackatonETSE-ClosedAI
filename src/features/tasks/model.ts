@@ -251,28 +251,20 @@ export type TaskCardState = {
 
 /** Traduce los estados de sincronización a texto visible; nunca afirma éxito sin `CONFIRMED`. */
 export function describeTaskCardState(task: HouseholdTask, write?: TaskWriteState): TaskCardState {
-  if (task.status === 'completed') {
-    return { label: 'Completada', tone: 'done', detail: 'Las alarmas vinculadas se retiran al confirmar.' };
-  }
-  if (task.status === 'cancelled') {
-    return { label: 'Cancelada', tone: 'neutral', detail: null };
-  }
-  if (write === undefined) {
-    return { label: 'Pendiente', tone: 'neutral', detail: null };
-  }
-  if (write.sync === 'CONFLICT') {
+  if (write?.sync === 'CONFLICT') {
     return { label: 'Conflicto de versión', tone: 'error', detail: 'Alguien cambió la tarea. Recarga antes de repetir.' };
   }
-  if (write.sync === 'FAILED_PERMANENT') {
+  if (write?.sync === 'FAILED_PERMANENT') {
     return { label: 'No se pudo guardar', tone: 'error', detail: 'La operación no se reintenta sola.' };
   }
-  if (write.sync === 'QUEUED' || write.sync === 'SENDING') {
+  if (write?.sync === 'QUEUED' || write?.sync === 'SENDING') {
     return { label: 'Guardando…', tone: 'pending', detail: 'Todavía no hay confirmación del servidor.' };
   }
-  if (write.alarmWithdrawal === 'pending') {
-    return { label: 'Pendiente', tone: 'pending', detail: 'Retirada de alarmas pedida, sin acuse del móvil.' };
+  const label = task.status === 'completed' ? 'Completada' : task.status === 'cancelled' ? 'Cancelada' : 'Pendiente';
+  if (write?.alarmWithdrawal === 'pending') {
+    return { label, tone: 'pending', detail: 'Retirada de alarmas pedida, sin acuse del móvil.' };
   }
-  return { label: 'Pendiente', tone: 'neutral', detail: null };
+  return { label, tone: task.status === 'completed' ? 'done' : 'neutral', detail: null };
 }
 
 function localDate(epochMs: number, timeZone: string): string {

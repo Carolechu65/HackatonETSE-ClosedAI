@@ -40,21 +40,23 @@ existe solo para la bandeja de demostración y pierde matices (`SCHEDULING`/`FAI
   desactualizado pero no inventa un estado nuevo.
 - Al cerrar sesión o cambiar de cuenta se publica el estado vacío
   (`syncWidgetForSession`), nunca el snapshot anterior.
-- La plantilla solo pinta props. No consulta SQLite, Firebase ni el reloj.
+- La plantilla solo pinta props. No consulta SQLite, el servidor ni el reloj.
 
-## Límite real de expo-widgets 58 en Android (verificado en el paquete instalado)
+## Apertura nativa Android
 
-`WidgetInteractionAction.kt` convierte un botón en un broadcast que reevalúa props
-(`evaluateWidgetButtonPress`); no lanza una Activity ni un deep link. La documentación
-de `expo-widgets` además declara interactivos solo los widgets iOS 17+. Por eso:
+`plugins/with-widget-links.cjs` añade una acción Glance `actionStartActivity`
+para los botones de `AlarmaTWidget` cuyo target sea una ruta interna exacta.
+Se instala después de `expo-widgets` en `app.config.ts` y se aplica durante prebuild.
+El parche está limitado a `expo-widgets@58.0.22`, es idempotente y detiene la
+compilación si cambia la API. No necesita callbacks JS con el proceso vivo.
 
-- el primer corte **no** incluye botones en el widget; un botón que no navega sería un
-  engaño de interfaz;
-- `links.ts` y `props.alarmUrl` ya están listos para cuando P1/P4 añadan una acción
-  nativa (`PendingIntent` a `alarmat://alarm/<id>`), o para la notificación de P4, que
-  sí puede abrir la app.
+«Ver alarma» abre `alarmat://alarm/<id>`; «Ver propuestas» abre la bandeja.
+Ninguno acepta ni programa. La pantalla debe verificar sesión, grupo y entidad.
+El intent tiene componente y paquete explícitos para evitar abrir otra aplicación.
+La marca «Lectura: fecha, hora» permanece verdadera cuando la app está cerrada;
+no se infiere que una lectura antigua signifique falta de conexión.
 
-Handoff con la petición concreta: [`docs/handoff/P6_HANDOFF.md`](../../docs/handoff/P6_HANDOFF.md).
+Pruebas y protocolo físico: [`docs/qa/P6_WIDGET.md`](../../docs/qa/P6_WIDGET.md).
 
 ## Desarrollo
 

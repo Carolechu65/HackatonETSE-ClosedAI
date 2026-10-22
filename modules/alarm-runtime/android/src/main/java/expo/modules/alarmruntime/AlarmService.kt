@@ -4,6 +4,8 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
@@ -19,15 +21,27 @@ import android.os.PowerManager
  * servicio mantiene una notificación visible con acciones Detener y Posponer.
  */
 class AlarmService : Service() {
+  companion object {
+    private var instance: AlarmService? = null
+    /** Cancel only this occurrence, never another alarm currently ringing. */
+    fun stopKey(key: String) {
+      Handler(Looper.getMainLooper()).post {
+        instance?.let { service -> if (service.activeKey == key) service.finishAlarm() }
+      }
+    }
+  }
   private val handler = Handler(Looper.getMainLooper())
   private var mediaPlayer: MediaPlayer? = null
   private var wakeLock: PowerManager.WakeLock? = null
+  private var audioFocus: AudioFocusRequest? = null
+  private val legacyAudioFocus = AudioManager.OnAudioFocusChangeListener { change -> if (change == AudioManager.AUDIOFOCUS_LOSS) finishAlarm() }
   private var activeKey: String? = null
 
   private val stopRunnable = Runnable { finishAlarm() }
 
   override fun onCreate() {
     super.onCreate()
+    instance = this
     AlarmNotifications.ensureChannels(this)
   }
 
@@ -62,7 +76,7 @@ class AlarmService : Service() {
       }
     }
 
-    startAlarm(key)
+    synchronized(AlarmStore.lock) { startAlarm(key) }
     return START_NOT_STICKY
   }
 
@@ -72,14 +86,17 @@ class AlarmService : Service() {
     val store = AlarmStore(this)
     val occurrence = store.find(key)
     if (occurrence == null ||
-      occurrence.status == AlarmOccurrence.STATUS_CANCELLED ||
-      occurrence.status == AlarmOccurrence.STATUS_EXPIRED ||
-      occurrence.dismissedAtEpochMs != null
+      occurrence.status != AlarmOccurrence.STATUS_FIRED ||
+      occurrence.dismissedAtEpochMs != null ||
+      !AlarmScheduler.notificationsEnabled(this) || !AlarmScheduler.canScheduleExactAlarms(this)
     ) {
-      stopSelf()
+      if (activeKey == null) stopSelf()
       return
     }
 
+    // One audible presentation at a time. A concurrent alarm explicitly supersedes
+    // the previous sound, whose consumed/dismissed state remains in the snapshot.
+    activeKey?.let { previous -> store.update(previous) { it.copy(dismissedAtEpochMs = System.currentTimeMillis()) } }
     stopPlayback()
 
     val now = System.currentTimeMillis()
@@ -93,13 +110,13 @@ class AlarmService : Service() {
     }
 
     val notification = AlarmNotifications.buildAlarmNotification(this, occurrence)
-    val notificationId = AlarmContract.notificationId(key)
+    val notificationId = 7100
     try {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         startForeground(
           notificationId,
           notification,
-          ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+          ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
         )
       } else {
         startForeground(notificationId, notification)
@@ -112,23 +129,32 @@ class AlarmService : Service() {
           updatedAtEpochMs = System.currentTimeMillis(),
         )
       }
-      AlarmNotifications.notify(this, key, notification)
       stopPlayback()
       stopSelf()
       return
     }
 
     acquireWakeLock()
-    playSound()
+    if (!runCatching { acquireAudioFocus() }.getOrDefault(false)) {
+      store.update(key) { it.copy(status = AlarmOccurrence.STATUS_FAILED, failureReason = "E_AUDIO_FOCUS") }
+      finishAlarm()
+      return
+    }
+    if (!playSound()) {
+      store.update(key) { it.copy(status = AlarmOccurrence.STATUS_FAILED, failureReason = "E_AUDIO_PLAYBACK") }
+      finishAlarm()
+      return
+    }
     handler.postDelayed(stopRunnable, AlarmContract.MAX_ALARM_DURATION_MS)
   }
 
-  private fun playSound() {
+  private fun playSound(): Boolean {
     try {
       val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        ?: return
-      mediaPlayer = MediaPlayer().apply {
+        ?: return false
+      mediaPlayer = MediaPlayer()
+      mediaPlayer!!.apply {
         setAudioAttributes(
           AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -137,14 +163,34 @@ class AlarmService : Service() {
         )
         setDataSource(this@AlarmService, uri)
         isLooping = true
-        setOnErrorListener { _, _, _ -> true }
+        setOnErrorListener { _, _, _ ->
+          activeKey?.let { key -> AlarmStore(this@AlarmService).update(key) { if (it.status == AlarmOccurrence.STATUS_FIRED) it.copy(status = AlarmOccurrence.STATUS_FAILED, failureReason = "E_AUDIO_PLAYBACK") else it } }
+          finishAlarm()
+          true
+        }
         prepare()
         start()
       }
+      return true
     } catch (_: Exception) {
       runCatching { mediaPlayer?.release() }
       mediaPlayer = null
+      return false
     }
+  }
+
+  private fun acquireAudioFocus(): Boolean {
+    if (Build.VERSION.SDK_INT < 26) {
+      @Suppress("DEPRECATION")
+      return getSystemService(AudioManager::class.java).requestAudioFocus(legacyAudioFocus, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+    val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+      .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+      .setOnAudioFocusChangeListener { change ->
+        if (change == AudioManager.AUDIOFOCUS_LOSS) finishAlarm()
+      }.build()
+    audioFocus = request
+    return getSystemService(AudioManager::class.java).requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
   }
 
   private fun acquireWakeLock() {
@@ -164,6 +210,7 @@ class AlarmService : Service() {
 
   /** Tope de seguridad si nadie pulsa Detener. */
   private fun finishAlarm() {
+    synchronized(AlarmStore.lock) {
     val key = activeKey
     stopPlayback()
 
@@ -184,6 +231,7 @@ class AlarmService : Service() {
 
     stopForeground(STOP_FOREGROUND_REMOVE)
     stopSelf()
+    }
   }
 
   private fun stopPlayback() {
@@ -191,6 +239,12 @@ class AlarmService : Service() {
     runCatching { mediaPlayer?.stop() }
     runCatching { mediaPlayer?.release() }
     mediaPlayer = null
+    if (Build.VERSION.SDK_INT >= 26) audioFocus?.let { getSystemService(AudioManager::class.java).abandonAudioFocusRequest(it) }
+    else {
+      @Suppress("DEPRECATION")
+      getSystemService(AudioManager::class.java).abandonAudioFocus(legacyAudioFocus)
+    }
+    audioFocus = null
     wakeLock?.let { lock ->
       if (lock.isHeld) lock.release()
     }
@@ -200,6 +254,7 @@ class AlarmService : Service() {
 
   override fun onDestroy() {
     stopPlayback()
+    if (instance === this) instance = null
     super.onDestroy()
   }
 }

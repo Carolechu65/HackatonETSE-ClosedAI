@@ -151,7 +151,12 @@ export function buildWidgetSnapshot(input: BuildWidgetSnapshotInput): WidgetSnap
   assertIdentifier(input.scope.userId, 'scope.userId');
   assertIdentifier(input.scope.groupId, 'scope.groupId');
 
-  const alarms = input.alarms;
+  // Invalid persisted rows must never become launcher content or counters.
+  const alarms = input.alarms.filter((alarm) => ID_PATTERN.test(alarm.requestId)
+    && typeof alarm.title === 'string'
+    && (alarm.occurrenceId === null || ID_PATTERN.test(alarm.occurrenceId))
+    && (alarm.scheduledAtEpochMs === null || (Number.isSafeInteger(alarm.scheduledAtEpochMs)
+      && alarm.scheduledAtEpochMs >= 0 && alarm.scheduledAtEpochMs <= 8_640_000_000_000_000)));
   const candidates = alarms.filter((alarm) => isFutureScheduled(alarm, input.nowEpochMs));
   const next = [...candidates].sort(compareStable)[0] ?? null;
 
@@ -204,13 +209,32 @@ export function adoptSnapshotForSession(
   session: { readonly userId: string; readonly groupId: string } | null,
   nowEpochMs: number,
 ): WidgetSnapshot {
-  if (session === null || snapshot.scope === null) {
+  if (!isValidWidgetSnapshot(snapshot) || session === null || snapshot.scope === null) {
     return createSignedOutWidgetSnapshot(nowEpochMs);
   }
   if (snapshot.scope.userId !== session.userId || snapshot.scope.groupId !== session.groupId) {
     return createSignedOutWidgetSnapshot(nowEpochMs);
   }
   return snapshot;
+}
+
+/** A disk projection is untrusted data even when TypeScript callers declare its type. */
+export function isValidWidgetSnapshot(value: unknown): value is WidgetSnapshot {
+  if (value === null || typeof value !== 'object') return false;
+  const snapshot = value as WidgetSnapshot;
+  const validTime = (time: unknown): time is number => typeof time === 'number'
+    && Number.isSafeInteger(time) && time >= 0 && time <= 8_640_000_000_000_000;
+  const validId = (id: unknown): id is string => typeof id === 'string' && ID_PATTERN.test(id);
+  if (snapshot.schemaVersion !== WIDGET_SNAPSHOT_SCHEMA_VERSION || !validTime(snapshot.generatedAtEpochMs)) return false;
+  if (snapshot.scope !== null && (!snapshot.scope || !validId(snapshot.scope.userId) || !validId(snapshot.scope.groupId))) return false;
+  if (!snapshot.counts || ![snapshot.counts.pendingProposals, snapshot.counts.pendingActivations, snapshot.counts.withdrawalPending]
+    .every((count) => Number.isSafeInteger(count) && count >= 0)) return false;
+  const next = snapshot.nextAlarm;
+  if (next !== null && (!next || !validId(next.requestId)
+    || (next.occurrenceId !== null && !validId(next.occurrenceId))
+    || typeof next.title !== 'string' || !validTime(next.scheduledAtEpochMs)
+    || (next.mode !== 'ALARM' && next.mode !== 'NOTIFICATION'))) return false;
+  return snapshot.scope !== null || (next === null && Object.values(snapshot.counts).every((count) => count === 0));
 }
 
 /** `true` si el snapshot supera la antigüedad permitida o su reloj es incoherente. */
@@ -223,6 +247,7 @@ export function isWidgetSnapshotStale(
   if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 0) {
     throw new DomainError('INVALID_ARGUMENT', 'Ventana de frescura inválida.', { maxAgeMs });
   }
+  if (!isValidWidgetSnapshot(snapshot)) return true;
   if (snapshot.scope === null) return false;
   if (snapshot.generatedAtEpochMs > nowEpochMs) return true;
   return nowEpochMs - snapshot.generatedAtEpochMs > maxAgeMs;

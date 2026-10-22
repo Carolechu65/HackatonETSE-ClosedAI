@@ -5,7 +5,7 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
   <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -21,19 +21,20 @@
     <receiver
       android:name="expo.modules.alarmruntime.BootReceiver"
       android:enabled="true"
-      android:exported="true">
+      android:exported="false">
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED" />
         <action android:name="android.intent.action.TIME_SET" />
         <action android:name="android.intent.action.TIMEZONE_CHANGED" />
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
       </intent-filter>
     </receiver>
 
     <service
       android:name="expo.modules.alarmruntime.AlarmService"
       android:exported="false"
-      android:foregroundServiceType="mediaPlayback"
+      android:foregroundServiceType="systemExempted"
       android:stopWithTask="false" />
 
     <activity

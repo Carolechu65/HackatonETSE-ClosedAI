@@ -57,24 +57,30 @@ object AlarmScheduler {
       )
       ScheduleOutcome(STATUS_SCHEDULED, scheduledAtEpochMs = occurrence.effectiveAtEpochMs)
     } catch (error: SecurityException) {
-      ScheduleOutcome(STATUS_FAILED, "E_SECURITY:${error.message ?: "exact alarm"}")
+      ScheduleOutcome(STATUS_PENDING_PERMISSION, "E_EXACT_ALARM_PERMISSION")
     } catch (error: Exception) {
       ScheduleOutcome(STATUS_FAILED, "E_SCHEDULE:${error.message ?: error.javaClass.simpleName}")
     }
   }
 
   fun cancel(context: Context, occurrence: AlarmOccurrence): Boolean {
+    return cancelKey(context, occurrence.key)
+  }
+
+  fun cancelKey(context: Context, key: String): Boolean {
     val manager = context.getSystemService(AlarmManager::class.java) ?: return false
     return try {
-      manager.cancel(AlarmContract.firePendingIntent(context, occurrence.key))
+      manager.cancel(AlarmContract.firePendingIntent(context, key))
       true
     } catch (_: Exception) {
       false
     }
   }
 
-  private fun notificationsEnabled(context: Context): Boolean {
+  fun notificationsEnabled(context: Context): Boolean {
+    AlarmNotifications.ensureChannels(context)
     val manager = context.getSystemService(NotificationManager::class.java) ?: return false
-    return manager.areNotificationsEnabled()
+    return manager.areNotificationsEnabled() && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+      manager.getNotificationChannel(AlarmContract.CHANNEL_ALARM)?.importance != NotificationManager.IMPORTANCE_NONE)
   }
 }

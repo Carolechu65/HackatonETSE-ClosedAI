@@ -72,7 +72,7 @@ export default function TablonRoute() {
             index={2}
             label="Gastos"
             title={formatEuros(owed)}
-            onPress={() => router.push('/gastos')}
+            onPress={() => router.push('/preview/gastos')}
             accessibilityLabel="Abrir gastos pendientes"
           >
             <Text style={typography.support}>Pendiente de pagar</Text>
@@ -85,7 +85,7 @@ export default function TablonRoute() {
           index={3}
           label="Aviso · martes"
           title="El casero viene el martes"
-          onPress={() => router.push('/piso')}
+          onPress={() => router.push('/preview/piso')}
           accessibilityLabel="Abrir información del piso"
         >
           <Text style={typography.support}>Sube a las 10:00 y trae la llave del cuarto.</Text>

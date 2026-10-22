@@ -115,7 +115,7 @@ object AlarmNotifications {
   fun notify(context: Context, key: String, notification: Notification) {
     try {
       NotificationManagerCompat.from(context)
-        .notify(AlarmContract.notificationId(key), notification)
+        .notify(key, 7101, notification)
     } catch (_: SecurityException) {
       // POST_NOTIFICATIONS denegado: la alarma existente sigue en el store,
       // pero el usuario debe resolver el permiso antes de contar con aviso visible.
@@ -123,7 +123,7 @@ object AlarmNotifications {
   }
 
   fun cancel(context: Context, key: String) {
-    NotificationManagerCompat.from(context).cancel(AlarmContract.notificationId(key))
+    NotificationManagerCompat.from(context).cancel(key, 7101)
   }
 
   private fun canUseFullScreenIntent(context: Context): Boolean {

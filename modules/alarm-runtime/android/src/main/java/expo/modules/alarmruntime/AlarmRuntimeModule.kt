@@ -43,12 +43,15 @@ class AlarmRuntimeModule : Module() {
           "revision" to 0,
           "occurrences" to emptyList<Any>(),
         )
+      synchronized(AlarmStore.lock) {
+      AlarmRecovery.reconcile(ctx)
       val store = AlarmStore(ctx)
       mapOf(
         "available" to true,
         "revision" to store.revision(),
         "occurrences" to store.snapshot().map { it.snapshotMap() },
       )
+      }
     }
 
     AsyncFunction("reconcile") {
@@ -70,96 +73,16 @@ class AlarmRuntimeModule : Module() {
       }
 
       try {
-        val occurrence = AlarmOccurrence.fromSpec(spec)
-        val store = AlarmStore(ctx)
-
-        // Persistir antes de tocar AlarmManager: si el proceso muere entre
-        // ambos pasos, reconcile() puede reparar el estado.
-        store.upsert(occurrence.copy(status = AlarmOccurrence.STATUS_SCHEDULING))
-
-        val outcome = AlarmScheduler.schedule(ctx, occurrence)
-        when (outcome.status) {
-          AlarmScheduler.STATUS_SCHEDULED -> {
-            store.update(occurrence.key) { record ->
-              record.copy(
-                status = AlarmOccurrence.STATUS_SCHEDULED,
-                scheduledAtEpochMs = occurrence.effectiveAtEpochMs,
-                failureReason = null,
-                updatedAtEpochMs = System.currentTimeMillis(),
-              )
-            }
-            promise.resolve(
-              mapOf(
-                "status" to "SCHEDULED",
-                "key" to occurrence.keyMap(),
-                "scheduledAtEpochMs" to occurrence.effectiveAtEpochMs,
-              ),
-            )
-          }
-          AlarmScheduler.STATUS_PENDING_PERMISSION -> {
-            markNotScheduled(ctx, occurrence.key, AlarmOccurrence.STATUS_FAILED, outcome.reason)
-            promise.resolve(
-              mapOf(
-                "status" to "PENDING_PERMISSION",
-                "reason" to (outcome.reason ?: "E_PERMISSION"),
-              ),
-            )
-          }
-          AlarmScheduler.STATUS_EXPIRED -> {
-            markNotScheduled(ctx, occurrence.key, AlarmOccurrence.STATUS_EXPIRED, outcome.reason)
-            promise.resolve(
-              mapOf(
-                "status" to "FAILED",
-                "reason" to (outcome.reason ?: "E_EXPIRED"),
-              ),
-            )
-          }
-          else -> {
-            markNotScheduled(ctx, occurrence.key, AlarmOccurrence.STATUS_FAILED, outcome.reason)
-            promise.resolve(
-              mapOf(
-                "status" to "FAILED",
-                "reason" to (outcome.reason ?: "E_SCHEDULE"),
-              ),
-            )
-          }
-        }
+        promise.resolve(AlarmCoordinator.schedule(ctx, AlarmOccurrence.fromSpec(spec)))
       } catch (error: Exception) {
-        promise.reject(
-          "E_INVALID_SPEC",
-          error.message ?: "Invalid alarm occurrence",
-          error,
-        )
+        promise.resolve(mapOf("status" to "FAILED", "reason" to "E_NATIVE_SCHEDULE"))
       }
     }
 
     AsyncFunction("cancel") { key: Map<String, Any?>, promise: Promise ->
       val ctx = context
-      if (ctx == null) {
-        promise.reject("E_UNAVAILABLE", "Android runtime context is not available", null)
-        return@AsyncFunction
-      }
-
-      try {
-        val compositeKey = AlarmContract.keyOf(key)
-        val store = AlarmStore(ctx)
-        val occurrence = store.find(compositeKey)
-        if (occurrence != null) {
-          AlarmScheduler.cancel(ctx, occurrence)
-          store.update(compositeKey) { record ->
-            record.copy(
-              status = AlarmOccurrence.STATUS_CANCELLED,
-              updatedAtEpochMs = System.currentTimeMillis(),
-            )
-          }
-        }
-        AlarmNotifications.cancel(ctx, compositeKey)
-        // Cancelar algo ya inexistente es idempotente: el resultado es que no
-        // queda una programación activa.
-        promise.resolve(mapOf("status" to "CANCELLED", "key" to key))
-      } catch (error: Exception) {
-        promise.reject("E_CANCEL", error.message ?: "Cancel failed", error)
-      }
+      if (ctx == null) promise.resolve(mapOf("status" to "CANCEL_PENDING", "reason" to "E_NO_CONTEXT"))
+      else promise.resolve(AlarmCoordinator.cancel(ctx, key))
     }
 
     AsyncFunction("stop") { key: Map<String, Any?>, promise: Promise ->
@@ -303,7 +226,7 @@ class AlarmRuntimeModule : Module() {
     } else {
       alarmManager?.canScheduleExactAlarms() == true
     }
-    val notifications = notificationManager?.areNotificationsEnabled() == true
+    val notifications = AlarmScheduler.notificationsEnabled(ctx)
     val fullScreenIntent = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       true
     } else {

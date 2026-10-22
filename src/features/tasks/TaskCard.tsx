@@ -38,8 +38,8 @@ export function TaskCard({
   demo = false,
 }: TaskCardProps) {
   const state = describeTaskCardState(task, write);
-  const done = task.status === 'completed';
-  const cancelled = task.status === 'cancelled';
+  const done = task.status === 'completed' && (write === undefined || write.sync === 'CONFIRMED');
+  const cancelled = task.status === 'cancelled' && (write === undefined || write.sync === 'CONFIRMED');
   const due = describeTaskDue(task, nowEpochMs, timeZone);
   const label = demo ? `DEMO · TAREA · ${due.toUpperCase()}` : `TAREA · ${due.toUpperCase()}`;
 

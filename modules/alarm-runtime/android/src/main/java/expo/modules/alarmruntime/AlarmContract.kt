@@ -35,7 +35,7 @@ object AlarmContract {
     deviceId: String,
     deviceEpoch: Long,
   ): String = listOf(userId, requestId, occurrenceId, deviceId, deviceEpoch.toString())
-    .joinToString("|")
+    .joinToString("") { "${it.length}:$it" }
 
   fun keyOf(key: Map<String, Any?>): String = keyOf(
     userId = key.requireString("userId"),
@@ -83,21 +83,19 @@ object AlarmContract {
     return PendingIntent.getBroadcast(context, key.hashCode(), intent, PENDING_INTENT_FLAGS)
   }
 
-  /** El hash puede repetirse; el ID solo se usa para notificaciones, no como identidad. */
-  fun notificationId(key: String): Int = 7100 + ((key.hashCode() and 0x7fffffff) % 100000)
 }
 
 internal fun Map<String, Any?>.requireString(name: String): String =
   (this[name] as? String)?.takeIf { it.isNotBlank() }
     ?: throw IllegalArgumentException("$name is required")
 
-internal fun Map<String, Any?>.requireLong(name: String): Long = when (val value = this[name]) {
-  is Number -> value.toLong()
-  is String -> value.toLongOrNull()
-  else -> null
-} ?: throw IllegalArgumentException("$name must be a number")
+internal fun Map<String, Any?>.requireLong(name: String): Long {
+  val value = this[name] as? Number ?: throw IllegalArgumentException("$name must be a number")
+  require(value.toDouble().isFinite() && value.toDouble() == value.toLong().toDouble() && value.toLong() > 0) { "$name must be a positive integer" }
+  return value.toLong()
+}
 
-internal fun Map<String, Any?>.requireInt(name: String): Int = requireLong(name).toInt()
+internal fun Map<String, Any?>.requireInt(name: String): Int = requireLong(name).also { require(it <= Int.MAX_VALUE) }.toInt()
 
 internal fun Map<String, Any?>.optionalString(name: String): String? =
   (this[name] as? String)?.takeIf { it.isNotBlank() }

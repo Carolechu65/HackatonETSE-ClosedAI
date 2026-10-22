@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { SkeletonProvider } from '../../src/features/skeleton/store.tsx';
 import { RetroTabBar } from '../../src/ui/index.ts';
 import { colors } from '../../src/ui/tokens.ts';
 
@@ -8,7 +9,7 @@ import { colors } from '../../src/ui/tokens.ts';
  */
 export default function TabsLayout() {
   return (
-    <Tabs
+    <SkeletonProvider><Tabs
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.wall },
@@ -28,6 +29,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="gastos" options={{ title: 'Gastos' }} />
       <Tabs.Screen name="tareas" options={{ title: 'Tareas' }} />
       <Tabs.Screen name="piso" options={{ title: 'Piso' }} />
-    </Tabs>
+    </Tabs></SkeletonProvider>
   );
 }
