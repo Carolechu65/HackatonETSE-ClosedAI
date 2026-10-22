@@ -5,7 +5,10 @@
   "description": "Cambios autorizados para la sesión actual. El cursor es opaco, se valida en servidor y no concede acceso. `nextCursor: null` indica fin del feed conocido.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["changes", "nextCursor"],
+  "required": [
+    "changes",
+    "nextCursor"
+  ],
   "properties": {
     "changes": {
       "type": "array",
@@ -13,29 +16,59 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["sequence", "entityType", "entityId", "kind", "version", "updatedAtEpochMs"],
+        "required": [
+          "sequence",
+          "entityType",
+          "entityId",
+          "kind",
+          "version",
+          "updatedAtEpochMs"
+        ],
         "properties": {
           "sequence": {
             "type": "integer",
             "minimum": 1
           },
           "entityType": {
-            "enum": ["ALARM_REQUEST", "RECIPIENT", "SCHEDULE", "TASK", "GROUP_MEMBERSHIP"]
+            "enum": [
+              "ALARM_REQUEST",
+              "RECIPIENT",
+              "SCHEDULE",
+              "TASK",
+              "GROUP_MEMBERSHIP",
+              "GROUP",
+              "DEVICE"
+            ]
           },
-          "entityId": { "$ref": "./common.schema.json#/$defs/identifier" },
-          "kind": { "enum": ["UPSERT", "DELETE"] },
+          "entityId": {
+            "$ref": "./common.schema.json#/$defs/identifier"
+          },
+          "kind": {
+            "enum": [
+              "UPSERT",
+              "DELETE"
+            ]
+          },
           "version": {
             "type": "integer",
             "minimum": 1
           },
-          "updatedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" }
+          "updatedAtEpochMs": {
+            "$ref": "./common.schema.json#/$defs/epochMs"
+          }
         }
       }
     },
     "nextCursor": {
       "oneOf": [
-        { "type": "string", "minLength": 1, "maxLength": 512 },
-        { "type": "null" }
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        {
+          "type": "null"
+        }
       ]
     }
   }

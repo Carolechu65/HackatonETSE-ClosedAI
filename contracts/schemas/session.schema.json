@@ -7,9 +7,14 @@
     "publicUser": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["uid", "email"],
+      "required": [
+        "uid",
+        "email"
+      ],
       "properties": {
-        "uid": { "$ref": "./common.schema.json#/$defs/uid" },
+        "uid": {
+          "$ref": "./common.schema.json#/$defs/uid"
+        },
         "email": {
           "type": "string",
           "maxLength": 254,
@@ -19,37 +24,69 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 60
+        },
+        "primaryDeviceId": {
+          "oneOf": [
+            {
+              "$ref": "./common.schema.json#/$defs/identifier"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Dispositivo principal actual, si existe."
+        },
+        "deviceEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Época del dispositivo principal; cambia al promover otro dispositivo."
         }
       }
     },
     "session": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["token", "expiresAtEpochMs"],
+      "required": [
+        "token",
+        "expiresAtEpochMs"
+      ],
       "properties": {
         "token": {
           "type": "string",
           "minLength": 32,
           "maxLength": 256
         },
-        "expiresAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" }
+        "expiresAtEpochMs": {
+          "$ref": "./common.schema.json#/$defs/epochMs"
+        }
       }
     },
     "authResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["session", "user"],
+      "required": [
+        "session",
+        "user"
+      ],
       "properties": {
-        "session": { "$ref": "#/$defs/session" },
-        "user": { "$ref": "#/$defs/publicUser" }
+        "session": {
+          "$ref": "#/$defs/session"
+        },
+        "user": {
+          "$ref": "#/$defs/publicUser"
+        }
       }
     },
     "meResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["user"],
+      "required": [
+        "user"
+      ],
       "properties": {
-        "user": { "$ref": "#/$defs/publicUser" }
+        "user": {
+          "$ref": "#/$defs/publicUser"
+        }
       }
     }
   }

@@ -8,6 +8,8 @@ export type AgentContext = {
   members: AgentMember[];
   tasks: AgentTask[];
   conversation: string[];
+  /** Pregunta anterior del asistente, para continuar una aclaración. */
+  lastClarification?: { question: string; missingFields: string[] };
 };
 
 export type AgentClarification = {

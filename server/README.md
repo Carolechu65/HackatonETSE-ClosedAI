@@ -2,24 +2,24 @@
 
 Implementación objetivo de P3: **Node.js 22 + TypeScript estricto + Fastify + better-sqlite3**, sesiones propias, autorización por recurso, operaciones idempotentes, feed incremental, outbox y agente de borradores. Sustituye el scaffold de `functions/`; no usa Firebase Auth/Firestore/RNFirebase.
 
-Estado: **implementación local verificada con 22 pruebas**. No hay VPS desplegado ni credenciales reales en este repositorio. La IA real es opcional; sin proveedor configurado el formulario manual sigue disponible (la API responde `TEMPORARY_UNAVAILABLE`).
+Estado: **implementación local verificada con 31 pruebas**. No hay VPS desplegado ni credenciales reales en este repositorio. La IA real es opcional; sin proveedor configurado el formulario manual sigue disponible (la API responde `TEMPORARY_UNAVAILABLE`).
 
 ## Arranque local
 
-Requiere Node 22.13+ de la rama 22.
+Requiere Node 22.13+ de la rama 22. Verificado en esta máquina con Node 22.23.4; con 22.13 el binario nativo de `better-sqlite3` puede fallar.
 
 ```sh
 npm --prefix server ci
 npm --prefix server run build
-DATABASE_PATH=./server/data/alarmat.db npm --prefix server run migrate
-DATABASE_PATH=./server/data/alarmat.db npm --prefix server start
+DATABASE_PATH=./data/alarmat.db npm --prefix server run migrate
+DATABASE_PATH=./data/alarmat.db npm --prefix server start
 # API en http://127.0.0.1:8787
 ```
 
 En PowerShell:
 
 ```powershell
-$env:DATABASE_PATH='./server/data/alarmat.db'
+$env:DATABASE_PATH='./data/alarmat.db'
 npm --prefix server run migrate
 npm --prefix server start
 ```
@@ -70,12 +70,12 @@ Todas las rutas salvo `/health` y `/v1/auth/register|login` requieren `Authoriza
 | `DELETE /v1/groups/:id/members/:uid` | Solo `OWNER`; genera invalidación mínima para el retirado. |
 | `POST /v1/groups/:id/leave` | Salida propia; el `OWNER` debe transferir/retirar antes. |
 | `POST /v1/operations/:operationName` | `createAlarmRequest`, `respondToAlarm`, `reportSchedule`, `withdrawAlarmRequest`. |
-| `GET /v1/groups/:id/alarm-requests` | Lista paginada (`limit`, `offset`) filtrada a creador/destinatario. |
-| `GET /v1/groups/:id/alarm-requests/:requestId` | Detalle autorizado; el creador ve destinatarios, el destinatario solo su decisión. |
-| `GET /v1/groups/:id/alarm-requests/:requestId/schedules` | Acuses de programación visibles para participantes. |
-| `POST /v1/alarms/:requestId/received` | `{requestVersion}`; acuse de recepción, no acepta ni programa. |
+| `GET /v1/groups/:id/alarm-requests` | Lista paginada (`limit`, `cursor`) filtrada a creador/destinatario. Devuelve `items[].recipient: null` para el creador. |
+| `GET /v1/groups/:id/alarm-requests/:requestId` | Detalle autorizado con `schedules`; el creador recibe `recipient: null` y `recipients` (todos), el destinatario solo su decisión. |
+| `GET /v1/groups/:id/alarm-requests/:requestId/schedules` | Acuses de programación visibles para participantes (DTO camelCase). |
+| `POST /v1/alarms/:requestId/received` | `{requestVersion}`; acuse de recepción, no acepta ni programa; exige membresía activa. |
 | `GET /v1/snapshot` | Grupos visibles, IDs de propuestas visibles y cursor inicial. |
-| `GET /v1/sync?cursor=...&limit=...` | Cambios autorizados con cursor opaco ligado al actor. |
+| `GET /v1/sync?cursor=...&limit=...` | `changes` autorizados (`ALARM_REQUEST`, `RECIPIENT`, `SCHEDULE`, `GROUP_MEMBERSHIP`, `GROUP`, `DEVICE`) y `nextCursor` opaco ligado al actor. |
 | `POST /v1/devices` | `{deviceId?, platform, pushToken?}`; el primero pasa a principal. |
 | `POST /v1/devices/:deviceId/primary` | Cambia el principal e incrementa `deviceEpoch`. |
 | `POST /v1/agent/propose` | `{groupId, text, sessionId?}` → aclaración o borrador revisable. |
@@ -101,16 +101,17 @@ Se conserva el sobre, los DTO, los enums y `OperationReceipt`/`AppError` de `con
 - `createAlarmRequest` exige miembro activo, destinatarios activos distintos del emisor, instante futuro y `recurrence.localTime` igual al primer aviso. Crea `requestVersion = 1`; cada destinatario nace `PENDING` con `decisionRevision = 1`.
 - `respondToAlarm` exige ser destinatario, versiones vigentes y una transición válida. `ACCEPTED` exige `consentScope`; la primera respuesta guarda `decisionRevision = 2`. Aceptar no programa: `PENDING_PERMISSION`/`SCHEDULED` llegan por el acuse del dispositivo.
 - `withdrawAlarmRequest` exige creador y versión vigente; invalida consentimientos aceptados (`NEEDS_REVIEW`) y conserva el historial.
-- `reportSchedule` exige destinatario, decisión aceptada vigente, modalidad igual a la propuesta, dispositivo principal y `deviceEpoch` vigente. `occurrenceId` debe ser `occ-<effectiveAtEpochMs>`; un ACK antiguo sobre un estado terminal no revive la cancelación.
-- `reportedAtEpochMs` no puede superar 5 minutos el reloj del servidor.
+- `reportSchedule` exige destinatario, decisión aceptada vigente, modalidad igual a la propuesta, dispositivo principal y `deviceEpoch` vigente. `occurrenceId` debe ser `occ-<effectiveAtEpochMs>`. Una serie `SERIES` acepta la primera ocurrencia y las siguientes del mismo día/hora semanal; `FIRED`/`CANCELLED`/`EXPIRED`/`FAILED` son terminales para esa ocurrencia y un ACK no las revive. Los acuses no hacen retroceder un estado más reciente.
+- `reportedAtEpochMs` no puede superar 5 minutos el reloj del servidor; un `FIRED` no puede declararse antes de su hora efectiva.
 
 Dentro de la misma transacción SQLite se escribe el efecto, el recibo idempotente, los `change_events` y la outbox. No hay red, modelo ni `await` dentro de la transacción.
 
 ## Feed, revocaciones y outbox
 
-- `change_events` se indexa por `(audience_uid, sequence)`. El cursor es opaco (`base64url`), ligado al actor y no otorga permisos. Al entregar se revalida la membresía; una baja se convierte en un evento `REVOKED` mínimo sin contenido nuevo.
+- `change_events` se indexa por `(audience_uid, sequence)`. El cursor es opaco (`base64url`), ligado al actor y no otorga permisos. Al entregar se revalida la membresía; una baja se convierte en un evento `DELETE` de `GROUP_MEMBERSHIP`, mínimo y sin contenido nuevo.
 - El cursor no caduca todavía; la retención y el snapshot completo quedan documentados como pendiente para P5.
-- `outbox_events` se escribe en el commit y se procesa después. El worker usa lease, reintentos con backoff y tolera duplicados. Solo envía IDs/versiones; nunca una orden para sonar.
+- `outbox_events` se escribe en el commit y se procesa después. El worker usa lease, reintentos con backoff acotado (máximo 10 intentos) y tolera duplicados. Revalida membresía/destinatario antes de enviar; una baja posterior no recibe push.
+- El push contiene solo IDs y versiones (`eventId`, `kind`, `groupId`, `entityType`, `entityId`, `entityVersion`). No incluye títulos, notas, motivos ni una orden para sonar.
 - Sin `EXPO_PUSH_TOKEN` o con `PUSH_WORKER_ENABLED=false` no se llama a la red. El evento queda pendiente y P5 sincroniza al abrir/reanudar.
 - Los receipts de Expo no se consultan en este corte; los tickets `DeviceNotRegistered` desactivan el token.
 
@@ -164,10 +165,10 @@ La copia usa `backup()` del driver y verifica `integrity_check` en el destino. N
 
 ```text
 npm --prefix server run typecheck   -> OK
-npm --prefix server test            -> 22 tests, 22 pass, 0 fail
+npm --prefix server test            -> 31 tests, 31 pass, 0 fail
 ```
 
-Cubre: registro/login/logout y sesión revocada; invitaciones de un solo uso; límites; A/B/C con C sin acceso; un destinatario no puede ser suplantado; idempotencia y conflicto de payload; dos llamadas concurrentes; versión obsoleta; retirada invalida consentimiento; ACK antiguo no revive cancelación; epoch de dispositivo; sync con cursor por actor; revocación de membresía; outbox con reintento y token inválido; migraciones/PRAGMA/reinicio; agente con aclaración, ambigüedad, inyección, salida maliciosa y proveedor ausente.
+Cubre: registro/login/logout y sesión revocada; invitaciones de un solo uso; límites; A/B/C con C sin acceso; un destinatario no puede ser suplantado; idempotencia y conflicto de payload; versión obsoleta; retirada invalida consentimiento; ACK antiguo no revive cancelación; epoch de dispositivo; series semanales; `FIRED` terminal; acuses monótonos; sync con cursor por actor; revocación de membresía; outbox con reintento, revalidación y token inválido; push sin contenido privado; registro concurrente; contratos reales de auth/list/detail/sync/schedules; agente con aclaración, ambigüedad, inyección, salida maliciosa y proveedor ausente.
 
 No acredita: push real en un teléfono, VPS desplegado, IA real con proveedor, ni alarma sonando (P4/P5/P6).
 
@@ -175,13 +176,13 @@ No acredita: push real en un teléfono, VPS desplegado, IA real con proveedor, n
 
 - **P1:** añadir `server/` al workspace/CI (`npm --prefix server ci && npm --prefix server test`) y retirar `functions/`/`firebase/` cuando los consumidores estén migrados. No se tocaron scripts raíz ni CI.
 - **P2:** consumir los estados y el contrato de borrador/aclaración; no mostrar “programada” sin acuse válido.
-- **P5:** usar `GET /v1/snapshot` + `GET /v1/sync`, guardar cursor/lote atómicamente, token en SecureStore, outbox propia y `POST /v1/alarms/:id/received`; no abrir la base del VPS.
+- **P5:** usar `GET /v1/snapshot` + `GET /v1/sync`, guardar cursor/lote atómicamente, token en SecureStore, outbox propia y `POST /v1/alarms/:id/received`; no abrir la base del VPS. Los parsers compartidos (`parseAuthResponse`, `parseSyncPage`, `parseAlarmRequestPage`, `parseAlarmRequestDetail`, `parseScheduleDocument`) ya aceptan las respuestas reales del servidor.
 - **P6:** `DEMO_PASSWORD='...' node server/scripts/seed-demo.mjs` contra la API local; el seed no demuestra push ni sonido.
 - **P3/VPS:** cuando existan host, dominio y certificados reales, completar TLS, systemd, backup/restauración y prueba desde dos móviles.
 
 ## Pendiente explícito
 
-- Endpoints de tareas (`createTask`/`completeTask`/`cancelTask`) y materialización de recurrencia: solo existe la tabla y el contrato de la propuesta.
+- Endpoints de tareas (`createTask`/`completeTask`/`cancelTask`). La serie semanal ya acepta y reporta ocurrencias; la materialización local sigue siendo P4/P5.
 - SSE, receipts Expo, retención/caducidad de cursores y snapshot incremental completo.
 - Transferencia de propiedad del grupo, recuperación de contraseña, refresh de sesión y verificación de correo.
 - Prueba HTTPS desde dispositivos y despliegue real.

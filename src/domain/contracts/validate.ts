@@ -458,7 +458,7 @@ export function parseRecipientDocument(data: unknown): RecipientDocument {
   if (!isDecision(record.decision)) invalid('$.decision: decisión desconocida', { received: record.decision });
   const document: RecipientDocument = {
     uid: readIdentifier(record.uid, '$.uid'),
-    receivedVersion: readPositiveInt(record.receivedVersion, '$.receivedVersion'),
+    receivedVersion: readPositiveInt(record.receivedVersion, '$.receivedVersion', 0),
     reception: reception as ReceptionStatus,
     decision: record.decision as Decision,
     decisionRevision: readPositiveInt(record.decisionRevision, '$.decisionRevision'),
@@ -578,13 +578,21 @@ function readCursor(value: unknown, path: string): string | null {
 
 export function parsePublicUser(data: unknown): PublicUser {
   const record = asRecord(data, '$');
-  assertNoExtraKeys(record, ['uid', 'email', 'displayName'], '$');
+  assertNoExtraKeys(record, ['uid', 'email', 'displayName', 'primaryDeviceId', 'deviceEpoch'], '$');
   const user: PublicUser = {
     uid: readIdentifier(record.uid, '$.uid'),
     email: readEmail(record.email, '$.email'),
   };
   if (record.displayName !== undefined) {
     user.displayName = readString(record.displayName, '$.displayName', { max: 60 });
+  }
+  if (record.primaryDeviceId !== undefined) {
+    user.primaryDeviceId = record.primaryDeviceId === null
+      ? null
+      : readIdentifier(record.primaryDeviceId, '$.primaryDeviceId');
+  }
+  if (record.deviceEpoch !== undefined) {
+    user.deviceEpoch = readPositiveInt(record.deviceEpoch, '$.deviceEpoch', 0);
   }
   return user;
 }
@@ -660,10 +668,11 @@ export function parseAlarmRequestPage(data: unknown): AlarmRequestPage {
   return {
     items: record.items.map((item, index) => {
       const entry = asRecord(item, `$.items/${index}`);
-      assertNoExtraKeys(entry, ['request', 'recipient'], `$.items/${index}`);
+      assertNoExtraKeys(entry, ['requestId', 'request', 'recipient'], `$.items/${index}`);
       return {
+        requestId: readIdentifier(entry.requestId, `$.items/${index}.requestId`),
         request: parseAlarmRequestDocument(entry.request),
-        recipient: parseRecipientDocument(entry.recipient),
+        recipient: entry.recipient === null ? null : parseRecipientDocument(entry.recipient),
       };
     }),
     nextCursor: readCursor(record.nextCursor, '$.nextCursor'),
@@ -673,13 +682,24 @@ export function parseAlarmRequestPage(data: unknown): AlarmRequestPage {
 /** `GET /v1/groups/{groupId}/alarm-requests/{requestId}`: detalle del actor. */
 export function parseAlarmRequestDetail(data: unknown): AlarmRequestDetail {
   const record = asRecord(data, '$');
-  assertNoExtraKeys(record, ['request', 'recipient', 'schedules'], '$');
+  assertNoExtraKeys(record, ['request', 'recipient', 'recipients', 'schedules'], '$');
   if (!Array.isArray(record.schedules) || record.schedules.length > 100) {
     invalid('$.schedules: array de como máximo 100 acuses');
   }
-  return {
+  const detail: AlarmRequestDetail = {
     request: parseAlarmRequestDocument(record.request),
-    recipient: parseRecipientDocument(record.recipient),
+    recipient: record.recipient === null ? null : parseRecipientDocument(record.recipient),
     schedules: record.schedules.map((schedule) => parseScheduleDocument(schedule)),
   };
+  if (record.recipients !== undefined) {
+    if (record.recipients === null) {
+      detail.recipients = null;
+    } else {
+      if (!Array.isArray(record.recipients) || record.recipients.length > 6) {
+        invalid('$.recipients: array de como máximo 6 destinatarios');
+      }
+      detail.recipients = record.recipients.map((recipient) => parseRecipientDocument(recipient));
+    }
+  }
+  return detail;
 }

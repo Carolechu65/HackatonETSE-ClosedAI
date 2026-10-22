@@ -111,8 +111,8 @@ La v1 conserva `operationId`, `groupId`, `entityId`, versiones, payloads, enums 
 
 - `POST /v1/operations/{operationName}` recibe el sobre v1 y devuelve directamente un `OperationReceipt`; en fallo, `AppError`, sin añadir campos que rompan `additionalProperties: false`.
 - `POST /v1/auth/register`, `/v1/auth/login`, `/v1/auth/logout` y `GET /v1/auth/me` cubren sesión propia. Bearer opaco en cabecera, hash y expiración en servidor, token en SecureStore. No enviar token en URL.
-- `GET /v1/groups/{groupId}/alarm-requests` y `/{requestId}` sobre esa ruta ofrecen lista paginada y detalle, filtrados por creador/destinatario y membresía activa. Los IDs adicionales van en un wrapper HTTP; `request`, `recipient` y `schedule` conservan sus esquemas. P1/P3 deben cerrar fixtures de esos wrappers antes de conectar consumidores.
-- `GET /v1/sync?cursor=<opaco>` entrega páginas autorizadas. Cursor ligado al actor/ámbito; base/cursor se actualizan juntos en SQLite local. Incluir revocaciones mínimas para retirar datos locales cuando el usuario pierde acceso, sin exponer contenido del grupo.
+- `GET /v1/groups/{groupId}/alarm-requests` y `/{requestId}` ofrecen lista paginada y detalle, filtrados por creador/destinatario y membresía activa. La lista usa `limit` + `cursor` opaco y devuelve `items[].recipient: null` cuando el actor es el creador. El detalle devuelve `schedules` y `recipient` (o `null` para el creador); solo el creador recibe además `recipients` con el estado de todos los destinatarios. El destinatario no ve decisiones de terceros.
+- `GET /v1/sync?cursor=<opaco>` entrega `changes` autorizados (`ALARM_REQUEST`, `RECIPIENT`, `SCHEDULE`, `TASK`, `GROUP_MEMBERSHIP`, `GROUP`, `DEVICE`) y `nextCursor`. Cursor ligado al actor/ámbito; base/cursor se actualizan juntos en SQLite local. Las revocaciones se entregan como `DELETE` de `GROUP_MEMBERSHIP`, sin exponer contenido nuevo del grupo.
 - SSE opcional: `GET /v1/events?cursor=<opaco>` con bearer en cabecera; señal para consultar el feed. Polling acotado en primer plano y recuperación al abrir/reanudar son la base. Sin app activa no se garantiza recepción inmediata; push es una mejora opcional.
 
 HTTP `400/401/403/404/409/429/503` expresa transporte y conserva códigos de aplicación v1; ver [mapeo del TDD](TDD.md#transporte-http-objetivo). Un timeout después del envío conserva `operationId` al reintentar. Un error no JSON del proxy se normaliza en el adaptador. No devolver SQL, stacks ni secretos como `details`.
@@ -142,6 +142,9 @@ El cuerpo `AppError` manda cuando trae un `code` v1; un proxy sin JSON se normal
 | Feed por cursor | `sync-page.schema.json` | `documents/sync-page.json` | `parseSyncPage` |
 | Lista de propuestas | `alarm-request-page.schema.json` | `documents/alarm-request-page.json` | `parseAlarmRequestPage` |
 | Detalle de propuesta | `alarm-request-detail.schema.json` | `documents/alarm-request-detail.json` | `parseAlarmRequestDetail` |
+| Detalle del creador | `alarm-request-detail.schema.json` | `documents/alarm-request-detail.creator.json` | `parseAlarmRequestDetail` |
+
+`publicUser` incluye opcionalmente `primaryDeviceId` y `deviceEpoch`; `receivedVersion: 0` significa que el destinatario aún no confirmó recepción. El servidor de `server/` se verifica contra estos parsers en `server/test/contracts.test.ts`.
 
 `nextCursor: null` termina el feed conocido. El cursor no concede acceso: el servidor lo liga a actor y ámbito. El token de sesión es un secreto opaco (≥ 32 caracteres) y no debe registrarse ni guardarse fuera de SecureStore.
 

@@ -2,17 +2,48 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://alarmat.local/contracts/alarm-request-detail.schema.json",
   "title": "GET /v1/groups/{groupId}/alarm-requests/{requestId} · detalle v1",
-  "description": "Detalle autorizado: propuesta, decisión del actor y acuses de programación de ese destinatario. No incluye decisiones de otros destinatarios.",
+  "description": "Detalle autorizado: propuesta, decisión del actor y acuses de programación visibles. El creador recibe `recipient: null` y la lista `recipients`; el destinatario recibe solo su propio `recipient` y sus `schedules`.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["request", "recipient", "schedules"],
+  "required": [
+    "request",
+    "schedules"
+  ],
   "properties": {
-    "request": { "$ref": "./alarm-request.schema.json" },
-    "recipient": { "$ref": "./recipient.schema.json" },
+    "request": {
+      "$ref": "./alarm-request.schema.json"
+    },
+    "recipient": {
+      "oneOf": [
+        {
+          "$ref": "./recipient.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "schedules": {
       "type": "array",
       "maxItems": 100,
-      "items": { "$ref": "./schedule.schema.json" }
+      "items": {
+        "$ref": "./schedule.schema.json"
+      }
+    },
+    "recipients": {
+      "oneOf": [
+        {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "./recipient.schema.json"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Solo para el creador: estado de todos los destinatarios; null para el destinatario."
     }
   }
 }

@@ -5,7 +5,9 @@
   "description": "Lista paginada limitada al creador o destinatario con membresía activa. El wrapper HTTP aporta paginación; los DTO `request` y `recipient` conservan su esquema.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["items"],
+  "required": [
+    "items"
+  ],
   "properties": {
     "items": {
       "type": "array",
@@ -13,17 +15,40 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["request", "recipient"],
+        "required": [
+          "requestId",
+          "request"
+        ],
         "properties": {
-          "request": { "$ref": "./alarm-request.schema.json" },
-          "recipient": { "$ref": "./recipient.schema.json" }
+          "requestId": {
+            "$ref": "./common.schema.json#/$defs/identifier"
+          },
+          "request": {
+            "$ref": "./alarm-request.schema.json"
+          },
+          "recipient": {
+            "oneOf": [
+              {
+                "$ref": "./recipient.schema.json"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         }
       }
     },
     "nextCursor": {
       "oneOf": [
-        { "type": "string", "minLength": 1, "maxLength": 512 },
-        { "type": "null" }
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        {
+          "type": "null"
+        }
       ]
     }
   }

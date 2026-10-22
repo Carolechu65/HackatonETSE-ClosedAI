@@ -169,6 +169,8 @@ export type PublicUser = {
   uid: string;
   email: string;
   displayName?: string;
+  primaryDeviceId?: string | null;
+  deviceEpoch?: number;
 };
 
 /** Token opaco de sesión. Vive en SecureStore; nunca en SQLite ni en una URL. */
@@ -192,6 +194,8 @@ export const SYNC_ENTITY_TYPES = [
   'SCHEDULE',
   'TASK',
   'GROUP_MEMBERSHIP',
+  'GROUP',
+  'DEVICE',
 ] as const;
 export type SyncEntityType = (typeof SYNC_ENTITY_TYPES)[number];
 
@@ -211,8 +215,10 @@ export type SyncPage = {
 };
 
 export type AlarmRequestListItem = {
+  requestId: string;
   request: AlarmRequestDocument;
-  recipient: RecipientDocument;
+  /** `null` cuando el actor es el creador y no es destinatario. */
+  recipient: RecipientDocument | null;
 };
 
 export type AlarmRequestPage = {
@@ -222,6 +228,9 @@ export type AlarmRequestPage = {
 
 export type AlarmRequestDetail = {
   request: AlarmRequestDocument;
-  recipient: RecipientDocument;
+  /** `null` cuando el actor es el creador y no es destinatario. */
+  recipient: RecipientDocument | null;
+  /** Solo para el creador: estado de todos los destinatarios; null para el destinatario. */
+  recipients?: RecipientDocument[] | null;
   schedules: ScheduleDocument[];
 };

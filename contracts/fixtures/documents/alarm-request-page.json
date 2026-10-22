@@ -5,7 +5,9 @@
         "creatorUid": "luis",
         "title": "Sacar la basura",
         "note": "La bolsa pesa, mejor bajar antes de las diez.",
-        "recipientUids": ["ana"],
+        "recipientUids": [
+          "ana"
+        ],
         "requestVersion": 1,
         "status": "ACTIVE",
         "timeSpec": {
@@ -27,7 +29,8 @@
         "acceptedRequestVersion": 1,
         "consentScope": "THIS_OCCURRENCE",
         "updatedAtEpochMs": 1792701000000
-      }
+      },
+      "requestId": "req-001"
     }
   ],
   "nextCursor": null

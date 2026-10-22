@@ -1,24 +1,8 @@
 import { DomainError } from '../../../src/domain/errors.ts';
+import type { SyncChange, SyncEntityType, SyncPage } from '../../../src/domain/contracts/types.ts';
 import type { Db } from '../persistence/db.ts';
 import { appendChangeEvent } from '../persistence/events.ts';
-import {requireActiveMembership} from '../groups/service.ts';
-
-export type SyncEvent = {
-  sequence: number;
-  kind: 'UPSERT' | 'TOMBSTONE' | 'REVOKED';
-  entityType: string;
-  entityId: string;
-  groupId: string;
-  entityVersion: number;
-  payload: Record<string, unknown> | null;
-  createdAtEpochMs: number;
-};
-
-export type SyncPage = {
-  events: SyncEvent[];
-  nextCursor: string;
-  hasMore: boolean;
-};
+import { listGroups, requireActiveMembership } from '../groups/service.ts';
 
 type ChangeRow = {
   sequence: number;
@@ -33,6 +17,22 @@ type ChangeRow = {
 };
 
 type CursorPayload = { v: 1; uid: string; seq: number };
+
+const ENTITY_TYPE_MAP: Readonly<Record<string, SyncEntityType>> = {
+  alarm_request: 'ALARM_REQUEST',
+  recipient: 'RECIPIENT',
+  schedule: 'SCHEDULE',
+  task: 'TASK',
+  membership: 'GROUP_MEMBERSHIP',
+  group: 'GROUP',
+  device: 'DEVICE',
+};
+
+const KIND_MAP: Readonly<Record<ChangeRow['kind'], SyncChange['kind']>> = {
+  UPSERT: 'UPSERT',
+  TOMBSTONE: 'DELETE',
+  REVOKED: 'DELETE',
+};
 
 function encodeCursor(payload: CursorPayload): string {
   return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
@@ -68,7 +68,6 @@ export function readSyncPage(
   actorUid: string,
   cursor: string | null,
   limitInput: number | null,
-  nowEpochMs = Date.now(),
 ): SyncPage {
   const limit = Math.min(Math.max(limitInput ?? 50, 1), 100);
   const after = cursor ? decodeCursor(cursor, actorUid) : 0;
@@ -86,61 +85,45 @@ export function readSyncPage(
 
   const hasMore = rows.length > limit;
   const pageRows = hasMore ? rows.slice(0, limit) : rows;
-  const events: SyncEvent[] = pageRows.map((row) => {
+  const changes: SyncChange[] = pageRows.map((row) => {
     const authorized = row.kind === 'REVOKED' || activeMembership(db, row.group_id, actorUid);
     if (!authorized) {
+      // Revocación mínima: no revela contenido nuevo del grupo.
       return {
         sequence: row.sequence,
-        kind: 'REVOKED',
-        entityType: 'membership',
+        entityType: 'GROUP_MEMBERSHIP',
         entityId: `${row.group_id}:${actorUid}`,
-        groupId: row.group_id,
-        entityVersion: row.entity_version,
-        payload: { groupId: row.group_id },
-        createdAtEpochMs: row.created_at_epoch_ms,
+        kind: 'DELETE',
+        version: Math.max(1, row.entity_version),
+        updatedAtEpochMs: row.created_at_epoch_ms,
       };
     }
-    let payload: Record<string, unknown> | null = null;
-    if (row.payload_json) {
-      try {
-        payload = JSON.parse(row.payload_json) as Record<string, unknown>;
-      } catch {
-        payload = null;
-      }
+    const entityType = ENTITY_TYPE_MAP[row.entity_type];
+    if (!entityType) {
+      throw new Error(`change_events: tipo de entidad no soportado (${row.entity_type}).`);
     }
     return {
       sequence: row.sequence,
-      kind: row.kind,
-      entityType: row.entity_type,
+      entityType,
       entityId: row.entity_id,
-      groupId: row.group_id,
-      entityVersion: row.entity_version,
-      payload,
-      createdAtEpochMs: row.created_at_epoch_ms,
+      kind: KIND_MAP[row.kind],
+      version: Math.max(1, row.entity_version),
+      updatedAtEpochMs: row.created_at_epoch_ms,
     };
   });
 
   const lastSequence = pageRows.length > 0 ? pageRows[pageRows.length - 1]!.sequence : after;
   return {
-    events,
+    changes,
     nextCursor: encodeCursor({ v: 1, uid: actorUid, seq: lastSequence }),
-    hasMore,
   };
 }
 
-/** Snapshot de arranque: grupos, miembros, propuestas visibles y dispositivos. */
+/** Snapshot de arranque: grupos, IDs de propuestas visibles y cursor inicial. */
 export function readSnapshot(db: Db, actorUid: string): Record<string, unknown> {
-  const groups = db
-    .prepare(
-      `SELECT g.id, g.name, g.time_zone, m.role, m.joined_at_epoch_ms
-       FROM memberships m JOIN groups g ON g.id = m.group_id
-       WHERE m.user_id = ? AND m.status = 'ACTIVE' ORDER BY g.id`,
-    )
-    .all(actorUid);
-
   const requests = db
     .prepare(
-      `SELECT DISTINCT ar.* FROM alarm_requests ar
+      `SELECT DISTINCT ar.id, ar.group_id FROM alarm_requests ar
        LEFT JOIN alarm_recipients r ON r.request_id = ar.id
        WHERE (ar.creator_uid = ? OR r.uid = ?)
          AND EXISTS (SELECT 1 FROM memberships m
@@ -150,7 +133,7 @@ export function readSnapshot(db: Db, actorUid: string): Record<string, unknown> 
     .all(actorUid, actorUid, actorUid) as Array<{ id: string; group_id: string }>;
 
   return {
-    groups,
+    groups: listGroups(db, actorUid),
     alarmRequestIds: requests.map((row) => ({ requestId: row.id, groupId: row.group_id })),
     cursor: encodeCursor({ v: 1, uid: actorUid, seq: 0 }),
     servedAtEpochMs: Date.now(),
@@ -169,11 +152,17 @@ export function acknowledgeReception(
     .prepare('SELECT received_version, reception FROM alarm_recipients WHERE request_id = ? AND uid = ?')
     .get(requestId, actorUid) as { received_version: number; reception: string } | undefined;
   if (!recipient) throw new DomainError('NOT_FOUND', 'Propuesta no encontrada.');
-  const request=db.prepare('SELECT group_id,request_version FROM alarm_requests WHERE id=?').get(requestId) as {group_id:string;request_version:number}|undefined;
-  if(!request)throw new DomainError('NOT_FOUND','Propuesta no encontrada.');
-  requireActiveMembership(db,request.group_id,actorUid);
-  if(requestVersion!==request.request_version)throw new DomainError('VERSION_CONFLICT','La propuesta cambió.');
-  if (requestVersion <= recipient.received_version && recipient.reception==='RECEIVED') return;
+  const request = db.prepare('SELECT group_id,request_version FROM alarm_requests WHERE id=?').get(requestId) as {
+    group_id: string;
+    request_version: number;
+  } | undefined;
+  if (!request) throw new DomainError('NOT_FOUND', 'Propuesta no encontrada.');
+  // Un miembro retirado no puede seguir mutando su recepción.
+  requireActiveMembership(db, request.group_id, actorUid);
+  if (requestVersion !== request.request_version) {
+    throw new DomainError('VERSION_CONFLICT', 'La propuesta cambió.');
+  }
+  if (requestVersion <= recipient.received_version && recipient.reception === 'RECEIVED') return;
   db.prepare(
     `UPDATE alarm_recipients SET received_version = ?, reception = 'RECEIVED', updated_at_epoch_ms = ?
      WHERE request_id = ? AND uid = ?`,

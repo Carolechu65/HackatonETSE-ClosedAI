@@ -4,6 +4,7 @@ import { readIdentifier } from '../lib/validation.ts';
 import type { Db } from '../persistence/db.ts';
 import type { AuthUser } from '../auth/service.ts';
 import { appendChangeEvent } from '../persistence/events.ts';
+import { assertExpoPushToken } from '../messaging/push.ts';
 
 export type DevicePlatform = 'android' | 'ios' | 'web' | 'unknown';
 
@@ -33,6 +34,7 @@ function readPushToken(value: unknown): string | null {
   if (typeof value !== 'string' || value.length < 8 || value.length > 512) {
     throw new DomainError('INVALID_ARGUMENT', 'body.pushToken: token de push no válido.');
   }
+  assertExpoPushToken(value);
   return value;
 }
 

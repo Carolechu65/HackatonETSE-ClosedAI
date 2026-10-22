@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { DomainError } from '../../../src/domain/errors.ts';
-import { authenticate, loginUser, publicProfile, registerUser, revokeSession, sessionInfo, type AuthUser } from '../auth/service.ts';
+import { authenticate, loginUser, publicProfile, registerUser, revokeSession, type AuthUser } from '../auth/service.ts';
 import type { ServerConfig } from '../config.ts';
 import { createInvitation, acceptInvitation, readToken } from '../groups/invitations.ts';
 import {
@@ -113,7 +113,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     const session = await registerUser(db, config, {
       email: normalizeEmail(body.email),
       password: readPassword(body.password),
-      displayName: readString(body.displayName, 'body.displayName', { max: 80 }),
+      displayName: readString(body.displayName, 'body.displayName', { max: 60 }),
     });
     return reply.status(201).send(session);
   });
@@ -129,7 +129,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.get('/v1/auth/me', async (request) => {
     const actor = requireAuth(db, request);
-    return { user: publicProfile(actor), session: sessionInfo(actor) };
+    return { user: publicProfile(actor) };
   });
 
   app.post('/v1/auth/logout', async (request) => {
@@ -213,17 +213,16 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.get('/v1/groups/:groupId/alarm-requests', async (request) => {
     const actor = requireAuth(db, request);
     const params = request.params as { groupId: string };
-    const query = request.query as { limit?: string; offset?: string };
-    const page = listAlarmRequests(
+    const query = request.query as { limit?: string; cursor?: string };
+    return listAlarmRequests(
       db,
       actor.uid,
       readIdentifier(params.groupId, 'params.groupId'),
       {
         limit: queryInt(query.limit, 20),
-        offset: queryInt(query.offset, 0),
+        cursor: query.cursor ?? null,
       },
     );
-    return { items: page.items, nextOffset: page.nextOffset };
   });
 
   app.get('/v1/groups/:groupId/alarm-requests/:requestId', async (request) => {

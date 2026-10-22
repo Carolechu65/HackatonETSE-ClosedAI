@@ -138,6 +138,11 @@
       "id": "appError.rate-limited",
       "file": "fixtures/documents/app-error.rate-limited.json",
       "schema": "schemas/app-error.schema.json"
+    },
+    {
+      "id": "alarmRequestDetail.creator",
+      "file": "fixtures/documents/alarm-request-detail.creator.json",
+      "schema": "schemas/alarm-request-detail.schema.json"
     }
   ],
   "invalid": [

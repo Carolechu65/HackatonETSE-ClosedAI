@@ -36,6 +36,8 @@ type OutboxRow = {
  * Worker de la outbox del servidor. Las llamadas de red ocurren después del
  * commit y fuera de la transacción de dominio. La entrega puede repetirse.
  */
+const MAX_ATTEMPTS = 10;
+
 export class OutboxWorker {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
@@ -75,6 +77,10 @@ export class OutboxWorker {
   async runOnce(nowEpochMs = Date.now()): Promise<OutboxRunResult> {
     const event = this.claimNext(nowEpochMs);
     if (!event) return { processed: false, delivered: false, recipients: 0 };
+    if (!this.isAuthorized(event)) {
+      this.markDelivered(event, nowEpochMs, 'not_authorized');
+      return { processed: true, delivered: false, eventId: event.id, recipients: 0, error: 'not_authorized' };
+    }
     if (!this.sender) {
       this.fail(event, nowEpochMs, 'push_not_configured');
       return { processed: true, delivered: false, eventId: event.id, recipients: 0, error: 'push_not_configured' };
@@ -82,19 +88,15 @@ export class OutboxWorker {
 
     const tokens = this.tokensFor(event.audience_uid);
     if (tokens.length === 0) {
-      this.db
-        .prepare(
-          'UPDATE outbox_events SET delivered_at_epoch_ms = ?, lease_until_epoch_ms = NULL, last_error = ? WHERE id = ?',
-        )
-        .run(nowEpochMs, 'no_push_token', event.id);
+      this.markDelivered(event, nowEpochMs, 'no_push_token');
       return { processed: true, delivered: false, eventId: event.id, recipients: 0, error: 'no_push_token' };
     }
 
-    const payload = safeJson(event.payload_json);
     const messages: PushMessage[] = tokens.map((token) => ({
       to: token.push_token,
       title: 'alarmaT',
       body: 'Tienes una actualización en tu piso.',
+      // Solo IDs y versiones: nunca títulos, motivos ni órdenes para sonar.
       data: {
         eventId: event.id,
         kind: event.kind,
@@ -102,7 +104,6 @@ export class OutboxWorker {
         entityType: event.entity_type,
         entityId: event.entity_id,
         entityVersion: event.entity_version,
-        ...(payload ? { hint: payload } : {}),
       },
     }));
 
@@ -155,6 +156,10 @@ export class OutboxWorker {
 
   private fail(event: OutboxRow, nowEpochMs: number, error: string): void {
     const attempts = event.attempts + 1;
+    if (attempts >= MAX_ATTEMPTS) {
+      this.markDelivered(event, nowEpochMs, `max_attempts:${error}`);
+      return;
+    }
     const backoffMs = Math.min(60_000 * 2 ** Math.min(attempts, 6), 60 * 60 * 1000);
     const jitterMs = Math.floor(Math.random() * 1_000);
     this.db
@@ -164,6 +169,33 @@ export class OutboxWorker {
       )
       .run(attempts, nowEpochMs + backoffMs + jitterMs, error, event.id);
     this.options.logger?.error({ eventId: event.id, attempts, error }, 'outbox delivery failed');
+  }
+
+  private markDelivered(event: OutboxRow, nowEpochMs: number, reason: string): void {
+    this.db
+      .prepare(
+        `UPDATE outbox_events SET delivered_at_epoch_ms = ?, lease_until_epoch_ms = NULL,
+           attempts = attempts + 1, last_error = ? WHERE id = ?`,
+      )
+      .run(nowEpochMs, reason, event.id);
+  }
+
+  /** Revalida la audiencia en el momento de enviar; una baja posterior no recibe push. */
+  private isAuthorized(event: OutboxRow): boolean {
+    if (!event.group_id) return true;
+    const member = this.db
+      .prepare("SELECT 1 AS ok FROM memberships WHERE group_id = ? AND user_id = ? AND status = 'ACTIVE'")
+      .get(event.group_id, event.audience_uid);
+    if (!member) return false;
+    if (event.entity_type === 'alarm_request' || event.entity_type === 'recipient' || event.entity_type === 'schedule') {
+      const requestId = event.entity_id.split(':')[0];
+      if (!requestId) return false;
+      const recipient = this.db
+        .prepare('SELECT 1 AS ok FROM alarm_recipients WHERE request_id = ? AND uid = ?')
+        .get(requestId, event.audience_uid);
+      if (!recipient) return false;
+    }
+    return true;
   }
 
   private tokensFor(uid: string): Array<{ device_id: string; push_token: string }> {
@@ -178,16 +210,5 @@ export class OutboxWorker {
     if (tokens.length === 0) return;
     const statement = this.db.prepare('UPDATE devices SET push_token = NULL, updated_at_epoch_ms = ? WHERE push_token = ?');
     for (const token of tokens) statement.run(Date.now(), token);
-  }
-}
-
-function safeJson(value: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
   }
 }

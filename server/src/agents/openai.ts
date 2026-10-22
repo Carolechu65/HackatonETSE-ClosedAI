@@ -110,5 +110,6 @@ function buildContextMessage(context: AgentContext): string {
     members: context.members,
     tasks: context.tasks,
     conversation: context.conversation,
+    lastClarification: context.lastClarification ?? null,
   });
 }

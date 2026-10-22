@@ -47,22 +47,22 @@ async function registerOrLogin(person) {
 }
 
 async function ensureGroup(owner) {
-  const groups = await call('GET', '/v1/groups', owner.token);
+  const groups = await call('GET', '/v1/groups', owner.session.token);
   if (groups.status !== 200) throw new Error(`/v1/groups: ${groups.status}`);
   const existing = groups.json.groups.find((group) => group.name === groupName);
   if (existing) return existing.groupId;
-  const created = await call('POST', '/v1/groups', owner.token, { name: groupName, timeZone: 'Europe/Madrid' });
+  const created = await call('POST', '/v1/groups', owner.session.token, { name: groupName, timeZone: 'Europe/Madrid' });
   if (created.status !== 201) throw new Error(`crear grupo: ${created.status}`);
   return created.json.groupId;
 }
 
 async function ensureMember(owner, groupId, person) {
-  const members = await call('GET', `/v1/groups/${groupId}/members`, owner.token);
+  const members = await call('GET', `/v1/groups/${groupId}/members`, owner.session.token);
   if (members.status !== 200) throw new Error(`miembros: ${members.status}`);
   if (members.json.members.some((member) => member.uid === person.user.uid)) return;
-  const invitation = await call('POST', `/v1/groups/${groupId}/invitations`, owner.token, {});
+  const invitation = await call('POST', `/v1/groups/${groupId}/invitations`, owner.session.token, {});
   if (invitation.status !== 201) throw new Error(`invitación: ${invitation.status}`);
-  const accepted = await call('POST', `/v1/invitations/${invitation.json.token}/accept`, person.token);
+  const accepted = await call('POST', `/v1/invitations/${invitation.json.token}/accept`, person.session.token);
   if (accepted.status !== 200) throw new Error(`aceptar invitación: ${accepted.status}`);
 }
 
@@ -99,11 +99,11 @@ const groupId = await ensureGroup(luis);
 await ensureMember(luis, groupId, ana);
 await ensureMember(luis, groupId, vecino);
 
-const existing = await call('GET', `/v1/groups/${groupId}/alarm-requests`, luis.token);
+const existing = await call('GET', `/v1/groups/${groupId}/alarm-requests`, luis.session.token);
 if (existing.status !== 200) throw new Error(`propuestas: ${existing.status}`);
 if (existing.json.items.length === 0) {
   const operationId = `op-seed-${Date.now()}`;
-  const created = await call('POST', '/v1/operations/createAlarmRequest', luis.token, {
+  const created = await call('POST', '/v1/operations/createAlarmRequest', luis.session.token, {
     schemaVersion: 1,
     operationId,
     groupId,

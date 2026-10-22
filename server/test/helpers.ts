@@ -81,8 +81,8 @@ export async function registerUser(app: FastifyInstance, displayName = 'Demo'): 
     payload: { email, password: 'correct horse battery staple', displayName },
   });
   if (response.statusCode !== 201) throw new Error(`register failed: ${response.statusCode} ${response.body}`);
-  const body = response.json() as { token: string; user: { uid: string } };
-  return { uid: body.user.uid, email, token: body.token, displayName };
+  const body = response.json() as { session: { token: string }; user: { uid: string } };
+  return { uid: body.user.uid, email, token: body.session.token, displayName };
 }
 
 export function auth(token: string): Record<string, string> {

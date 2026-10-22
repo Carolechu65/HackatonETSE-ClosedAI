@@ -45,7 +45,11 @@ test('P5 + API SQLite: consent, lost ACK/replay, sender visibility, task withdra
     },
     baseUrl: 'https://api.alarmat.test',
     codec: {
-      decodeSession: (value: { user: { uid: string }; token: string; expiresAtEpochMs: number }) => ({ userId: value.user.uid, token: value.token, expiresAtEpochMs: value.expiresAtEpochMs }),
+      decodeSession: (value: { user: { uid: string }; session?: { token: string; expiresAtEpochMs: number }; token?: string; expiresAtEpochMs?: number }) => {
+        const session = value.session ?? value;
+        if (typeof session.token !== 'string' || !Number.isSafeInteger(session.expiresAtEpochMs)) throw new Error('Sesión inválida.');
+        return { userId: value.user.uid, token: session.token, expiresAtEpochMs: session.expiresAtEpochMs };
+      },
       decodeMe: (value: { user: { uid: string } }) => ({ userId: value.user.uid }),
       decodeSyncPage: (value: unknown) => value,
     },

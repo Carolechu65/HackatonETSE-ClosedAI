@@ -195,3 +195,57 @@ test('piso con propietario único explica que falta invitar a alguien, sin pedir
     assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM alarm_requests').get() as { n: number }).n, 0);
   } finally { await ctx.close(); }
 });
+
+test('el proveedor recibe la pregunta anterior para continuar la aclaración', async () => {
+  let calls = 0;
+  const provider: AgentProvider = {
+    label: 'clarification-context-test',
+    async next(context) {
+      calls += 1;
+      if (calls === 1) {
+        return { type: 'clarification', question: '¿A qué hora quieres el aviso?', missingFields: ['time'] };
+      }
+      assert.equal(context.lastClarification?.question, '¿A qué hora quieres el aviso?');
+      const ana = context.members.find((member) => member.displayName === 'Ana');
+      assert.ok(ana, 'el contexto autorizado debe incluir a Ana');
+      return {
+        type: 'draft',
+        title: 'Sacar la basura',
+        recipientUids: [ana.uid],
+        timeSpec: {
+          timeZone: context.timeZone,
+          localDate: '2030-01-15',
+          localTime: '21:00',
+          effectiveAtEpochMs: Date.UTC(2030, 0, 15, 20, 0),
+        },
+        mode: 'ALARM',
+        reason: 'Borrador de prueba con contexto de aclaración.',
+      };
+    },
+  };
+  const ctx = await setupTest({ agentProvider: provider });
+  try {
+    const owner = await registerUser(ctx.app, 'Luis');
+    const ana = await registerUser(ctx.app, 'Ana');
+    const groupId = await createGroup(ctx.app, owner);
+    await inviteAndJoin(ctx.app, owner, groupId, ana);
+
+    const first = await propose(ctx, owner.token, groupId, 'Recuérdale a Ana sacar la basura');
+    assert.equal(first.statusCode, 200);
+    assert.equal(first.json().status, 'needs_clarification');
+
+    const second = await propose(
+      ctx,
+      owner.token,
+      groupId,
+      'mañana a las 21:00',
+      first.json().sessionId as string,
+    );
+    assert.equal(second.statusCode, 200);
+    assert.equal(second.json().status, 'draft');
+    assert.deepEqual(second.json().draft.recipientUids, [ana.uid]);
+    assert.equal(calls, 2);
+  } finally {
+    await ctx.close();
+  }
+});

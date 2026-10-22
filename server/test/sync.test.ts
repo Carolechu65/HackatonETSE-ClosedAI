@@ -30,6 +30,14 @@ test('sync entrega solo eventos autorizados y respeta el cursor del actor', asyn
     const cursor = snapshot.json().cursor as string;
 
     const requestId = await createAlarm(ctx.app, owner, groupId, [recipient.uid]);
+    const received = await ctx.app.inject({
+      method: 'POST',
+      url: `/v1/alarms/${requestId}/received`,
+      headers: auth(recipient.token),
+      payload: { requestVersion: 1 },
+    });
+    assert.equal(received.statusCode, 200);
+
     await ctx.app.inject({
       method: 'POST',
       url: '/v1/operations/respondToAlarm',
@@ -51,10 +59,10 @@ test('sync entrega solo eventos autorizados y respeta el cursor del actor', asyn
       headers: auth(recipient.token),
     });
     assert.equal(page.statusCode, 200);
-    const events = page.json().events as Array<Record<string, unknown>>;
-    assert.ok(events.length >= 2);
-    assert.ok(events.some((event) => event.entityType === 'alarm_request'));
-    assert.ok(events.some((event) => event.entityType === 'alarm_request' && (event.payload as Record<string, unknown>).recipient));
+    const changes = page.json().changes as Array<Record<string, unknown>>;
+    assert.ok(changes.length >= 2);
+    assert.ok(changes.some((event) => event.entityType === 'ALARM_REQUEST'));
+    assert.ok(changes.some((event) => event.entityType === 'RECIPIENT'));
     assert.ok(page.json().nextCursor);
 
     const crossUser = await ctx.app.inject({
@@ -104,11 +112,11 @@ test('la retirada de membresía genera invalidación mínima y corta el acceso',
       headers: auth(member.token),
     });
     assert.equal(page.statusCode, 200);
-    const revoked = (page.json().events as Array<Record<string, unknown>>)
-      .filter((event) => event.kind === 'REVOKED');
+    const revoked = (page.json().changes as Array<Record<string, unknown>>)
+      .filter((event) => event.kind === 'DELETE');
     assert.ok(revoked.length >= 1);
-    assert.equal(revoked[0]!.entityType, 'membership');
-    assert.deepEqual(revoked[0]!.payload, { groupId });
+    assert.equal(revoked[0]!.entityType, 'GROUP_MEMBERSHIP');
+    assert.equal(revoked[0]!.entityId, `${groupId}:${member.uid}`);
 
     const detail = await ctx.app.inject({
       method: 'GET',

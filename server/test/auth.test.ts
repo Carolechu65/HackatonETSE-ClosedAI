@@ -25,7 +25,7 @@ test('registro, me, logout y login con sesión revocada', async () => {
       payload: { email: user.email, password: 'correct horse battery staple' },
     });
     assert.equal(login.statusCode, 200);
-    assert.ok(login.json().token);
+    assert.ok(login.json().session.token);
 
     const wrong = await ctx.app.inject({
       method: 'POST',

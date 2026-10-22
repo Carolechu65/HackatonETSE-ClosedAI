@@ -37,8 +37,10 @@ function toPublicUser(row: UserRow): PublicUser {
 }
 
 export type SessionResponse = {
-  token: string;
-  expiresAtEpochMs: number;
+  session: {
+    token: string;
+    expiresAtEpochMs: number;
+  };
   user: PublicUser;
 };
 
@@ -57,6 +59,19 @@ function createSessionRow(
   return { token, expiresAtEpochMs };
 }
 
+let dummyHashPromise: Promise<string> | null = null;
+
+async function verifyDummyPassword(config: ServerConfig, password: string): Promise<void> {
+  dummyHashPromise ??= hashPassword('dummy-password-not-used-by-any-account', config);
+  await verifyPassword(await dummyHashPromise, password);
+}
+
+function isUniqueConstraint(error: unknown): boolean {
+  return error instanceof Error && 'code' in error
+    && typeof (error as { code?: unknown }).code === 'string'
+    && (error as { code: string }).code.startsWith('SQLITE_CONSTRAINT');
+}
+
 export async function registerUser(
   db: Db,
   config: ServerConfig,
@@ -70,26 +85,37 @@ export async function registerUser(
   const passwordHash = await hashPassword(input.password, config);
   const userId = entityId('usr');
 
-  const result = db.transaction(() => {
-    db.prepare(
-      `INSERT INTO users
-        (id, email, password_hash, display_name, primary_device_id, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)
-       VALUES (?, ?, ?, ?, NULL, 0, ?, ?)`,
-    ).run(userId, input.email, passwordHash, input.displayName, nowEpochMs, nowEpochMs);
-    return createSessionRow(db, userId, config, nowEpochMs);
-  })();
+  try {
+    const result = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO users
+          (id, email, password_hash, display_name, primary_device_id, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)
+         VALUES (?, ?, ?, ?, NULL, 0, ?, ?)`,
+      ).run(userId, input.email, passwordHash, input.displayName, nowEpochMs, nowEpochMs);
+      return createSessionRow(db, userId, config, nowEpochMs);
+    })();
 
-  return {
-    token: result.token,
-    expiresAtEpochMs: result.expiresAtEpochMs,
-    user: {
-      uid: userId,
-      email: input.email,
-      displayName: input.displayName,
-      primaryDeviceId: null,
-      deviceEpoch: 0,
-    },
-  };
+    return {
+      session: {
+        token: result.token,
+        expiresAtEpochMs: result.expiresAtEpochMs,
+      },
+      user: {
+        uid: userId,
+        email: input.email,
+        displayName: input.displayName,
+        primaryDeviceId: null,
+        deviceEpoch: 0,
+      },
+    };
+  } catch (error) {
+    // Dos registros simultáneos pueden pasar la comprobación previa; el UNIQUE
+    // de SQLite decide y el cliente recibe un error de validación, no un 500.
+    if (isUniqueConstraint(error)) {
+      throw new DomainError('INVALID_ARGUMENT', 'Ese correo ya tiene una cuenta.');
+    }
+    throw error;
+  }
 }
 
 export async function loginUser(
@@ -105,15 +131,22 @@ export async function loginUser(
     )
     .get(input.email) as UserRow | undefined;
 
-  const valid = row ? await verifyPassword(row.password_hash, input.password) : false;
-  if (!row || !valid) {
+  if (!row) {
+    // Mismo coste para un correo inexistente: reduce la enumeración por tiempo.
+    await verifyDummyPassword(config, input.password);
+    throw new DomainError('UNAUTHENTICATED', 'Correo o contraseña incorrectos.');
+  }
+  const valid = await verifyPassword(row.password_hash, input.password);
+  if (!valid) {
     throw new DomainError('UNAUTHENTICATED', 'Correo o contraseña incorrectos.');
   }
 
   const session = createSessionRow(db, row.id, config, nowEpochMs);
   return {
-    token: session.token,
-    expiresAtEpochMs: session.expiresAtEpochMs,
+    session: {
+      token: session.token,
+      expiresAtEpochMs: session.expiresAtEpochMs,
+    },
     user: toPublicUser(row),
   };
 }
@@ -161,9 +194,6 @@ export function revokeSession(db: Db, sessionId: string, nowEpochMs = Date.now()
     .run(nowEpochMs, sessionId);
 }
 
-export function sessionInfo(user: AuthUser): { expiresAtEpochMs: number } {
-  return { expiresAtEpochMs: user.sessionExpiresAtEpochMs };
-}
 
 export function publicProfile(user: AuthUser): PublicUser {
   const { sessionId: _sessionId, sessionExpiresAtEpochMs: _expires, ...profile } = user;
