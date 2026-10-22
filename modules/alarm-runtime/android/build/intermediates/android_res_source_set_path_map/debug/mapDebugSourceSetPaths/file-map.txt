@@ -1,9 +1,0 @@
-expo.modules.alarmruntime.alarm-runtime-pngs-0 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/build/generated/res/pngs/debug
-expo.modules.alarmruntime.alarm-runtime-updated_navigation_xml-1 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/build/generated/updated_navigation_xml/debug
-expo.modules.alarmruntime.alarm-runtime-mergeDebugResources-2 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/build/intermediates/incremental/debug/mergeDebugResources/merged.dir
-expo.modules.alarmruntime.alarm-runtime-mergeDebugResources-3 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/build/intermediates/incremental/debug/mergeDebugResources/stripped.dir
-expo.modules.alarmruntime.alarm-runtime-debug-4 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/build/intermediates/merged_res/debug/mergeDebugResources
-expo.modules.alarmruntime.alarm-runtime-debug-5 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/build/intermediates/packaged_res/debug/packageDebugResources
-expo.modules.alarmruntime.alarm-runtime-debug-6 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/src/debug/res
-expo.modules.alarmruntime.alarm-runtime-main-7 /home/iagoleis/Proyectos/alarmaT/modules/alarm-runtime/android/src/main/res
-gradleHome-0 /home/iagoleis/.gradle
