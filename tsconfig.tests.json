@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "strict": true,
@@ -10,7 +12,9 @@
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "tests/**/*.ts",
@@ -18,5 +22,9 @@
     "src/widgets/**/*.ts",
     "src/features/tasks/**/*.ts"
   ],
-  "exclude": ["src/widgets/publisher.ts", "src/widgets/**/*.tsx"]
+  "exclude": [
+    "src/widgets/publisher.ts",
+    "src/widgets/publish.native.ts",
+    "src/widgets/**/*.tsx"
+  ]
 }

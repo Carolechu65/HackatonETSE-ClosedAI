@@ -1,4 +1,4 @@
-# ADR-004 · Snapshot del widget v2 y enlaces
+# ADR-006 · Snapshot del widget v2 y enlaces
 
 **Fecha:** 22 de octubre de 2026 · **Owner:** P6 · **Revisa:** P5
 **Estado:** aceptado para el primer corte; sujeto a la prueba en dispositivo.

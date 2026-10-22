@@ -11,7 +11,8 @@ alarma suene**: la compilación y la prueba física están pendientes y se marca
 | 0:20 | Abrir una tarea pendiente y pulsar «Completar tarea» | La tarea pasa a completada; la retirada de alarmas queda **pendiente de acuse**. |
 | 0:35 | Repetir el toque / reintentar | No hay segunda invalidación ni sube la versión (idempotencia). |
 | 0:45 | Volver y abrir una tarea de otro grupo (`/task/ajena`) | `/+not-found`; no se filtra que existe. |
-| 1:00 | Abrir el widget en el launcher (build Android) | Próxima alarma confirmada, contadores y frescura. Sin botones que finjan navegar. |
+| 1:00 | Abrir `/widget-lab` (pestaña Piso → «Abrir laboratorio del widget») | Simulación con los cuatro estados; en Android, publicar en el widget real y volver al launcher. |
+| 1:10 | Abrir el widget en el launcher (build Android) | Próxima alarma confirmada, contadores y frescura. Sin botones que finjan navegar. |
 | 1:20 | Cambiar de grupo / cerrar sesión y publicar snapshot | El widget queda vacío: sin títulos ni contadores del usuario anterior. |
 | 1:40 | Aceptar una propuesta sin programar (bandeja de P2) | El widget **no** la muestra como próxima alarma; sube «por activar». |
 | 2:00 | Rechazar / cancelar con el receptor offline (cuando P3/P4 estén) | Se ve retirada pendiente, no cancelación aplicada. |

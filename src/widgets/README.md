@@ -12,6 +12,9 @@ Estado: **incremento 2 integrado en código**; build Android y prueba física pe
 | `viewModel.ts` | Traduce el snapshot a props serializables (textos y enlaces) para el runtime aislado. |
 | `AlarmaTWidget.tsx` | Plantilla Android con `@expo/ui/jetpack-compose`, directiva `'widget'`, sin hooks ni promesas. |
 | `publisher.ts` | Única frontera con `expo-widgets`: `updateSnapshot`, limpieza al cerrar sesión, recarga. |
+| `publish.ts` / `publish.native.ts` | Fachada segura: en web no importa `expo-widgets`; en Android publica de verdad. |
+| `demoSnapshot.ts` | Cuatro estados de demostración para `/widget-lab` (datos simulados). |
+| `WidgetPreview.tsx` | Simulación visual del widget en React Native para revisar estados sin launcher. |
 
 ## Uso desde la app (P5)
 
@@ -57,6 +60,23 @@ La marca «Lectura: fecha, hora» permanece verdadera cuando la app está cerrad
 no se infiere que una lectura antigua signifique falta de conexión.
 
 Pruebas y protocolo físico: [`docs/qa/P6_WIDGET.md`](../../docs/qa/P6_WIDGET.md).
+
+## Cómo probarlo
+
+**En web (sin Android):** abre `/widget-lab`. Simula los cuatro estados con las funciones
+reales y explica que publicar no está disponible. También está enlazado desde la pestaña
+**Piso → «Abrir laboratorio del widget»**.
+
+**En Android (widget real):**
+
+1. `npx expo prebuild --platform android` y `npm run android` (development build nueva).
+2. Mantén pulsado el escritorio → Widgets → **AlarmaT** (4×2).
+3. Abre `/widget-lab` y pulsa «Publicar en el widget real». Cambia de estado y vuelve a
+   publicar para ver próxima alarma, snapshot antiguo, vacío y sesión cerrada.
+4. «Vaciar widget» equivale a un cierre de sesión; «Recargar» fuerza la relectura.
+
+Si el widget no aparece en el launcher, falta la build nueva: una exportación JS no lo
+instala. Registra el resultado en `docs/demo.md`.
 
 ## Desarrollo
 
