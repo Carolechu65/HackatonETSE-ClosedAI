@@ -72,9 +72,11 @@ Ya está en la rama compartida y pasa `npm run check`:
 - **Contratos v1:** 11 esquemas JSON, 33 fixtures y verificación con `npm run test:contracts`. Guía de consumo en [CONTRACTS](CONTRACTS.md) y reglas de cambio en [`contracts/README.md`](../contracts/README.md).
 - **Dominio:** ejes de estado separados, consentimiento por versión, tiempo y recurrencia con política de cambio horario ([ADR-002](adr/002-ejes-de-estado.md), [ADR-003](adr/003-politica-dst.md)), validadores de entrada, identidad de ocurrencia, puertos, fakes y composición de dependencias.
 - **UI común:** tokens y primitivos de Nevera Retro en `src/ui/` con el layout raíz y una ruta `+not-found`. P2 compone las pantallas. Rutas y deep links acordados en [ROUTES](ROUTES.md).
+- **Build Android:** `expo prebuild` + `assembleDebug` generan un APK debug completo (`android/app/build/outputs/apk/debug/app-debug.apk`) con el módulo `alarm-runtime` compilado. El primer build tardó 15 min 55 s; los incrementales, 7–8 min.
+- **Marca:** campanita con la T girada −42° formando el tick, adaptive icon en el círculo seguro y splash menta. Fuentes en `assets/brand/*.svg`, PNG con `npm run brand:render` y decisión en [ADR-004](adr/004-marca-e-icono.md). El despertador queda generado como alternativa.
 - **CI:** `.github/workflows/ci.yml` instala, comprueba y empaqueta en Node 22.
 
-Pendiente de P1: instalar la development build en un móvil físico (con P4), revisar avisos de auditoría compatibles y mantener el lockfile cuando P4/P5 añadan dependencias nativas.
+Pendiente de P1: instalar la development build en un móvil **físico** (con P4), validar el arranque en frío y el splash en dispositivo, revisar avisos de auditoría compatibles y mantener el lockfile cuando P4/P5 añadan dependencias nativas.
 
 Para P2/P5, punto de partida del dominio:
 

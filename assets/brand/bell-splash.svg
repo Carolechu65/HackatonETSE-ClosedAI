@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- campana: símbolo sin fondo, escalado al 74 % del lienzo -->
+  <g transform="translate(512 512) scale(1.5216) translate(-512 -497)">
+    <!-- Campana -->
+    <circle cx="512" cy="278" r="30" fill="#bf3a2f"/>
+    <path d="M512 306C414 306 348 380 348 480v76c0 56-18 92-42 126h412c-24-34-42-70-42-126v-76c0-100-66-174-164-174Z" fill="#bf3a2f"/>
+    <!-- Badajo -->
+    <circle cx="512" cy="712" r="34" fill="#3b2a1a"/>
+    <!-- Emblema: la letra T, girada para leerse como tick -->
+    <g transform="translate(450 552) scale(0.62) rotate(-42)" fill="none" stroke="#fff6ec" stroke-width="86" stroke-linecap="round">
+    <path d="M-110 0H380"/>
+    <path d="M0 0V-240"/>
+    </g>
+  </g>
+</svg>
