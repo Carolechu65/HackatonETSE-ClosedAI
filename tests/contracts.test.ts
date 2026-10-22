@@ -35,9 +35,24 @@ test('los documentos compartidos pasan sus validadores', () => {
     'schemas/recipient.schema.json': parseRecipientDocument,
     'schemas/schedule.schema.json': parseScheduleDocument,
   };
+  /*
+   * Documentos de otras áreas (sesión, sincronización, páginas de bandeja) que se
+   * validan con JSON Schema y tendrán su validador de runtime en P3/P5.
+   */
+  const externalSchemas = [
+    'schemas/session.schema.json',
+    'schemas/sync-page.schema.json',
+    'schemas/alarm-request-page.schema.json',
+    'schemas/alarm-request-detail.schema.json',
+  ];
   for (const entry of manifest.documents) {
-    const parser = parsers[entry.schema as string];
-    assert.ok(parser, `${entry.id}: sin validador para ${entry.schema}`);
+    const schema = entry.schema as string;
+    const base = schema.split('#')[0]!;
+    const parser = parsers[schema] ?? parsers[base];
+    if (!parser) {
+      assert.ok(externalSchemas.includes(base), `${entry.id}: sin validador para ${schema}`);
+      continue;
+    }
     assert.doesNotThrow(() => parser(readContractsFile<unknown>(entry.file)), `${entry.id} debería ser válido`);
   }
 });
