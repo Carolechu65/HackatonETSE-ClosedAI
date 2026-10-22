@@ -84,10 +84,40 @@ candidato tiene una identidad diferente en cada ejecución y no sirve para insta
 actualizaciones sobre la aplicación final. Publicar únicamente el APK firmado en
 el VPS, después de comprobar la huella del certificado y el paquete esperado.
 
-En el intento local del 22-10-2026, el VPS llegó a la configuración CMake del release
+En el primer intento local del 22-10-2026, el VPS llegó a la configuración CMake del release
 ARM64, pero las extracciones de dependencias agotaban la reserva de disco. Se
 terminó exclusivamente ese Gradle y se eliminó únicamente el NDK descargado para
-el intento, recuperando la reserva. No se obtuvo APK local. La integración SSH
+el intento, recuperando la reserva. Ese intento no obtuvo APK. La integración SSH
 permite activar el workflow al subir a main sin cargar claves ni necesitar una
 sesión GitHub CLI. No confundir el workflow listo con un APK ya generado: consultar
 el resultado real y verificar el artifact antes de publicar su enlace.
+
+
+## Primer APK publicado y verificado · 22-10-2026
+
+El segundo intento, aislado en `/srv/mail/alarmat-build/`, completó el release
+ARM64 de `14653a4`: 49.281.373 bytes, firma permanente y ejecución autónoma sin
+Metro. El tramo final D8 necesitó heap1024MB y metaspace512MB, manteniendo un
+solo worker y límite de memoria del proceso2300MB. No se modificaron otros
+servicios ni datos del volumen de correo.
+
+- [Guía de instalación](https://gex-dashboard.hopto.org/alarmat/install/index.html).
+- [Descarga Android actual](https://gex-dashboard.hopto.org/alarmat/downloads/alarmat.apk).
+- [APK inicial14653a4](https://gex-dashboard.hopto.org/alarmat/downloads/alarmat-14653a4.apk).
+- SHA-256 inicial: `652d372ecfec0d14e85f53c78002621fb23e91ad91d73796eecd0de5d460225d`.
+
+La descarga HTTPS se comprobó byte a byte por checksum. Las16 verificaciones
+incluyen paquete correcto, firma permanente, ausencia de depuración y claves de
+servidor, API GEX, alineación16KB, icono nuevo, widget y receptor/servicio de alarma.
+Se contrastaron217 archivos fuente con ese commit. Evidencia en
+`/srv/mail/alarmat-build/artifacts/14653a4/verification.json`.
+
+Este APK corresponde a14653a4, anterior a las funciones añadidas después en
+`ae2290f`; esas funciones requieren el siguiente APK. El enlace de descarga actual
+puede actualizarse cuando se verifique otro release. La prueba física de sonido,
+permisos, reinicio y widgets en un teléfono sigue pendiente.
+
+Los binarios se conservan en `/opt/alarmat/downloads`, con un enlace desde
+`current/web/downloads`. Las siguientes publicaciones deben conservar ese enlace,
+`web/install/` y `web/brand/`. La guía usa `install/index.html` explícito porque la
+ruta de directorio `install/` cae en el fallback de la SPA.
