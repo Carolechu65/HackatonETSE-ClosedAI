@@ -235,3 +235,14 @@ test('reverse proxy base path survives anonymous login and authenticated API cal
     assert.equal(requests.length, 3);
   }
 });
+
+test('HTTPS transport preserves a configured application prefix without leaking auth to another origin', async () => {
+  const ctx = setup(async () => Response.json({}));
+  await ctx.sessions.install({ userId: 'alice', token: 'opaque-private-token', expiresAtEpochMs: 100_000 });
+  let requested = '';
+  const http = new HttpClient({ baseUrl: 'https://api.example.test/alarmat/api/', sessions: ctx.sessions,
+    fetch: async (url, init) => { requested = url; assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer opaque-private-token'); return Response.json({ connected: true }); } });
+  await http.authenticatedJson('/v1/calendar/google/status', 'GET');
+  assert.equal(requested, 'https://api.example.test/alarmat/api/v1/calendar/google/status');
+  await assert.rejects(() => http.authenticatedJson('//other.example/v1/calendar/google/status', 'GET'));
+});

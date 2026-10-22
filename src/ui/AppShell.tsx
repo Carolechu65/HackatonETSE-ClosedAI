@@ -27,6 +27,7 @@ export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', 
       <View style={styles.groupBadge}><View style={styles.houseMark}><Text style={[typography.noteTitle, { fontSize: 26 }]}>aT</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={typography.noteTitle}>{group?.name ?? 'Tu próximo piso'}</Text><Text style={typography.support}>{state.members.length} personas · tu espacio</Text></View></View>
       <View style={styles.sideNav}>{links}</View>
       <Pressable accessibilityRole="link" onPress={() => router.push('/assistant')} style={styles.assistantLink}><Text style={typography.label}>UN POCO DE AYUDA</Text><Text style={typography.noteTitle}>El compañero que recuerda.</Text><Text style={typography.support}>Prepara un aviso conversando →</Text></Pressable>
+      <Action onPress={() => router.push('/calendar')}>Mi Google Calendar →</Action>
       <View style={{ flex: 1 }} />
       <Text style={[typography.support, { marginBottom: 20 }]}>Menos «se me olvidó».{`\n`}Más vida en común.</Text>
       <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={styles.profile}><Avatar name={state.session.displayName} /><View style={{ gap: 3 }}><Text style={typography.body}>{state.session.displayName}</Text><Text style={typography.support}>Tu cuenta y permisos →</Text></View></Pressable>

@@ -1,8 +1,10 @@
+import { calendarConfig, type CalendarConfig } from './calendar/config.ts';
 /**
  * Configuración del servidor. No hay secretos por defecto: las variables
  * privadas se leen del entorno del proceso y nunca se registran.
  */
 export type ServerConfig = {
+  calendar: CalendarConfig | null;
   host: string;
   port: number;
   databasePath: string;
@@ -46,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     throw new Error('AI_PROVIDER debe ser none, deterministic u openai.');
   }
   return {
+    calendar: calendarConfig(env),
     host: env.HOST?.trim() || '127.0.0.1',
     port: intFromEnv(env.PORT, 8787, 'PORT'),
     databasePath: env.DATABASE_PATH?.trim() || './data/alarmat.db',

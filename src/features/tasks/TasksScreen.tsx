@@ -63,6 +63,7 @@ export function TaskProductDetail({ taskId }: { taskId: string }) {
         {task.completedByUid && task.completedAtEpochMs !== null ? <Text style={typography.support}>Completada por {memberName(task.completedByUid)} · {formatDateTimeInZone(task.completedAtEpochMs, group?.timeZone ?? 'Europe/Madrid')}</Text> : null}
         <Text style={typography.support}>{task.status === 'pending' ? 'Detener o posponer una alarma no completa esta tarea.' : 'Los avisos vinculados se retiran cuando cada dispositivo recibe el cambio.'}</Text>
       </Sheet><Message text={error} error />
+      {state.session?.mode === 'live' && task.status === 'pending' ? <Action onPress={() => router.push({ pathname: '/calendar', params: { taskId: task.id } })}>Llevar esta tarea a mi Google Calendar</Action> : null}
       {task.status === 'pending' ? <><PrimaryAction label={busy ? 'Guardando…' : 'Marcar como hecha'} disabled={busy} onPress={() => void run(() => update('completed'))} /><Action disabled={busy} onPress={() => router.push({ pathname: '/alarm/new', params: { taskId: task.id } })}>Proponer un recordatorio para esta tarea</Action><Action disabled={busy} onPress={() => void run(() => update('cancelled'))}>Cancelar tarea</Action></> : null}
     </View>}
   </AppShell>;

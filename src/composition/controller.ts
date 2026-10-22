@@ -1,3 +1,4 @@
+import { createCalendarClient } from '../features/calendar/client.ts';
 import type { CreateAlarmRequestPayload, RespondToAlarmPayload, AlarmCommand } from '../domain/contracts/types.ts';
 import { parseAlarmRequestDocument, parseRecipientDocument, parseScheduleDocument, parseCreateAlarmRequest, parseRespondToAlarm } from '../domain/contracts/validate.ts';
 import { createTask, completeTask, cancelTask, validateTaskDraft, type HouseholdTask, type TaskDraft } from '../features/tasks/model.ts';
@@ -109,6 +110,11 @@ export function createProductController(backendFactory: () => Promise<ProductBac
     return flight;
   }
   return {
+    calendar: createCalendarClient(async (path, method, body) => {
+      if (!state.session || isDemo()) throw new DomainError('UNAUTHENTICATED', 'Entra con tu cuenta para conectar tu calendario.');
+      const expected = generation; const api = await ensureBackend();
+      const result = await api.request(path, method, body); assertGeneration(expected); return result;
+    }),
     getSnapshot: () => state,
     subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     initialize() {

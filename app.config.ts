@@ -12,11 +12,11 @@ const config: ExpoConfig = {
   slug: 'alarmat',
   version: '0.1.0',
   scheme: 'alarmat',
-  orientation: 'portrait',
-  userInterfaceStyle: 'light',
   // A subdirectory is only used by the VPS web export, never native deep links.
   experiments: { baseUrl: process.env.ALARMAT_WEB_BASE_PATH || undefined },
   web: { output: 'single' },
+  orientation: 'portrait',
+  userInterfaceStyle: 'light',
   icon: './assets/brand/icon.png',
   android: {
     package: 'com.closedai.alarmat',

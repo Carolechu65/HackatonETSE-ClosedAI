@@ -1,3 +1,4 @@
+import type { CalendarClient } from '../features/calendar/client.ts';
 import type { AlarmRequestDocument, RecipientDocument, ScheduleDocument, CreateAlarmRequestPayload, RespondToAlarmPayload } from '../domain/contracts/types.ts';
 import type { HouseholdTask, TaskDraft } from '../features/tasks/model.ts';
 import type { SchedulingStatus, SyncStatus } from '../domain/states.ts';
@@ -38,6 +39,7 @@ export type ProductState = {
   error: string | null;
 };
 export interface ProductClient {
+  calendar: CalendarClient;
   getSnapshot(): ProductState;
   subscribe(listener: () => void): () => void;
   initialize(): Promise<void>;

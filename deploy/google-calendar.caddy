@@ -1,0 +1,11 @@
+# Import inside gex-dashboard.hopto.org, before the existing Lois handles.
+# Only alarmaT OAuth states use this callback; Lois retains its original flow.
+@alarmat_google_callback {
+    path /nexia/lois/citas/api/google-calendar/callback
+    query state=alarmat_*
+}
+handle @alarmat_google_callback {
+    rewrite * /v1/calendar/google/callback
+    reverse_proxy 127.0.0.1:18787
+}
+# OAuth starts through the existing /alarmat/api prefix on this same origin.

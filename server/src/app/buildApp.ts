@@ -1,3 +1,4 @@
+import { calendarRoutes } from '../calendar/routes.ts';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { DomainError } from '../../../src/domain/errors.ts';
 import { authenticate, loginUser, publicProfile, registerUser, revokeSession, sessionInfo, type AuthUser } from '../auth/service.ts';
@@ -28,6 +29,7 @@ export type BuildAppOptions = {
   db: Db;
   logger?: boolean;
   agentProvider?: AgentProvider;
+  calendarFetch?: typeof fetch;
 };
 
 function authHeader(request: FastifyRequest): string | string[] | undefined {
@@ -311,5 +313,6 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.post('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return createTask(db,actor.uid,readIdentifier(groupId,'groupId'),request.body);});
   app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});
   app.post('/v1/agent/draft',async request=>{const actor=requireAuth(db,request);agentLimiter.check(`agent:${actor.uid}`);const body=asRecord(request.body);if(Object.keys(body).some(key=>!['groupId','text','conversationId'].includes(key)))throw new DomainError('INVALID_ARGUMENT','Campos del asistente inválidos.');const result=await proposeAlarm(db,actor,{groupId:body.groupId,text:body.text,...(body.conversationId?{sessionId:body.conversationId}:{})},config.agent,options.agentProvider);requireAuth(db,request);if(result.status==='needs_clarification')return {conversationId:result.sessionId,status:result.status,question:result.question,missingFields:result.missingFields};return {conversationId:result.sessionId,status:'draft',draft:{title:result.draft.title,recipientUids:result.draft.recipientUids,timeSpec:result.draft.timeSpec,mode:result.draft.mode},requiresSenderReview:true,requiresRecipientConsent:true};});
+  calendarRoutes(app, db, config.calendar, options.calendarFetch);
   return app;
 }
