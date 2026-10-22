@@ -11,7 +11,7 @@ export function Frame({title,eyebrow,children}:{title:string;eyebrow:string;chil
   useEffect(()=>{if(state.ready&&!state.session)router.replace({pathname:'/login',params:{returnTo:path}});},[state.ready,state.session,path]);
   if(!state.ready||!state.session)return <View style={styles.loading}><ActivityIndicator color={colors.tx}/></View>;
   return <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={styles.root}>
-    <Screen scroll contentStyle={styles.page}><View style={styles.header}><View style={{flex:1}}><ScreenHeader title={title} eyebrow={eyebrow}/></View><View style={styles.actions}><IconButton name="calendar" tone="plain" onPress={()=>router.push('/calendar')} accessibilityLabel="Abrir calendario"/><IconButton name="settings" tone="plain" onPress={()=>router.push('/settings')} accessibilityLabel="Cuenta y permisos"/></View></View>
+    <Screen scroll contentStyle={styles.page}><View style={styles.header}><View style={{flex:1}}><ScreenHeader title={title} eyebrow={eyebrow} brand={path==='/'}/></View><View style={styles.actions}><IconButton name="calendar" tone="plain" onPress={()=>router.push('/calendar')} accessibilityLabel="Abrir calendario"/><IconButton name="settings" tone="plain" onPress={()=>router.push('/settings')} accessibilityLabel="Cuenta y permisos"/></View></View>
       {state.session.mode==='demo'?<Text style={typography.label}>DEMO · DATOS DE EJEMPLO</Text>:null}<Message text={state.error} error/>{children}
     </Screen>
     <View style={styles.nav}><RetroTabBar state={{index:tabs.findIndex(x=>x.key===path),routes:tabs}} descriptors={{}} emitter={{emit:()=>({defaultPrevented:false})}} navigateToTab={key=>router.push(key as '/')} insets={{bottom:insets.bottom}}/></View>

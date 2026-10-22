@@ -33,7 +33,7 @@ export default function TablonRoute() {
 
   return (
     <Screen contentStyle={styles.page}>
-      <ScreenHeader eyebrow="LA PUERTA DE LA NEVERA" title="Tablón" />
+      <ScreenHeader brand title="Tablón" />
 
       <AnimatedIn>
         <Note

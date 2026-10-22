@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProduct } from '../../composition/ProductProvider.tsx';
 import { colors, typography } from '../../ui/theme.ts';
 import { fontFamily } from '../../ui/fonts.ts';
+import { BrandMark } from '../../ui/BrandMark.tsx';
 import { Sheet } from '../../ui/Sheet.tsx';
 import { PrimaryAction } from '../../ui/PrimaryAction.tsx';
 import { Action, Field, Message, useAction } from '../../ui/Controls.tsx';
@@ -19,7 +20,7 @@ export function LoginScreen() {
   useEffect(() => { if (state.session) router.replace(returnTo?.startsWith('/') && !returnTo.startsWith('//') && returnTo !== '/login' ? returnTo as '/' : '/'); }, [state.session, returnTo]);
   return <SafeAreaView style={styles.root} edges={['top', 'bottom', 'left', 'right']}><KeyboardAvoidingView style={styles.frame} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
-      <View style={styles.brand}><Text style={styles.logo}>alarmaT.</Text><Text style={typography.support}>Tu piso, a tu ritmo.</Text></View>
+      <View style={styles.brand}><BrandMark width={200} /><Text style={typography.support}>Tu piso, a tu ritmo.</Text></View>
       <View style={styles.formSide}>
       <Sheet style={styles.form}>
         <Text accessibilityRole="header" style={[typography.detailTitle, styles.title]}>{register ? 'Crea tu cuenta.' : 'Qué bien verte.'}</Text>

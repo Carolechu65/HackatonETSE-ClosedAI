@@ -7,6 +7,7 @@ import { fontFamily } from './fonts.ts';
 import { useProduct } from '../composition/ProductProvider.tsx';
 import { Action, Message } from './Controls.tsx';
 import { RetroTabBar } from './RetroTabBar.tsx';
+import { BrandMark } from './BrandMark.tsx';
 
 const destinations = [{ path: '/', name: 'index' }, { path: '/expenses', name: 'gastos' }, { path: '/tasks', name: 'tareas' }, { path: '/group', name: 'piso' }] as const;
 export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', action }: { children: ReactNode; title: string; eyebrow?: string; action?: ReactNode }) {
@@ -19,7 +20,7 @@ export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', 
     <KeyboardAvoidingView style={styles.main} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.topbar}>
         <Pressable accessibilityRole="link" accessibilityLabel="Ir al tablón" onPress={() => router.push('/')} style={styles.brandLink}>
-          <Text style={styles.brand}>alarmaT<Text style={{ color: colors.acDecorative }}>.</Text></Text>
+          <BrandMark width={104} />
           <Text numberOfLines={1} style={typography.support}>{group?.name ?? 'Tu piso'}</Text>
         </Pressable>
         <Pressable accessibilityRole="link" onPress={() => router.push('/calendar')} style={styles.headerLink}><Text style={typography.support}>Calendario</Text></Pressable>

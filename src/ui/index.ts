@@ -7,6 +7,7 @@
  */
 export { AnimatedIn } from './AnimatedIn.tsx';
 export { Avatar } from './Avatar.tsx';
+export { BrandMark } from './BrandMark.tsx';
 export { Checkbox } from './Checkbox.tsx';
 export { Chip } from './Chip.tsx';
 export { FlashMessage } from './FlashMessage.tsx';
