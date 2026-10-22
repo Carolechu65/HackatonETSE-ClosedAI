@@ -14,7 +14,8 @@ Además, el estilo [Nevera Retro](../../nevera-retro.md) exige Fraunces y DM Mon
 2. Fijar `overrides: { "react-dom": "19.3.0" }`. `react-dom` no se usa en Android; el override solo alinea el peer que npm instala automáticamente. No se aplica `audit fix --force` ni `--legacy-peer-deps`, que ocultarían conflictos reales.
 3. Añadir `expo-font` (`~58.0.9`) y `@expo-google-fonts/fraunces` / `@expo-google-fonts/dm-mono` para el sistema visual. Las fuentes se cargan en el layout raíz; si fallan, la app cae a `serif`/`monospace`.
 4. Añadir `@types/node` (fijado a la misma versión que `functions/`) solo para los tests de Node.
-5. Comandos verificados: `npm ci`, `npm ci --prefix functions`, `npm run typecheck`, `npm test`, `npm run test:contracts`, `npm run check`, `npm run export:android`.
+5. Añadir `expo-system-ui` para que `userInterfaceStyle: "light"` se aplique de verdad (prebuild lo exigía) y evitar que Android pinte fondo oscuro.
+6. Comandos verificados: `npm ci`, `npm ci --prefix functions`, `npm run typecheck`, `npm test`, `npm run test:contracts`, `npm run check`, `npm run export:android` y `npx expo prebuild --platform android --no-install` (genera `android/` con el `applicationId` correcto; la carpeta está ignorada por Git).
 
 ## Consecuencias
 

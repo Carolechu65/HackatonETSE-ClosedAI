@@ -6,7 +6,8 @@ Implementación de [`nevera-retro.md`](../../nevera-retro.md) para React Native.
 
 | Archivo | Contenido |
 |---|---|
-| `theme.ts` | Colores, papeles, imanes, inclinaciones, márgenes, sombras, escala tipográfica. Valores accesibles de producción (`#bf3a2f`, `#6a5c48`, etiquetas al 72 %). |
+| `tokens.ts` | Valores puros sin React Native: colores, papeles, imanes, inclinaciones, medidas y sombras. Sirve también para tests y para el widget. |
+| `theme.ts` | Convierte los tokens en `TextStyle` con Fraunces y DM Mono. |
 | `fonts.ts` | `Fraunces` + `DM Mono` con `expo-font` y la pila de respaldo. |
 | `Screen.tsx` | Puerta de la nevera (`#efe2c4`) con área segura y margen lateral de 18 px. |
 | `ScreenHeader.tsx` | Etiqueta en mayúsculas + título Fraunces 58 px, alineado a la izquierda. |
@@ -40,6 +41,8 @@ import { Note, PrimaryAction, Screen, ScreenHeader, Sheet, typography } from '..
 - El rojo (`colors.ac`) solo en el botón principal, el subrayado activo y los imanes.
 - Sin fotos, emojis, negro puro ni blanco puro.
 - Objetivo táctil mínimo de 48 dp aunque el texto siga la escala de la guía.
+
+`tests/design.test.ts` comprueba contraste WCAG de cada papel, las secuencias de papel/imán/inclinación y las medidas base: si alguien cambia un token y rompe la guía, CI lo detecta.
 
 ## Pendiente
 

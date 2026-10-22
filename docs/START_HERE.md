@@ -36,7 +36,7 @@ npm start
 
 `npm run export:android` comprueba el empaquetado JavaScript; no compila Kotlin ni valida permisos o sonido. **La compilación del APK y la instalación en un móvil físico siguen pendientes de P1/P4**; es el único criterio de A01 que no se puede verificar desde este entorno.
 
-Verificado en este arranque: `npm ci` limpio con Node 22/26, TypeScript estricto, contratos y 34 tests de dominio, compilación del backend y exportación JavaScript Android. La auditoría npm de la app señala avisos altos transitivos en `braces` y `node-forge` y sus dependientes; no ofrece una corrección compatible con el stack actual. Queda revisar parches compatibles antes de distribuir; no aplicar el downgrade de Expo/React Native que propone `audit fix --force`. El backend actualizado no presenta avisos en su auditoría de instalación.
+Verificado en este arranque: `npm ci` limpio con Node 22/26, TypeScript estricto, contratos y 40 tests de dominio y diseño, compilación del backend, exportación JavaScript Android y `expo prebuild` para Android con `com.closedai.alarmat`. La auditoría npm de la app señala avisos altos transitivos en `braces` y `node-forge` y sus dependientes; no ofrece una corrección compatible con el stack actual. Queda revisar parches compatibles antes de distribuir; no aplicar el downgrade de Expo/React Native que propone `audit fix --force`. El backend actualizado no presenta avisos en su auditoría de instalación.
 
 ## Una entrada por persona
 
