@@ -19,11 +19,13 @@ export function ProductExpenses() {
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [selection, setSelection] = useState<{ scope: string; excluded: string[] }>({ scope: '', excluded: [] });
+  const [history, setHistory] = useState<{ scope: string; expanded: boolean }>({ scope: '', expanded: false });
   const [flash, setFlash] = useState<string | null>(null);
   const action = useAction();
   const operations = useRef<Record<string, string>>({});
   const uid = state.session?.userId ?? '';
   const scope = `${uid}:${state.groupId}`;
+  const historyExpanded = history.scope === scope && history.expanded;
   const balance = expenseBalance(data.expenses, uid);
   const cents = parseEuros(amount);
   const live = state.session?.mode === 'live';
@@ -43,6 +45,7 @@ export function ProductExpenses() {
     operations.current[key] ??= ids.next('op');
     const expense = await client.finance.create(state.groupId, { ...draft, operationId: operations.current[key]! });
     pages.reveal(expense.id);
+    setHistory({ scope, expanded: true });
     delete operations.current[key];
     setConcept(''); setAmount(''); setDueDate(''); setSelection({ scope, excluded: [] });
     setFlash(`Gasto añadido. Repartido entre ${participants.length} ${participants.length === 1 ? 'persona' : 'personas'}.`);
@@ -61,6 +64,11 @@ export function ProductExpenses() {
       <Text style={typography.support}>{data.loaded ? `Debes ${formatEuros(balance.owes)} · ${state.members.length} personas en el piso` : 'Conecta tu cuenta y selecciona un piso para ver tus cuentas.'}</Text>
     </Note></AnimatedIn>
     <AnimatedIn delay={80}><Note index={3} wide label="Movimientos" title="Últimos gastos">
+      <Text style={typography.support}>{data.loaded ? `${data.expenses.length} ${data.expenses.length === 1 ? 'gasto registrado' : 'gastos registrados'}` : 'Los gastos se muestran al conectar tu cuenta.'}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={historyExpanded ? 'Ocultar historial de gastos' : 'Mostrar historial de gastos'} accessibilityState={{ expanded: historyExpanded }} aria-expanded={historyExpanded} onPress={() => setHistory({ scope, expanded: !historyExpanded })} style={styles.historyToggle}>
+        <Text style={[typography.bodyStrong, { flex: 1 }]}>{historyExpanded ? 'Ocultar historial de gastos' : 'Mostrar historial de gastos'}</Text><Text style={typography.body}>{historyExpanded ? '▴' : '▾'}</Text>
+      </Pressable>
+      {historyExpanded ? <View>
       {pages.items.map(expense => {
         const share = expense.shares.find(s => s.uid === uid);
         const settled = expense.settledUids.includes(uid);
@@ -77,8 +85,10 @@ export function ProductExpenses() {
       })}
       {!data.expenses.length ? <Text style={typography.support}>{data.loaded ? 'No hay gastos todavía.' : 'Los gastos se muestran al conectar tu cuenta.'}</Text> : null}
       <ListPages page={pages.page} count={pages.count} total={data.expenses.length} label="gastos" onSelect={pages.select} />
+      </View> : null}
+    </Note></AnimatedIn>
+    <AnimatedIn delay={120}><Note index={4} wide label="Compartir un gasto" title="Añadir un gasto">
       <View style={styles.form}>
-        <Text style={typography.labelOnNote}>AÑADIR UN GASTO</Text>
         <View style={styles.addRow}><TextField value={concept} onChangeText={setConcept} placeholder="Concepto" maxLength={120} style={{ flex: 1, minWidth: 0 }} /><TextField value={amount} onChangeText={setAmount} placeholder="0,00" keyboardType="decimal-pad" maxLength={10} accessibilityLabel="Importe en euros" style={{ width: 78, textAlign: 'right' }} /></View>
         <Text style={typography.bodyStrong}>¿Quién comparte este gasto?</Text>
         <Text style={typography.support}>Elige quién te debe su parte. Inclúyete si también te corresponde pagar.</Text>
@@ -106,6 +116,7 @@ const styles = StyleSheet.create({
   expense: { gap: 4, borderBottomWidth: 1, borderBottomColor: colors.noteLine, paddingVertical: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  form: { gap: 10, marginTop: 16 },
+  form: { gap: 10 },
+  historyToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingVertical: 8 },
   participant: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
 });
