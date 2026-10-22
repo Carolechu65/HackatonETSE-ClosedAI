@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from './Icon.tsx';
 import { colors, typography } from './theme.ts';
 import { USE_NATIVE_DRIVER } from './animation.ts';
@@ -27,7 +27,8 @@ export type RetroTabBarProps = {
 
 export function RetroTabBar({ state, descriptors, emitter, navigateToTab, insets }: RetroTabBarProps) {
   return (
-    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+    <View style={{ height: 58 + Math.max(insets.bottom, 16), flexShrink: 0 }}>
+    <View nativeID="alarmat-bottom-menu" accessibilityRole="tablist" style={[styles.bar, Platform.OS === 'web' && styles.fixedWeb, { paddingBottom: Math.max(insets.bottom, 16) }]}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const meta = TAB_META[route.name] ?? { label: route.name, icon: 'circle' as IconName };
@@ -47,6 +48,7 @@ export function RetroTabBar({ state, descriptors, emitter, navigateToTab, insets
           />
         );
       })}
+    </View>
     </View>
   );
 }
@@ -106,6 +108,9 @@ function TabItem({
 }
 
 const styles = StyleSheet.create({
+  // On web, anchor to the viewport even when the document itself scrolls.
+  // The outer spacer keeps the last content row above the menu.
+  fixedWeb: { position: 'fixed' as 'absolute', bottom: 0, left: 0, right: 0, width: '100%', maxWidth: 460, marginHorizontal: 'auto', zIndex: 100 },
   bar: {
     flexDirection: 'row',
     alignItems: 'flex-start',

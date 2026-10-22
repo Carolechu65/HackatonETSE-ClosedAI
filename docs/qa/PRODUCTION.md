@@ -21,7 +21,7 @@ indefinida con la app permanentemente detenida.
 
 ## Pruebas antes de publicar
 
-Comprobación final de la integración: **240 pruebas app/datos y 70 API aprobadas**,
+Comprobación final de la integración: **244 pruebas app/datos y 70 API aprobadas**,
 una prueba externa omitida por defecto y ejecutada por separado con éxito.
 El fallo de acceso bajo `/alarmat/api` se detectó en navegador y se corrigió con
 regresiones de transporte (14 pruebas dirigidas, incluyendo las nuevas).
@@ -43,8 +43,10 @@ El callback OAuth se comprobó en HTTPS: estados con prefijo `alarmat_` llegan
 exclusivamente a AlarmaT; un estado inválido devuelve400 con HTML propio.
 Los callbacks normales de Lois conservan307 y su destino. Caddy requiere una
 expresión explícita para el prefijo: `query state=alarmat_*` sería literal.
-Las46 unidades de servicio preexistentes siguen activas y no falta ningún puerto
-de aplicación de la muestra inicial.
+Las45 unidades persistentes de servicio de la muestra siguen activas.
+`polkit` es una unidad bajo demanda y puede estar inactiva sin fallo. Los
+endpoints de producción conservan sus respuestas; puertos temporales del
+contenedor y de desarrollo pueden cambiar entre sesiones.
 
 ## Interfaz P1 restaurada
 
@@ -54,3 +56,17 @@ Tablón/Gastos/Tareas/Piso, conectadas con cuentas, tareas y gastos reales.
 Los formularios avanzados, alarmas, asistente, calendario y permisos siguen
 accesibles desde esas pantallas. Se verifican las cuatro pestañas a360,390
 y430px. Los datos de ejemplo permanecen identificados como demostración.
+
+La comprobación HTTPS posterior al esquema5 pasó con dos cuentas reales:
+proponer/aceptar un aviso, crear/completar tareas, añadir un gasto de12,51EUR
+con reparto exacto y liquidar únicamente la cuota propia. El logo y favicon
+actualizados están publicados. Las cuatro pantallas se revisaron a360/390/430px.
+
+## Navegación táctil
+
+El menú web permanece fijo al pie, con espacio reservado para el contenido.
+El swipe horizontal cambia entre las cuatro pestañas y respeta campos, botones,
+desplazamiento vertical y bordes del navegador. Tareas muestra4filas por página
+y Gastos3, manteniendo saldos y contadores globales. Chromium con eventos táctiles
+CDP comprobó cambios en ambos sentidos, paginación/alta de tareas y menú fijo
+después de desplazar una pantalla de360×460px.

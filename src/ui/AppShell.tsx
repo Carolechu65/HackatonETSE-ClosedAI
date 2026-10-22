@@ -7,6 +7,7 @@ import { fontFamily } from './fonts.ts';
 import { useProduct } from '../composition/ProductProvider.tsx';
 import { Action, Message } from './Controls.tsx';
 import { RetroTabBar } from './RetroTabBar.tsx';
+import { useTabSwipe, TAB_SWIPE_SURFACE } from './useTabSwipe.ts';
 import { BrandMark } from './BrandMark.tsx';
 
 const destinations = [{ path: '/', name: 'index' }, { path: '/expenses', name: 'gastos' }, { path: '/tasks', name: 'tareas' }, { path: '/group', name: 'piso' }] as const;
@@ -15,9 +16,10 @@ export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', 
   const path = usePathname();
   const insets = useSafeAreaInsets();
   useEffect(() => { if (state.ready && !state.session) router.replace({ pathname: '/login', params: { returnTo: path } }); }, [state.ready, state.session, path]);
+  const swipeSurface = useTabSwipe(path, state.ready && !!state.session);
   if (!state.ready || !state.session) return <View style={styles.loading}><ActivityIndicator color={colors.tx} /><Text style={typography.body}>Abriendo tu nevera…</Text></View>;
   return <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-    <KeyboardAvoidingView style={styles.main} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View ref={swipeSurface} nativeID={TAB_SWIPE_SURFACE} style={{ flex: 1 }}><KeyboardAvoidingView style={styles.main} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.topbar}>
         <Pressable accessibilityRole="link" accessibilityLabel="Ir al tablón" onPress={() => router.push('/')} style={styles.brandLink}>
           <BrandMark width={104} />
@@ -41,7 +43,7 @@ export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', 
         navigateToTab={route => router.push(route as '/')}
         insets={{ bottom: insets.bottom }}
       />
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingView></View>
   </SafeAreaView>;
 }
 export function BackLink({ to = '/', label = 'Volver al tablón' }: { to?: '/' | '/alarms' | '/tasks' | '/group'; label?: string }) {
@@ -50,11 +52,11 @@ export function BackLink({ to = '/', label = 'Volver al tablón' }: { to?: '/' |
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.wall }, loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: colors.wall },
   main: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center', minWidth: 0 },
-  topbar: { paddingHorizontal: 16, minHeight: 76, borderBottomWidth: 1, borderColor: colors.ln, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  topbar: { paddingHorizontal: 16, minHeight: 64, borderBottomWidth: 1, borderColor: colors.ln, flexDirection: 'row', alignItems: 'center', gap: 4 },
   brandLink: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center', paddingRight: 8 }, brand: { fontFamily: fontFamily.display, fontSize: 28, color: colors.tx, letterSpacing: -1 },
   headerLink: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 },
   sync: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, alignSelf: 'flex-start', marginBottom: -12, marginTop: -12 }, dot: { width: 6, height: 6, borderRadius: 3 },
-  content: { padding: 18, paddingTop: 12, gap: 20, flexGrow: 1 },
+  content: { padding: 16, paddingTop: 10, gap: 14, flexGrow: 1 },
   demo: { gap: 8, padding: 12, backgroundColor: paper[4], borderRadius: 2 }, heading: { gap: 8 }, headingAction: { marginTop: 6, width: '100%' },
-  footer: { marginTop: 'auto', paddingTop: 20, gap: 8 },
+  footer: { marginTop: 'auto', paddingTop: 12, gap: 6 },
 });
