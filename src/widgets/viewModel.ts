@@ -7,7 +7,8 @@
  *
  * Este archivo es puro: se prueba en Node con zona horaria y reloj inyectados.
  */
-import { alarmLink, inboxLink, isSafeLinkId } from './links.ts';
+import { alarmLink, inboxLink, isSafeLinkId, taskLink } from './links.ts';
+import { widgetColors, type WidgetColors } from './palette.ts';
 import {
   isWidgetSnapshotStale,
   isValidWidgetSnapshot,
@@ -18,6 +19,11 @@ import {
 
 /** Props que cruzan a la plantilla del widget. Solo valores JSON. */
 export type AlarmaTWidgetProps = {
+  readonly colors: WidgetColors;
+  readonly tasks: readonly { readonly id: string; readonly title: string; readonly detail: string; readonly url: string; readonly completed: boolean; readonly actionTarget: string }[];
+  readonly taskCount: number;
+  readonly taskSummary: string;
+  readonly tasksUrl: string;
   readonly signedIn: boolean;
   readonly headline: string;
   readonly when: string;
@@ -142,8 +148,26 @@ export function toWidgetProps(
     timeZone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(new Date(snapshot.generatedAtEpochMs))}`;
 
+  const taskProps = {
+    colors: widgetColors,
+    tasks: snapshot.tasks.map(task => ({
+      id: task.id, title: task.title, url: taskLink(task.id), completed: task.completed,
+      actionTarget: task.assignmentDecision === 'pending' || task.assignmentDecision === 'rejected' ? ''
+        : `alarmat-task:${snapshot.scope!.userId}:${snapshot.scope!.groupId}:${task.id}:${task.version}:${task.completed ? 'pending' : 'completed'}`,
+      detail: `${task.assignmentDecision === 'pending' ? 'Pendiente de aceptar · ' : task.assignmentDecision === 'rejected' ? 'Asignación rechazada · ' : ''}${task.assigneeLabel || 'Sin asignar'} · ${task.dueAtEpochMs === null ? 'Sin fecha' : new Intl.DateTimeFormat('es-ES', {
+        timeZone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+      }).format(new Date(task.dueAtEpochMs))}`,
+    })),
+    taskCount: snapshot.pendingTaskCount,
+    taskSummary: snapshot.scope === null ? 'Inicia sesión para ver tus tareas' : snapshot.pendingTaskCount === 0
+      ? 'Sin tareas pendientes'
+      : `${plural(snapshot.pendingTaskCount, 'tarea pendiente', 'tareas pendientes')}${snapshot.pendingTaskCount > snapshot.tasks.filter(task => !task.completed).length ? ` · primeras ${snapshot.tasks.filter(task => !task.completed).length}` : ''}`,
+    tasksUrl: 'alarmat://tasks',
+  };
+
   if (snapshot.scope === null) {
     return {
+      ...taskProps,
       signedIn: false,
       headline: 'Abre AlarmaT',
       when: '',
@@ -151,7 +175,7 @@ export function toWidgetProps(
       updated,
       freshness,
       stale: false,
-      emptyBody: 'Inicia sesión para ver tus alarmas.',
+      emptyBody: 'Inicia sesión para ver tus alarmas y tareas.',
       inboxUrl: inboxLink(),
       alarmUrl: null,
     };
@@ -164,6 +188,7 @@ export function toWidgetProps(
   if (next === null) {
     const hasPending = snapshot.counts.pendingProposals > 0;
     return {
+      ...taskProps,
       signedIn: true,
       headline: hasPending ? 'Tienes propuestas' : 'Nada a la vista',
       when: '',
@@ -180,6 +205,7 @@ export function toWidgetProps(
   }
 
   return {
+    ...taskProps,
     signedIn: true,
     headline: next.title,
     when: formatAlarmWhen(next.scheduledAtEpochMs, nowEpochMs, timeZone),

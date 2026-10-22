@@ -2,7 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PrimaryAction, Screen, ScreenHeader, Sheet, colors, layout, typography } from '../src/ui/index.ts';
-import { WidgetPreview } from '../src/widgets/WidgetPreview.tsx';
+import { WidgetPreview, type WidgetVariant } from '../src/widgets/WidgetPreview.tsx';
 import {
   WIDGET_DEMO_STATES,
   createDemoWidgetSnapshot,
@@ -27,6 +27,7 @@ const TIME_ZONE = 'Europe/Madrid';
  */
 export default function WidgetLabRoute() {
   const router = useRouter();
+  const [variant, setVariant] = useState<WidgetVariant>('board');
   const [state, setState] = useState<WidgetDemoState>('next');
   const [now, setNow] = useState(() => Date.now());
   const [result, setResult] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export default function WidgetLabRoute() {
   }
 
   function describe(published: boolean, reason?: string): string {
-    if (published) return 'Publicado en el widget instalado. Mira el launcher (puede tardar unos segundos).';
+    if (published) return 'Publicado en los tres widgets instalados. Mira el launcher (puede tardar unos segundos).';
     if (reason === 'unsupported_platform') {
       return 'Sin widget nativo en esta plataforma: en web o Expo Go solo se simula. Usa una development build Android.';
     }
@@ -50,14 +51,14 @@ export default function WidgetLabRoute() {
 
   return (
     <Screen scroll>
-      <Stack.Screen options={{ title: 'Widget' }} />
-      <ScreenHeader eyebrow="P6 · BANCO DE PRUEBAS" title="Widget" />
+      <Stack.Screen options={{ title: 'Widgets' }} />
+      <ScreenHeader eyebrow="ALARMAT EN TU ESCRITORIO" title="Tres widgets, tu piso" />
 
       <Sheet>
         <Text style={typography.labelOnNote}>DATOS DE DEMOSTRACIÓN</Text>
         <Text style={typography.body}>
-          Cuatro estados calculados con `buildWidgetSnapshot` y `toWidgetProps`. En Android puedes
-          publicarlos en el widget real; en web solo se simulan.
+          Alarmas, tareas y un tablón que reúne ambas. Los colores son los mismos que en la app.
+          Desliza las notas para ver todas las tareas; aquí se muestran datos de ejemplo.
         </Text>
       </Sheet>
 
@@ -81,7 +82,14 @@ export default function WidgetLabRoute() {
         ))}
       </View>
 
-      <WidgetPreview props={props} />
+      <View style={styles.tabs}>
+        {([{ id: 'board', label: 'Tablón' }, { id: 'alarms', label: 'Alarmas' }, { id: 'tasks', label: 'Tareas' }] as const).map((option) => (
+          <Pressable key={option.id} accessibilityRole="button" accessibilityState={{ selected: variant === option.id }} onPress={() => setVariant(option.id)} style={[styles.tab, variant === option.id && styles.tabActive]}>
+            <Text style={[styles.tabText, variant === option.id && styles.tabTextActive]}>{option.label.toUpperCase()}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <WidgetPreview props={props} variant={variant} />
 
       <View style={styles.meta}>
         <MetaRow label="PRÓXIMA" value={props.headline} />
@@ -93,7 +101,7 @@ export default function WidgetLabRoute() {
       </View>
 
       <PrimaryAction
-        label="Publicar en el widget real"
+        label="Publicar estos ejemplos en los tres widgets"
         onPress={() => {
           const outcome = syncWidgetForSession(snapshot, demoSessionFor(state), now, { timeZone: TIME_ZONE });
           setResult(describe(outcome.published, outcome.published ? undefined : outcome.reason));
@@ -106,7 +114,7 @@ export default function WidgetLabRoute() {
           onPress={() => setResult(describe(clearWidget(now).published))}
           style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
         >
-          <Text style={styles.secondaryText}>Vaciar widget</Text>
+          <Text style={styles.secondaryText}>Vaciar widgets</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -122,9 +130,9 @@ export default function WidgetLabRoute() {
       </Text>
 
       <Text style={typography.support}>
-        En Android: mantén pulsado el escritorio → Widgets → AlarmaT. Si no aparece, falta
-        reconstruir la development build (`npx expo prebuild && npm run android`). Esta pantalla
-        no crea alarmas ni propuestas.
+        En Android: mantén pulsado el escritorio → Widgets → AlarmaT y elige Tablón, Alarmas o Tareas.
+        Puedes ampliar su tamaño o deslizar su contenido. Necesitas la última versión de la app.
+        Publicar estos ejemplos reemplaza temporalmente el contenido de tus widgets; no crea tareas ni alarmas.
       </Text>
 
       <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}>

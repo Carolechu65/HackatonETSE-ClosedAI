@@ -1,4 +1,4 @@
-# Presentación de alarmaT
+# Presentación final de alarmaT
 
 > **Estado: borrador.** No es la versión final: sirve para revisar contenido y diseño con el equipo. Las cifras y capturas están al día del 22 de octubre de 2026; el guion y las diapositivas pueden cambiar.
 
@@ -7,11 +7,17 @@ Deck estático para exponer el proyecto. Misma estética que la app (Nevera Retr
 ## Ver en local
 
 ```sh
-python3 -m http.server 4173 --directory presentation
+python3 -m http.server 4173 --directory presentacionfinal
 # http://localhost:4173
 ```
 
 No necesita instalación ni build. Todo es HTML, CSS y JavaScript; las fuentes y las capturas viven en `fonts/` e `img/`.
+
+**Versión portable:** `presentacion-portable.html` (raíz del repositorio) lleva dentro el CSS, el JS, las fuentes y las 15 imágenes en un único archivo de ~725 KB. Se abre con doble clic en cualquier ordenador, sin servidor, sin instalación y sin internet. Se regenera con:
+
+```sh
+node presentacionfinal/build-portable.mjs
+```
 
 ## Controles
 

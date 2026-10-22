@@ -10,6 +10,7 @@ import android.provider.Settings
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import org.json.JSONArray
 
 /**
  * Puente JS → runtime Android.
@@ -34,6 +35,38 @@ class AlarmRuntimeModule : Module() {
 
     AsyncFunction("getCapabilities") {
       capabilities()
+    }
+
+    AsyncFunction("peekWidgetTaskActions") {
+      val ctx = context ?: throw IllegalStateException("Android runtime context is not available")
+      WidgetTaskActionStore(ctx).peek().map { it.toMap() }
+    }
+
+    AsyncFunction("ackWidgetTaskAction") { id: String ->
+      val ctx = context ?: throw IllegalStateException("Android runtime context is not available")
+      WidgetTaskActionStore(ctx).acknowledge(id)
+    }
+
+    AsyncFunction("clearWidgetTaskActions") { userId: String ->
+      val ctx = context ?: throw IllegalStateException("Android runtime context is not available")
+      WidgetTaskActionStore(ctx).clearForUser(userId)
+    }
+
+    AsyncFunction("configureAssignmentNotifications") { input: Map<String, Any?> ->
+      val ctx = context ?: throw IllegalStateException("Android runtime context is not available")
+      AssignmentNotifications.configure(ctx, input)
+    }
+
+    AsyncFunction("clearAssignmentNotifications") { userId: String ->
+      val ctx = context ?: throw IllegalStateException("Android runtime context is not available")
+      AssignmentNotifications.clear(ctx, userId)
+    }
+
+    AsyncFunction("syncAssignmentNotifications") { input: Map<String, Any?> ->
+      val ctx = context ?: throw IllegalStateException("Android runtime context is not available")
+      val userId = input["userId"] as? String ?: throw IllegalArgumentException("Missing assignment account")
+      val assignments = input["assignments"] as? List<*> ?: throw IllegalArgumentException("Missing assignments")
+      AssignmentNotifications.sync(ctx, userId, JSONArray(assignments))
     }
 
     AsyncFunction("getSnapshot") {

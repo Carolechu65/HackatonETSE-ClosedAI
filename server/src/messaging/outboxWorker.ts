@@ -187,6 +187,9 @@ export class OutboxWorker {
       .prepare("SELECT 1 AS ok FROM memberships WHERE group_id = ? AND user_id = ? AND status = 'ACTIVE'")
       .get(event.group_id, event.audience_uid);
     if (!member) return false;
+    if (event.entity_type === 'task' && !this.db.prepare(
+      "SELECT 1 FROM tasks WHERE id=? AND group_id=? AND assigned_to=? AND status='PENDING' AND assignment_decision='pending'",
+    ).get(event.entity_id, event.group_id, event.audience_uid)) return false;
     if (event.entity_type === 'alarm_request' || event.entity_type === 'recipient' || event.entity_type === 'schedule') {
       const requestId = event.entity_id.split(':')[0];
       if (!requestId) return false;

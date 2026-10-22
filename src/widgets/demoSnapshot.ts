@@ -80,14 +80,25 @@ function demoAlarms(nowEpochMs: number): readonly WidgetAlarmInput[] {
   ];
 }
 
+function demoTasks(nowEpochMs: number) {
+  return [
+    { id: 'demo-task-basura', groupId: WIDGET_DEMO_SCOPE.groupId, version: 1, title: 'Sacar la basura', assigneeLabel: 'Tú', dueAtEpochMs: nowEpochMs + HOUR, status: 'pending' as const },
+    { id: 'demo-task-luz', groupId: WIDGET_DEMO_SCOPE.groupId, version: 1, title: 'Pagar la factura de la luz', assigneeLabel: 'Marta', dueAtEpochMs: nowEpochMs + 2.5 * HOUR, status: 'pending' as const },
+    { id: 'demo-task-cocina', groupId: WIDGET_DEMO_SCOPE.groupId, version: 1, title: 'Limpiar la cocina', assigneeLabel: 'Álex', dueAtEpochMs: nowEpochMs + 24 * HOUR, status: 'pending' as const },
+    { id: 'demo-task-compra', groupId: WIDGET_DEMO_SCOPE.groupId, version: 1, title: 'Comprar leche, fruta y café', assigneeLabel: 'Sin asignar', dueAtEpochMs: null, status: 'pending' as const },
+    { id: 'demo-task-hecha', groupId: WIDGET_DEMO_SCOPE.groupId, version: 1, title: 'Recoger el salón', assigneeLabel: 'Marta', dueAtEpochMs: null, completedAtEpochMs: nowEpochMs - HOUR, status: 'completed' as const },
+    { id: 'demo-task-plantas', groupId: WIDGET_DEMO_SCOPE.groupId, version: 1, title: 'Regar las plantas del salón', assigneeLabel: 'Tú', dueAtEpochMs: null, status: 'pending' as const },
+  ];
+}
+
 /** Snapshot reproducible para el estado pedido; `nowEpochMs` se inyecta. */
 export function createDemoWidgetSnapshot(state: WidgetDemoState, nowEpochMs: number): WidgetSnapshot {
   switch (state) {
     case 'next':
-      return buildWidgetSnapshot({ alarms: demoAlarms(nowEpochMs), nowEpochMs, scope: WIDGET_DEMO_SCOPE });
+      return buildWidgetSnapshot({ alarms: demoAlarms(nowEpochMs), tasks: demoTasks(nowEpochMs), nowEpochMs, scope: WIDGET_DEMO_SCOPE });
     case 'stale':
       return buildWidgetSnapshot({
-        alarms: demoAlarms(nowEpochMs),
+        alarms: demoAlarms(nowEpochMs), tasks: demoTasks(nowEpochMs),
         nowEpochMs,
         scope: WIDGET_DEMO_SCOPE,
         // Publicado hace tres horas: la próxima alarma sigue siendo futura.

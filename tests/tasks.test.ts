@@ -4,6 +4,8 @@ import {
   cancelTask,
   completeTask,
   reopenTask,
+  respondTaskAssignment,
+  taskCanChangeCompletion,
   createTask,
   describeTaskCardState,
   describeTaskDue,
@@ -273,7 +275,8 @@ test('task metadata is normalized, bounded and preserved on completion', () => {
   const task = createTask({ id: 'metadata', groupId: 'piso-4b', createdByUid: 'u-marta', members: MEMBERS, draft: { ...DRAFT, description: '  Limpiar también el horno.  ', category: ' Limpieza ' } });
   assert.equal(task.description, 'Limpiar también el horno.');
   assert.equal(task.category, 'Limpieza');
-  assert.equal(completeTask(task, { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW }).task.description, task.description);
+  const accepted = respondTaskAssignment(task, { actorUid: 'u-luis', members: MEMBERS, decision: 'accepted' });
+  assert.equal(completeTask(accepted, { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW }).task.description, task.description);
   assert.throws(() => validateTaskDraft({ ...DRAFT, description: 'x'.repeat(2001) }, MEMBERS));
   assert.throws(() => validateTaskDraft({ ...DRAFT, category: 'x'.repeat(81) }, MEMBERS));
   assert.equal(validateTaskDraft({ ...DRAFT, category: '  ' }, MEMBERS).category, null);
@@ -308,4 +311,30 @@ test('tareas: reapertura en repositorio respeta versión y reintentos', async ()
   assert.equal(repository.tasks[0]!.version, 4);
   assert.equal(repository.tasks[0]!.completedByUid, null);
   await assert.rejects(repository.submit({ ...command, operationId: 'reopen-stale' }), (error: unknown) => isDomainError(error) && error.code === 'VERSION_CONFLICT');
+});
+
+
+test('task assignment consent belongs only to the assignee and gates completion', () => {
+  const task = createTask({ id: 'consent-task', groupId: 'piso-4b', createdByUid: 'u-marta', draft: DRAFT, members: MEMBERS });
+  assert.equal(task.assignmentDecision, 'pending');
+  assert.equal(taskCanChangeCompletion(task), false);
+  assert.throws(() => completeTask(task, { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW }), /aceptar/);
+  assert.throws(() => respondTaskAssignment(task, { actorUid: 'u-marta', members: MEMBERS, decision: 'accepted' }), /Solo la persona/);
+  const accepted = respondTaskAssignment(task, { actorUid: 'u-luis', members: MEMBERS, decision: 'accepted' });
+  assert.equal(accepted.assignmentDecision, 'accepted'); assert.equal(accepted.version, 2);
+  assert.equal(completeTask(accepted, { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW }).task.status, 'completed');
+  assert.equal(respondTaskAssignment(accepted, { actorUid: 'u-luis', members: MEMBERS, decision: 'accepted' }), accepted);
+  const rejected = respondTaskAssignment(task, { actorUid: 'u-luis', members: MEMBERS, decision: 'rejected' });
+  assert.throws(() => completeTask(rejected, { actorUid: 'u-luis', members: MEMBERS, nowEpochMs: NOW }), /rechazada/);
+  assert.equal(cancelTask(rejected, { actorUid: 'u-marta', members: MEMBERS, nowEpochMs: NOW }).task.status, 'cancelled');
+  assert.throws(() => respondTaskAssignment(rejected, { actorUid: 'u-luis', members: MEMBERS, decision: 'accepted' }), /espera respuesta/);
+});
+
+test('self-assigned, unassigned and legacy tasks remain completable without assignment approval', () => {
+  for (const assigneeUid of ['u-marta', null]) {
+    const task = createTask({ id: 'self-task', groupId: 'piso-4b', createdByUid: 'u-marta', draft: { ...DRAFT, assigneeUid }, members: MEMBERS });
+    assert.equal(task.assignmentDecision, 'not_required');
+    assert.equal(taskCanChangeCompletion(task), true);
+  }
+  assert.equal(taskCanChangeCompletion(seedTask()), true);
 });

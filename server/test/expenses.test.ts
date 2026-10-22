@@ -173,7 +173,7 @@ test('expenses migration upgrades schema 4 without modifying existing households
       VALUES('old-task','old-group','Comprar pan','PENDING',1,1,1,'old-user','Integral','Compra');`);
     const before = db.prepare('SELECT * FROM tasks').all();
     assert.deepEqual(migrate(db).applied.map(m => m.version), [5, 6, 7]);
-    assert.deepEqual(db.prepare('SELECT * FROM tasks').all(), before);
+    assert.deepEqual(db.prepare('SELECT * FROM tasks').all(), before.map(row => ({ ...(row as object), assignment_decision: 'not_required' })));
     assert.equal((db.prepare('SELECT name FROM groups').get() as { name: string }).name, 'Casa anterior');
     assert.equal(integrityCheck(db), 'ok');
     assert.equal(migrate(db).applied.length, 0);

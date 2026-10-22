@@ -53,10 +53,11 @@ export interface ProductClient {
   createGroup(name: string, timeZone: string): Promise<void>;
   createInvitation(): Promise<string>;
   joinGroup(token: string): Promise<void>;
-  createAlarm(payload: CreateAlarmRequestPayload, operationId: string): Promise<string | null>;
+  createAlarm(payload: CreateAlarmRequestPayload, operationId: string, createLinkedTask?: boolean): Promise<string | null>;
   respond(alarm: ProductAlarm, payload: RespondToAlarmPayload, operationId: string): Promise<void>;
   withdraw(alarm: ProductAlarm, operationId: string): Promise<void>;
   createTask(draft: TaskDraft, operationId: string): Promise<string>;
+  respondTaskAssignment(task: HouseholdTask, decision: 'accepted' | 'rejected', operationId: string): Promise<void>;
   updateTask(task: HouseholdTask, status: 'pending' | 'completed' | 'cancelled', operationId: string): Promise<void>;
   askAssistant(text: string, conversationId?: string): Promise<AssistantReply>;
   makePrimaryDevice(): Promise<string>;

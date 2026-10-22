@@ -18,6 +18,7 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
       localDate: clock.localDate, localTime: clock.localTime, timeZone: initialDraft?.timeSpec.timeZone ?? group?.timeZone ?? 'Europe/Madrid',
       mode: initialDraft?.mode ?? 'ALARM', weekly: !!initialDraft?.recurrence, taskId: initialDraft?.taskId ?? initialTaskId ?? '', untilEpochMs: initialDraft?.recurrence?.untilEpochMs };
   });
+  const [createLinkedTask, setCreateLinkedTask] = useState(!initialDraft?.taskId && !initialTaskId);
   const operationId = useRef(createSubmissionIds());
   const locked = useRef(false);
   const action = useAction();
@@ -34,7 +35,7 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
     void action.run(async () => {
       if (!state.groupId) throw new Error('Crea un piso o únete a uno antes de proponer un aviso.');
       const payload = alarmPayload(form, { ...context, nowEpochMs: Date.now() });
-      const id = await client.createAlarm(payload, operationId.current(`${state.session?.userId}:${state.groupId}`, payload));
+      const id = await client.createAlarm(payload, operationId.current(`${state.session?.userId}:${state.groupId}`, { payload, createLinkedTask }), createLinkedTask && !payload.taskId);
       setSent(true);
       if (id) router.replace({ pathname: '/alarm/[requestId]', params: { requestId: id } });
     }).finally(() => { locked.current = false; });
@@ -59,8 +60,9 @@ export function AlarmCreateScreen({ initialDraft, initialTaskId, onCancel }: { i
         <Text style={typography.support}>{form.weekly ? 'Se repetirá el mismo día de la semana y a la misma hora local. Cada persona puede autorizar una ocasión o la serie.' : 'Un único aviso, a la hora que acuerdes.'}</Text>
         {form.weekly && form.untilEpochMs !== undefined ? <><Text style={typography.support}>La serie termina el {formatDateTimeInZone(form.untilEpochMs, initialDraft?.timeSpec.timeZone ?? group?.timeZone ?? 'Europe/Madrid')}. Revisa este límite del borrador.</Text><Action disabled={action.busy} onPress={() => update('untilEpochMs', undefined)}>Quitar fecha de fin</Action></> : null}
         <Text style={typography.labelOnNote}>TAREA ASOCIADA</Text>
-        <View style={styles.choices}><Choice label="Aviso independiente" selected={!form.taskId} onPress={() => { if (!action.busy) update('taskId', ''); }} />{tasks.map(task => <Choice key={task.id} label={task.title} selected={form.taskId === task.id} onPress={() => { if (!action.busy) update('taskId', task.id); }} />)}</View>
-        {form.taskId && form.mode === 'ALARM' ? <Text style={typography.support}>En la app Android actualizada, esta alarma vuelve a avisar a los 10 minutos mientras la tarea siga pendiente. Detenerla no completa la tarea.</Text> : null}
+        <View style={styles.choices}><Choice label="Crear tarea con este aviso" selected={createLinkedTask && !form.taskId} onPress={() => { if (!action.busy) { setCreateLinkedTask(true); update('taskId', ''); } }} /><Choice label="Aviso independiente" selected={!createLinkedTask && !form.taskId} onPress={() => { if (!action.busy) { setCreateLinkedTask(false); update('taskId', ''); } }} />{tasks.map(task => <Choice key={task.id} label={task.title} selected={form.taskId === task.id} onPress={() => { if (!action.busy) { setCreateLinkedTask(false); update('taskId', task.id); } }} />)}</View>
+        {createLinkedTask && !form.taskId ? <Text style={typography.support}>Se creará una tarea con este título y fecha. Si eliges una persona, será la responsable; si eliges varias, quedará compartida en el piso.</Text> : null}
+        {(form.taskId || createLinkedTask) && form.mode === 'ALARM' ? <Text style={typography.support}>En la app Android actualizada, esta alarma vuelve a avisar a los 10 minutos mientras la tarea siga pendiente. Detenerla no completa la tarea.</Text> : null}
       </Sheet>
       {preview ? <Message text={`${preview.title} · ${formatDateTimeInZone(preview.timeSpec.effectiveAtEpochMs, preview.timeSpec.timeZone)} (${preview.timeSpec.timeZone}) · ${preview.recipientUids.length} persona${preview.recipientUids.length === 1 ? '' : 's'}${preview.recurrence ? ' · cada semana' : ''}.`} /> : null}
       <Message text={action.error} error />

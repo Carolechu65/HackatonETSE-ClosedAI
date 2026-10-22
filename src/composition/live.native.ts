@@ -2,12 +2,13 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { startMobileServices } from '../bootstrap/startMobile.ts';
 import { createAlarmRuntime } from '../platform/alarms/index.ts';
+import { createAssignmentNotifications } from '../platform/notifications/assignments.native.ts';
 import { createNotificationRuntime, requestNotificationPermission } from '../platform/notifications/native.ts';
 import { productWireCodec } from './wire.ts';
 import { apiBaseUrlFromEnv } from '../config/api.ts';
 import { createIdGenerator } from '../domain/ids.ts';
 import { clearWidget, syncWidgetForSession } from '../widgets/publisher.ts';
-import { projectSelectedWidget } from './widgetProjection.ts';
+import { isValidWidgetTaskProjection, projectSelectedWidget, projectWidgetTasks, type WidgetTaskProjection } from './widgetProjection.ts';
 import type { ProductBackend } from './backend.ts';
 import type { DataSnapshot, PersistedWidgetSnapshot } from '../data/repositories/alarmRepository.ts';
 
@@ -18,48 +19,106 @@ export async function createLiveBackend(): Promise<ProductBackend> {
   const checkPublication = (result: ReturnType<typeof clearWidget>) => { if (!result.published && result.reason === 'native_error') throw new Error('No se pudo limpiar o actualizar el widget del dispositivo. Vuelve a intentarlo.'); };
   let selectedScope: { userId: string; groupId: string | null } | null = null;
   let widgetProjection: PersistedWidgetSnapshot | null = null;
+  let taskProjection: WidgetTaskProjection | null = null;
+  let publicationGeneration = 0;
+  let pendingTaskCacheClearUserId: string | null = null;
+  let taskCacheWrite: Promise<void> = Promise.resolve();
+  const taskCacheKey = (userId: string) => `alarmat.widgetTasks.${userId}`;
   const publishSelectedWidget = (snapshot: PersistedWidgetSnapshot) => {
     const groupId = selectedScope?.userId === snapshot.userId ? selectedScope.groupId : null;
-    const widget = projectSelectedWidget(snapshot, groupId);
+    if (selectedScope?.userId === snapshot.userId && groupId === null) { checkPublication(clearWidget(Date.now())); return; }
+    const widget = projectSelectedWidget(snapshot, groupId, taskProjection);
     if (!widget) { checkPublication(clearWidget(Date.now())); return; }
-    checkPublication(syncWidgetForSession(widget, widget.scope, Date.now()));
+    checkPublication(syncWidgetForSession(widget, widget.scope, Date.now(), { timeZone: taskProjection && taskProjection.snapshot.scope?.userId === widget.scope?.userId && taskProjection?.snapshot.scope?.groupId === widget.scope?.groupId ? taskProjection.timeZone : undefined }));
   };
   const runtime = createAlarmRuntime(); const notificationRuntime = createNotificationRuntime();
   const client = await startMobileServices({
     baseUrl: apiBaseUrlFromEnv({ allowLocalHttp: __DEV__ }), allowLocalHttp: __DEV__, codec: productWireCodec, deviceId, deviceIdForUser, runtime, notificationRuntime,
     async publishWidget(snapshot) {
+      const expected = ++publicationGeneration;
       widgetProjection = snapshot;
-      if (!snapshot) { selectedScope = null; checkPublication(clearWidget(Date.now())); return; }
-      if (selectedScope?.userId !== snapshot.userId) {
-        const groupId = await SecureStore.getItemAsync(`alarmat.widgetGroup.${snapshot.userId}`);
-        selectedScope = { userId: snapshot.userId, groupId };
+      if (!snapshot) {
+        const oldUserId = selectedScope?.userId ?? pendingTaskCacheClearUserId;
+        pendingTaskCacheClearUserId = oldUserId ?? null;
+        selectedScope = null; taskProjection = null;
+        checkPublication(clearWidget(Date.now()));
+        if (oldUserId) {
+          taskCacheWrite = taskCacheWrite.catch(() => undefined).then(() => SecureStore.deleteItemAsync(taskCacheKey(oldUserId)));
+          await taskCacheWrite;
+          if (pendingTaskCacheClearUserId === oldUserId) pendingTaskCacheClearUserId = null;
+        }
+        return;
       }
-      publishSelectedWidget(snapshot);
+      if (selectedScope?.userId !== snapshot.userId) {
+        const [savedGroupId, savedTasks] = await Promise.all([
+          SecureStore.getItemAsync(`alarmat.widgetGroup.${snapshot.userId}`),
+          SecureStore.getItemAsync(taskCacheKey(snapshot.userId)),
+        ]);
+        if (expected !== publicationGeneration) return;
+        taskProjection = null;
+        try { const cached: unknown = savedTasks ? JSON.parse(savedTasks) : null;
+          if (isValidWidgetTaskProjection(cached) && cached.snapshot.scope?.userId === snapshot.userId) taskProjection = cached;
+        } catch { /* Corrupt private cache is discarded. */ }
+        selectedScope = { userId: snapshot.userId,
+          groupId: savedGroupId ?? snapshot.groups[0]?.groupId ?? taskProjection?.snapshot.scope?.groupId ?? null };
+      }
+      if (expected === publicationGeneration) publishSelectedWidget(snapshot);
     },
   });
+  const assignments = createAssignmentNotifications({
+    baseUrl: apiBaseUrlFromEnv({ allowLocalHttp: __DEV__ }),
+    currentUserId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
+    request: (path, method, body) => client.request(path, method, body),
+  });
+  let widgetActionNotice: string | null = null;
   let snapshot: DataSnapshot | null = null; let unsubscribeRepository: (() => void) | undefined;
   const listeners = new Set<() => void>(); const notify = () => { for (const listener of listeners) listener(); };
   client.subscribe(() => {
     unsubscribeRepository?.(); const repository = client.getRepository();
-    if (!repository) { snapshot = null; notify(); return; }
+    if (!repository) { snapshot = null; void assignments.clear().catch(() => undefined); notify(); return; }
     unsubscribeRepository = repository.subscribe(value => { snapshot = value; notify(); });
   });
   let registeredUserId: string | null = null;
   const registerInstallation = async () => { const userId = client.view().session!.userId; await client.request('/v1/devices', 'POST', { deviceId: deviceIdForUser(client.view().session!.userId), platform: Platform.OS === 'android' ? 'android' : 'ios' }); registeredUserId = userId; };
   return {
     cleanupPending: () => client.view().cleanupPending,
-    async initialize() { await client.initialize(); }, userId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
-    async authenticate(input, register) { await (register ? client.register(input) : client.login(input)); await registerInstallation(); },
-    async logout() { await client.logout(); registeredUserId = null; },
+    async initialize() { await client.initialize(); await assignments.configure(); }, userId: () => client.view().session?.authenticated ? client.view().session!.userId : null,
+    async authenticate(input, register) { await (register ? client.register(input) : client.login(input)); await registerInstallation(); await assignments.configure(); },
+    async logout() { const userId = client.view().session?.userId ?? null; await Promise.all([client.logout(), assignments.clear(userId)]); registeredUserId = null; },
     request: (path, method, body) => client.request(path, method, body),
     async submit(command) { const repository = client.getRepository(); if (!repository) throw new Error('Inicia sesión para continuar.'); return repository.submit(command); },
-    async reconcile() { if (client.view().session?.authenticated && registeredUserId !== client.view().session?.userId) await registerInstallation(); await client.sync.reconcile(); },
+    async reconcile() {
+      if (client.view().session?.authenticated && registeredUserId !== client.view().session?.userId) await registerInstallation();
+      await assignments.configure();
+      widgetActionNotice = await assignments.consumeTasks() ?? widgetActionNotice;
+      await client.sync.reconcile();
+      await assignments.sync();
+    },
+    consumeNotice() { const notice = widgetActionNotice; widgetActionNotice = null; return notice; },
     async selectGroup(groupId) {
       const userId = client.view().session?.userId;
       if (!userId) return;
+      ++publicationGeneration;
       selectedScope = { userId, groupId };
-      if (widgetProjection?.userId === userId) publishSelectedWidget(widgetProjection);
-      await SecureStore.setItemAsync(`alarmat.widgetGroup.${userId}`, groupId);
+      if (groupId === null) { taskProjection = null; checkPublication(clearWidget(Date.now())); }
+      else if (widgetProjection?.userId === userId) publishSelectedWidget(widgetProjection);
+      else checkPublication(clearWidget(Date.now()));
+      if (groupId === null) {
+        taskCacheWrite = taskCacheWrite.catch(() => undefined).then(() => SecureStore.deleteItemAsync(taskCacheKey(userId)));
+        await Promise.all([taskCacheWrite, SecureStore.deleteItemAsync(`alarmat.widgetGroup.${userId}`)]);
+      }
+      else await SecureStore.setItemAsync(`alarmat.widgetGroup.${userId}`, groupId);
+    },
+    async updateWidgetTasks(context) {
+      if (client.view().session?.userId !== context.userId || selectedScope?.userId !== context.userId
+        || selectedScope.groupId !== context.groupId) return;
+      taskProjection = projectWidgetTasks(context);
+      const serialized = JSON.stringify(taskProjection);
+      taskCacheWrite = taskCacheWrite.catch(() => undefined).then(() => SecureStore.setItemAsync(taskCacheKey(context.userId), serialized));
+      if (widgetProjection?.userId === context.userId) publishSelectedWidget(widgetProjection);
+      else publishSelectedWidget({ schemaVersion: 1, userId: context.userId, generatedAtEpochMs: context.generatedAtEpochMs,
+        lastSyncedAtEpochMs: context.generatedAtEpochMs, stale: false, groups: [] });
+      await taskCacheWrite;
     },
     decorate(alarms) {
       return alarms.map(alarm => {

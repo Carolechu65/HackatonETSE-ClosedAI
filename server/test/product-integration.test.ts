@@ -162,7 +162,7 @@ test('task idempotency/version checks and linked withdrawal share the canonical 
     const payload = {
       operationId: operationId(),
       title: 'Limpiar cocina',
-      assigneeUid: b.uid,
+      assigneeUid: a.uid,
       activateAtEpochMs: null,
       dueAtEpochMs: null,
     };

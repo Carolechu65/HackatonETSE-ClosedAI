@@ -1,4 +1,5 @@
 import type { AlarmCommand, OperationReceipt } from '../domain/contracts/types.ts';
+import type { WidgetTaskContext } from './widgetProjection.ts';
 import type { ProductAlarm } from './product.ts';
 
 /** One session and one transport, implemented by the P5 adapters. */
@@ -11,7 +12,9 @@ export interface ProductBackend {
   request(path: string, method?: 'GET' | 'POST', body?: unknown): Promise<unknown>;
   submit(command: AlarmCommand): Promise<OperationReceipt>;
   reconcile(): Promise<void>;
-  selectGroup?(groupId: string): Promise<void>;
+  consumeNotice?(): string | null;
+  selectGroup?(groupId: string | null): Promise<void>;
+  updateWidgetTasks?(context: WidgetTaskContext): Promise<void>;
   decorate(alarms: ProductAlarm[]): ProductAlarm[];
   cached?(): { userId: string; alarms: ProductAlarm[]; lastSync: number | null };
   pending(): number;

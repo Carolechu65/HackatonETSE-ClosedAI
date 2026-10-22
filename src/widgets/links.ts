@@ -17,6 +17,7 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
 export type WidgetLink =
   | { readonly kind: 'inbox' }
+  | { readonly kind: 'tasks' }
   | { readonly kind: 'alarm'; readonly requestId: string }
   | { readonly kind: 'task'; readonly taskId: string };
 
@@ -27,6 +28,11 @@ export function isSafeLinkId(value: unknown): value is string {
 /** Tablón: propuestas y próximas alarmas. */
 export function inboxLink(): string {
   return `${WIDGET_LINK_SCHEME}:///`;
+}
+
+/** All pending and completed tasks in the selected household. */
+export function tasksLink(): string {
+  return `${WIDGET_LINK_SCHEME}://tasks`;
 }
 
 /** Detalle de una propuesta. Abrir no acepta ni programa nada. */
@@ -71,6 +77,7 @@ export function parseWidgetLink(url: unknown): WidgetLink | null {
   const pathSegments = parsed.pathname.split('/').filter((segment) => segment.length > 0);
   const segments = parsed.hostname === '' ? pathSegments : [parsed.hostname, ...pathSegments];
   if (segments.length === 0) return { kind: 'inbox' };
+  if (segments.length === 1 && segments[0] === 'tasks') return { kind: 'tasks' };
   if (segments.length !== 2) return null;
 
   const [section, id] = segments;
@@ -87,6 +94,8 @@ export function widgetLinkToRoute(url: unknown): string | null {
   switch (link.kind) {
     case 'inbox':
       return '/';
+    case 'tasks':
+      return '/tasks';
     case 'alarm':
       return `/alarm/${link.requestId}`;
     case 'task':

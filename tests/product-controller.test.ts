@@ -95,3 +95,75 @@ for (const feature of ['finance', 'calendar'] as const) {
   assert.deepEqual(sent, []);
  });
 }
+
+test('live task changes publish refreshed widget context; failed household switch clears selection first', async () => {
+  let userId: string | null = 'ana';
+  let tasks: import('../src/features/tasks/model.ts').HouseholdTask[] = [];
+  let published: import('../src/composition/widgetProjection.ts').WidgetTaskContext | null = null;
+  const selections: Array<string | null> = [];
+  let failB = false;
+  const api: ProductBackend = {
+    initialize: async () => {}, authenticate: async () => {}, userId: () => userId,
+    logout: async () => { userId = null; published = null; }, reconcile: async () => {},
+    selectGroup: async id => { selections.push(id); }, updateWidgetTasks: async value => { published = value; },
+    request: async (path, method, body) => {
+      if (path === '/v1/groups') return { groups: ['a', 'b'].map(id => ({ id, name: id, timeZone: 'Europe/Madrid', role: 'member' })) };
+      if (path === '/v1/auth/me') return { user: { displayName: 'Ana' } };
+      if (path.includes('/b/') && failB) throw new Error('Sin red');
+      if (path.endsWith('/members')) return { members: [{ userId: 'ana', displayName: 'Ana', role: 'member' }] };
+      if (path.endsWith('/alarms')) return { alarms: [] };
+      if (method === 'POST' && path.endsWith('/tasks')) {
+        tasks = [{ ...(body as import('../src/features/tasks/model.ts').TaskDraft), id: 'nueva', groupId: 'a', createdByUid: 'ana', status: 'pending', version: 1, completedByUid: null, completedAtEpochMs: null }];
+        return { id: 'nueva' };
+      }
+      if (method === 'POST' && path.endsWith('/tasks/nueva')) {
+        tasks = tasks.map(task => ({ ...task, status: (body as { status: 'pending' | 'completed' }).status, version: task.version + 1 }));
+        return {};
+      }
+      if (path.endsWith('/tasks')) return { tasks };
+      throw new Error(`Unexpected ${path}`);
+    },
+    submit: async () => { throw new Error('unused'); }, decorate: alarms => alarms, pending: () => 0,
+    subscribe: () => () => {}, makePrimaryDevice: async () => '', requestPermissions: async () => '',
+  };
+  const client = createProductController(async () => api);
+  await client.signIn({ email: 'ana@example.test', password: 'unused' }, false);
+  await client.createTask({ title: 'Comprar pan', assigneeUid: 'ana', activateAtEpochMs: null, dueAtEpochMs: null }, 'create');
+  const getPublished = () => published as import('../src/composition/widgetProjection.ts').WidgetTaskContext | null;
+  assert.equal(getPublished()?.tasks[0]?.title, 'Comprar pan');
+  await client.updateTask(client.getSnapshot().tasks[0]!, 'completed', 'complete');
+  assert.equal(getPublished()?.tasks[0]?.status, 'completed');
+  await client.updateTask(client.getSnapshot().tasks[0]!, 'pending', 'reopen');
+  assert.equal(getPublished()?.tasks[0]?.status, 'pending');
+  failB = true;
+  await assert.rejects(client.selectGroup('b'), /Sin red/);
+  assert.equal(selections.at(-1), 'b');
+  assert.deepEqual(client.getSnapshot().tasks, []);
+  await client.signOut(); assert.equal(getPublished(), null);
+});
+
+
+test('demo task assignment accepts explicitly, rejects unauthorized responses and replays once', async () => {
+  const client = demo(); await client.startDemo();
+  const pending = client.getSnapshot().tasks.find(task => task.id === 'demo-asignacion')!;
+  await assert.rejects(client.updateTask(pending, 'completed', 'before-accept'), /aceptar/);
+  await client.respondTaskAssignment(pending, 'accepted', 'assignment-accept');
+  await client.respondTaskAssignment(pending, 'accepted', 'assignment-accept');
+  const accepted = client.getSnapshot().tasks.find(task => task.id === pending.id)!;
+  assert.equal(accepted.assignmentDecision, 'accepted'); assert.equal(accepted.version, pending.version + 1);
+  await client.updateTask(accepted, 'completed', 'after-accept');
+  assert.equal(client.getSnapshot().tasks.find(task => task.id === pending.id)?.status, 'completed');
+  const id = await client.createTask({ title: 'Asignada a Dani', assigneeUid: 'demo-dani', activateAtEpochMs: null, dueAtEpochMs: null }, 'assign-dani');
+  const other = client.getSnapshot().tasks.find(task => task.id === id)!;
+  assert.equal(other.assignmentDecision, 'pending');
+  await assert.rejects(client.respondTaskAssignment(other, 'accepted', 'impersonate'), /Solo la persona/);
+});
+
+test('demo task rejection preserves pending work while blocking completion', async () => {
+  const client = demo(); await client.startDemo();
+  const pending = client.getSnapshot().tasks.find(task => task.id === 'demo-asignacion')!;
+  await client.respondTaskAssignment(pending, 'rejected', 'assignment-reject');
+  const rejected = client.getSnapshot().tasks.find(task => task.id === pending.id)!;
+  assert.equal(rejected.assignmentDecision, 'rejected'); assert.equal(rejected.status, 'pending');
+  await assert.rejects(client.updateTask(rejected, 'completed', 'complete-rejected'), /rechazada/);
+});

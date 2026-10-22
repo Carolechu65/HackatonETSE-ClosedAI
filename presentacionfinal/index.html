@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>alarmaT · presentación (borrador)</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=2" />
 </head>
 <body>
   <div class="stage" id="stage">
@@ -338,37 +338,37 @@
     <!-- 09 · Estado real -->
     <section class="slide" data-title="Estado real">
       <header class="head">
-        <p class="eyebrow">SIN HUMO</p>
-        <h2 class="title">Qué hay hoy, qué falta</h2>
+        <p class="eyebrow">ESTADO DEL PRODUCTO</p>
+        <h2 class="title">Lo que ya está y lo que viene</h2>
       </header>
       <div class="grid grid--2">
         <article class="note note--2 note--plain">
           <span class="magnet magnet--2"></span>
-          <p class="note-label">YA FUNCIONA · CON EVIDENCIA</p>
+          <p class="note-label">YA IMPLEMENTADO</p>
           <ul class="checklist">
-            <li>UI esqueleto: 4 menús, interacciones y 19 tests del modelo.</li>
-            <li>Contratos v1: 15 esquemas, 42 fixtures, 59 tests en la app.</li>
-            <li>API local Fastify + SQLite con 22 pruebas: sesiones, operaciones, feed y agente.</li>
-            <li>APK debug compila e incluye el módulo Kotlin.</li>
-            <li>CI: tipos, contratos, tests, backend y export Android.</li>
+            <li><strong>Alarmas:</strong> proponer, aceptar, rechazar o cambiar la hora; programación local con runtime Kotlin.</li>
+            <li><strong>Tareas:</strong> crear, asignar a una persona, marcar y completar.</li>
+            <li><strong>Gastos compartidos:</strong> reparto y saldos del piso.</li>
+            <li><strong>Tickets:</strong> apuntar el ticket como gasto compartido y repartirlo.</li>
+            <li><strong>Agente de IA:</strong> petición en lenguaje natural y propuesta lista.</li>
+            <li><strong>Google Calendar:</strong> conectar la cuenta y crear el evento.</li>
+            <li><strong>Pisos:</strong> miembros, invitaciones y sesión propia.</li>
           </ul>
         </article>
         <article class="note note--3 note--plain">
           <span class="magnet magnet--3"></span>
-          <p class="note-label">PENDIENTE · SIN MAQUILLAJE</p>
+          <p class="note-label">SIGUIENTE</p>
           <ul class="crosslist">
-            <li>Conectar la app a la API y la sesión real.</li>
-            <li>Alarma audible sin proceso JS en un móvil físico.</li>
-            <li>Widget y prueba entre dos teléfonos.</li>
-            <li>VPS desplegado con HTTPS, secretos y backups.</li>
-            <li>Push real y permisos revocados.</li>
+            <li><strong>Asignar con aceptación:</strong> proponer una tarea a una persona concreta y que confirme, con rotaciones e intercambios.</li>
+            <li><strong>Prioridad en las tareas:</strong> alta, media o baja, para saber qué va primero en el piso.</li>
+            <li><strong>Hucha con límite:</strong> objetivo de ahorro y tope de presupuesto por categoría, con aviso al acercarse.</li>
           </ul>
         </article>
       </div>
-      <p class="footnote">No presentamos una notificación como alarma ni una migración documental como backend operativo.</p>
+      <p class="footnote">59 tests de app · 42 fixtures de contrato · 22 pruebas de API · módulo Kotlin y APK compilados.</p>
       <aside class="notes">
-        <p>Este slide protege al equipo: lo que no está, se dice antes de que lo pregunten.</p>
-        <p>Los 22 tests del servidor se ejecutan en local; no hay VPS todavía.</p>
+        <p>Asignar responsables ya existe; lo que falta es el circuito de aceptación y las rotaciones.</p>
+        <p>La hucha con tope de presupuesto es el siguiente módulo de convivencia que mejor encaja con el pitch.</p>
       </aside>
     </section>
 
@@ -382,7 +382,7 @@
           <span class="magnet magnet--1"></span>
           <p class="note-label">REPOSITORIO</p>
           <p class="body">github.com/Carolechu65/HackatonETSE-ClosedAI</p>
-          <p class="support">Rama <code>P1-Esqueleto</code> · presentación en <code>presentation/</code></p>
+          <p class="support">Rama <code>P1-Esqueleto</code> · presentación en <code>presentacionfinal/</code></p>
         </div>
       </div>
       <aside class="notes">

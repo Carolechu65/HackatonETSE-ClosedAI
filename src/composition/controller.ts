@@ -2,7 +2,7 @@ import { createFinanceClient } from '../features/expenses/client.ts';
 import { createCalendarClient } from '../features/calendar/client.ts';
 import type { CreateAlarmRequestPayload, RespondToAlarmPayload, AlarmCommand } from '../domain/contracts/types.ts';
 import { parseAlarmRequestDocument, parseRecipientDocument, parseScheduleDocument, parseCreateAlarmRequest, parseRespondToAlarm } from '../domain/contracts/validate.ts';
-import { createTask, completeTask, cancelTask, reopenTask, validateTaskDraft, type HouseholdTask, type TaskDraft } from '../features/tasks/model.ts';
+import { createTask, completeTask, cancelTask, reopenTask, respondTaskAssignment, validateTaskDraft, type HouseholdTask, type TaskDraft } from '../features/tasks/model.ts';
 import { createIdGenerator } from '../domain/ids.ts';
 import { isValidTimeZone } from '../domain/time.ts';
 import { DomainError } from '../domain/errors.ts';
@@ -23,6 +23,7 @@ function decodeTasks(value: unknown, groupId: string): HouseholdTask[] {
     const row = record(item);
     if (row.groupId !== groupId || !['pending', 'completed', 'cancelled'].includes(String(row.status)) || !Number.isSafeInteger(row.version)) throw new Error('La tarea no pertenece al piso actual.');
     text(row.id); text(row.title); text(row.createdByUid);
+    if (row.assignmentDecision !== undefined && !['pending', 'accepted', 'rejected', 'not_required'].includes(String(row.assignmentDecision))) throw new Error('La respuesta de asignación no es válida.');
     return row as unknown as HouseholdTask;
   });
 }
@@ -76,7 +77,10 @@ export function createProductController(backendFactory: () => Promise<ProductBac
     const user = record(record(profile).user ?? profile);
     await api.selectGroup?.(groupId); assertGeneration(expected);
     set({ session: { userId, displayName: typeof user.displayName === 'string' ? user.displayName : 'Tú', mode: 'live' }, groups, groupId,
-      members: decodeMembers(members), alarms: api.decorate(decodeProductAlarms(alarms, groupId, userId)), tasks: decodeTasks(tasks, groupId), lastSync: Date.now(), pending: api.pending(), error: null });
+      members: decodeMembers(members), alarms: api.decorate(decodeProductAlarms(alarms, groupId, userId)), tasks: decodeTasks(tasks, groupId), lastSync: Date.now(), pending: api.pending(), error: api.consumeNotice?.() ?? null });
+    await api.updateWidgetTasks?.({ userId, groupId, tasks: state.tasks, members: state.members,
+      generatedAtEpochMs: state.lastSync!, timeZone: groups.find(group => group.id === groupId)?.timeZone ?? 'UTC' });
+    assertGeneration(expected);
   }
   async function refresh(): Promise<void> {
     if (isDemo()) return;
@@ -90,7 +94,7 @@ export function createProductController(backendFactory: () => Promise<ProductBac
         const groups = decodeGroups(await api.request('/v1/groups')); assertGeneration(expected);
         const groupId = groups.some(group => group.id === state.groupId) ? state.groupId : groups[0]?.id ?? null;
         if (groupId) await loadGroup(api, groupId, expected, groups);
-        else { const envelope = record(await api.request('/v1/auth/me')); const profile = record(envelope.user ?? envelope); assertGeneration(expected); set({ session: { userId: api.userId()!, displayName: typeof profile.displayName === 'string' ? profile.displayName : 'Tú', mode: 'live' }, groups, groupId: null, alarms: [], tasks: [], members: [], error: null, lastSync: Date.now() }); }
+        else { await api.selectGroup?.(null); const envelope = record(await api.request('/v1/auth/me')); const profile = record(envelope.user ?? envelope); assertGeneration(expected); set({ session: { userId: api.userId()!, displayName: typeof profile.displayName === 'string' ? profile.displayName : 'Tú', mode: 'live' }, groups, groupId: null, alarms: [], tasks: [], members: [], error: null, lastSync: Date.now() }); }
       } catch (error) {
         if (expected === generation) {
           if (error instanceof DomainError && error.code === 'UNAUTHENTICATED') set({ session: null, groups: [], groupId: null, alarms: [], members: [], tasks: [], error: 'La sesión ha caducado. Vuelve a entrar.' });
@@ -172,7 +176,7 @@ export function createProductController(backendFactory: () => Promise<ProductBac
       if (!state.groups.some(group => group.id === id)) throw new Error('No tienes acceso a este piso.');
       if (id === state.groupId) return;
       ++generation; set({ groupId: id, members: [], alarms: [], tasks: [], error: null });
-      if (!isDemo()) { await flight?.catch(() => undefined); await refresh(); }
+      if (!isDemo()) { await backend?.selectGroup?.(id); await flight?.catch(() => undefined); await refresh(); }
     },
     async createGroup(name, timeZone) {
       if (!name.trim() || !isValidTimeZone(timeZone)) throw new Error('Indica un nombre y una zona horaria válida.');
@@ -188,13 +192,23 @@ export function createProductController(backendFactory: () => Promise<ProductBac
       if (isDemo()) throw new Error('Entra con tu cuenta para usar una invitación real.');
       const expected = generation; const api = await ensureBackend(); const result = record(await api.request('/v1/invitations/accept', 'POST', { token })); assertGeneration(expected); set({ groupId: text(result.id ?? result.groupId) }); await refresh();
     },
-    async createAlarm(payload, operationId) {
+    async createAlarm(payload, operationId, createLinkedTask = false) {
       const groupId = requireGroup(); const command = parseCreateAlarmRequest({ schemaVersion: 1, operationId, groupId, payload }, { nowEpochMs: Date.now() });
       if (isDemo()) {
-        const previous = replay(operationId, command); if (previous) return previous.result;
+        const previous = replay(operationId, { command, createLinkedTask }); if (previous) return previous.result;
         const id = ids.next('demo-alarm'); const now = Date.now();
-        set({ alarms: [{ groupId, requestId: id, request: { ...payload, creatorUid: state.session!.userId, requestVersion: 1, status: 'ACTIVE', createdAtEpochMs: now, updatedAtEpochMs: now }, recipients: payload.recipientUids.map(uid => ({ uid, receivedVersion: 1, reception: 'NOT_ACKNOWLEDGED', decision: 'PENDING', decisionRevision: 1, updatedAtEpochMs: now })), schedules: [] }, ...state.alarms] });
-        remember(operationId, command, id); return id;
+        const task = createLinkedTask && !payload.taskId ? createTask({ id: ids.next('demo-task'), groupId, createdByUid: state.session!.userId,
+          draft: { title: payload.title, description: payload.note ?? null, assigneeUid: payload.recipientUids.length === 1 ? payload.recipientUids[0]! : null,
+            activateAtEpochMs: null, dueAtEpochMs: payload.timeSpec.effectiveAtEpochMs },
+          members: state.members.map(member => ({ uid: member.userId, status: 'active' as const })),
+        }) : null;
+        set({ ...(task ? { tasks: [task, ...state.tasks] } : {}), alarms: [{ groupId, requestId: id, request: { ...payload, ...(task ? { taskId: task.id } : {}), creatorUid: state.session!.userId, requestVersion: 1, status: 'ACTIVE', createdAtEpochMs: now, updatedAtEpochMs: now }, recipients: payload.recipientUids.map(uid => ({ uid, receivedVersion: 1, reception: 'NOT_ACKNOWLEDGED', decision: 'PENDING', decisionRevision: 1, updatedAtEpochMs: now })), schedules: [] }, ...state.alarms] });
+        remember(operationId, { command, createLinkedTask }, id); return id;
+      }
+      if (createLinkedTask && !payload.taskId) {
+        const expected = generation; const api = await ensureBackend();
+        const receipt = record(await api.request('/v1/operations/createTaskAlarm', 'POST', command)); assertGeneration(expected);
+        await refresh(); return text(record(receipt.result).requestId);
       }
       const receipt = await submit(command); return typeof receipt.result?.requestId === 'string' ? receipt.result.requestId : null;
     },
@@ -219,6 +233,20 @@ export function createProductController(backendFactory: () => Promise<ProductBac
       const groupId = requireGroup(); const members = state.members.map(member => ({ uid: member.userId, status: 'active' as const })); const normalized = validateTaskDraft(draft, members);
       if (isDemo()) { const previous = replay(operationId, draft); if (previous) return previous.result!; const task = createTask({ id: ids.next('demo-task'), groupId, createdByUid: state.session!.userId, draft: normalized, members }); set({ tasks: [task, ...state.tasks] }); remember(operationId, draft, task.id); return task.id; }
       const expected = generation; const api = await ensureBackend(); const result = record(await api.request(`/v1/groups/${groupId}/tasks`, 'POST', { ...normalized, operationId })); assertGeneration(expected); await refresh(); return text(result.id);
+    },
+    async respondTaskAssignment(task, decision, operationId) {
+      const groupId = requireGroup(); if (task.groupId !== groupId) throw new Error('La tarea no pertenece al piso actual.');
+      if (isDemo()) {
+        const payload = { taskId: task.id, version: task.version, decision }; if (replay(operationId, payload)) return;
+        const current = state.tasks.find(item => item.id === task.id && item.groupId === groupId);
+        if (!current) throw new DomainError('NOT_FOUND', 'La tarea ya no existe.');
+        if (current.version !== task.version) throw new DomainError('VERSION_CONFLICT', 'La tarea cambió en otro dispositivo.');
+        const updated = respondTaskAssignment(current, { actorUid: state.session!.userId, members: state.members.map(member => ({ uid: member.userId, status: 'active' })), decision });
+        set({ tasks: state.tasks.map(item => item.id === task.id ? updated : item) }); remember(operationId, payload); return;
+      }
+      const expected = generation; const api = await ensureBackend(); assertGeneration(expected);
+      await api.request(`/v1/groups/${encodeURIComponent(groupId)}/tasks/${encodeURIComponent(task.id)}/assignment`, 'POST', { decision, expectedVersion: task.version, operationId });
+      assertGeneration(expected); await refresh();
     },
     async updateTask(task, status, operationId) {
       const groupId = requireGroup(); if (task.groupId !== groupId) throw new Error('La tarea no pertenece al piso actual.');
