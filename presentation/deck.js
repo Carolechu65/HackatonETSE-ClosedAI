@@ -4,6 +4,7 @@
     'credit-card': '<rect x="2" y="5" width="20" height="14" rx="1"/><path d="M2 10h20"/>',
     'check-square': '<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="M8.5 11.5 12 15l9-10"/>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    sparkles: '<path fill="currentColor" stroke="none" d="M12 3.5l1.7 4.8 4.8 1.7-4.8 1.7L12 16.5l-1.7-4.8L5.5 10l4.8-1.7z"/><path fill="currentColor" stroke="none" d="M18.3 15.2l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z"/>',
   };
 
   document.querySelectorAll('[data-icon]').forEach((node) => {
