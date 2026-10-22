@@ -173,7 +173,30 @@ code {
   align-items: center;
 }
 
-.cover-eyebrow { grid-column: 1 / -1; margin: 0; }
+.cover-eyebrow {
+  grid-column: 1 / -1;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.cover-eyebrow .eyebrow { margin: 0; }
+
+.draft-tag {
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ac);
+  border: 1px solid var(--ac);
+  border-radius: 2px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
 
 .cover-left {
   display: flex;
@@ -706,6 +729,15 @@ code {
   text-transform: uppercase;
   color: var(--mu);
   min-width: 220px;
+}
+
+.chrome-draft {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--ac);
+  border: 1px solid rgba(191, 58, 47, 0.55);
+  border-radius: 2px;
+  padding: 1px 6px;
 }
 
 .chrome-left .mark { font-family: var(--display); font-size: 17px; letter-spacing: 0; text-transform: none; color: var(--tx); }

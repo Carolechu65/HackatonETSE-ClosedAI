@@ -1,5 +1,7 @@
 # Presentación de alarmaT
 
+> **Estado: borrador.** No es la versión final: sirve para revisar contenido y diseño con el equipo. Las cifras y capturas están al día del 22 de octubre de 2026; el guion y las diapositivas pueden cambiar.
+
 Deck estático para exponer el proyecto. Misma estética que la app (Nevera Retro), fuentes locales y capturas reales de la rama `P1-Esqueleto`.
 
 ## Ver en local
