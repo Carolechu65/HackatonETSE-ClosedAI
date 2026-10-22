@@ -1,5 +1,37 @@
 # Revisión P1–P6 y producción · 22-10-2026
 
+## Actualización de personas, tareas, gastos y asistente
+
+Publicado `ae2290f` en `/opt/alarmat/releases/20261022T154727Z`, con
+esquema 6 y copia previa consistente. HTTPS confirma esquema 6 y sirve la
+misma exportación que se probó. Se conservan las rutas y la configuración Caddy.
+
+- Piso: iconos pulsables con avisos creados por el usuario para esa persona;
+  se filtran piso, autor y destinatario. Enviadas muestra personas, horarios,
+  respuesta, recepción y ejecución, incluida una hora elegida diferente.
+- Tareas: completar y volver a pendiente, con versión e idempotencia; reabrir
+  no reactiva propuestas retiradas. El detalle de un aviso muestra su tarea.
+- Gastos: participantes elegidos, pagador opcional en el reparto y fecha límite
+  civil opcional. La migración 006 no cambia importes ni pagos existentes.
+- Alarmas propias: formulario y chat permiten seleccionar al usuario actual;
+  la propuesta sigue requiriendo aceptación propia y nunca permite decidir por otro.
+- Asistente: instante real, fecha/hora local, zona, miembros, tareas compartidas
+  y alarmas autorizadas enviadas/recibidas. Contexto limitado con indicador de
+  truncamiento; las tareas pendientes pueden enlazarse al borrador.
+
+Verificación: `npm run check` con **254 pruebas app y 80 API correctas**, una
+prueba externa omitida en esa ejecución; exportación web correcta. Chromium
+verifica siete flujos a 360/390/430 px, sin errores ni desbordamiento. API de
+pruebas en memoria, sin modificar datos reales. El proveedor real también pasó
+«mañana a las22h» y «dentro de10 minutos», con destinatario propio y tarea
+correcta, sin crear propuestas antes de confirmar. Evidencia local:
+`/srv/mail/alarmat-build/member-details-20261022/`.
+
+La repetición sonora de tareas cada diez minutos está implementada y verificada
+en fuentes Kotlin/reconciliación (ver `ALARM_RUNTIME.md`), y requiere APK
+actualizada. Publicar web/API no actualiza una instalación Android anterior;
+sonido y pantalla bloqueada aún necesitan comprobación física.
+
 La publicación autorizada corresponde exclusivamente a
 **https://gex-dashboard.hopto.org/alarmat/**. Ver [operación del VPS](../../deploy/README.md).
 
