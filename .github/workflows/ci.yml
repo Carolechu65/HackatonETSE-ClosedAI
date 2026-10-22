@@ -1,0 +1,45 @@
+name: CI
+
+# P1 mantiene compilación y contratos; P6 coordina CI y escenarios de integración.
+# La development build Android y los tests en dispositivo se documentan aparte:
+# pasar este workflow no demuestra que una alarma suene.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Instalar app
+        run: npm ci
+
+      - name: Instalar backend
+        run: npm --prefix functions ci
+
+      - name: TypeScript (app y tests)
+        run: npm run typecheck
+
+      - name: Contratos y fixtures
+        run: npm run test:contracts
+
+      - name: Tests de dominio
+        run: npm test
+
+      - name: Compilar Cloud Functions
+        run: npm --prefix functions run build
+
+      - name: Empaquetar JavaScript Android
+        run: npm run export:android
