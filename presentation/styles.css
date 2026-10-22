@@ -561,7 +561,7 @@ code {
 .calendar {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.85fr);
-  gap: 40px;
+  gap: 48px;
   align-items: center;
   max-width: 1140px;
 }
