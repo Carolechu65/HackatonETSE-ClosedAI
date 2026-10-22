@@ -33,7 +33,8 @@ jobs:
     timeout-minutes: 45
     env:
       EXPO_PUBLIC_API_URL: https://gex-dashboard.hopto.org/alarmat/api
-      ALARMAT_ANDROID_KEYSTORE: ${{ runner.temp }}/alarmat-release.jks
+      # runner context is unavailable in jobs.<job>.env during validation.
+      ALARMAT_ANDROID_KEYSTORE: /tmp/alarmat-release-candidate.jks
       ALARMAT_ANDROID_STORE_PASSWORD: candidate-only
       ALARMAT_ANDROID_KEY_ALIAS: alarmat-build-candidate
       ALARMAT_ANDROID_KEY_PASSWORD: candidate-only
