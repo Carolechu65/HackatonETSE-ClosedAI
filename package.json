@@ -9,25 +9,41 @@
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
-    "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm --prefix functions run build",
-    "export:android": "expo export --platform android"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
+    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests",
+    "test:contracts": "node scripts/contracts/check.mjs",
+    "check": "npm run typecheck && npm run test:contracts && npm run test && npm --prefix functions run build",
+    "export:android": "expo export --platform android",
+    "web": "expo start --web",
+    "brand:render": "node scripts/brand/render.mjs"
   },
   "dependencies": {
+    "@expo-google-fonts/dm-mono": "^0.4.2",
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo/metro-runtime": "~58.0.15",
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~58.0.17",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.14",
+    "expo-font": "~58.0.9",
     "expo-linking": "~58.0.14",
     "expo-modules-core": "~58.0.24",
     "expo-router": "~58.0.25",
+    "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.6",
     "react": "19.3.0",
     "react-native": "0.88.0",
     "react-native-safe-area-context": "~5.10.1",
-    "react-native-screens": "~4.30.0"
+    "react-native-screens": "~4.30.0",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
+    "@types/node": "22.20.5",
     "@types/react": "~19.3.0",
     "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "react-dom": "19.3.0"
   }
 }

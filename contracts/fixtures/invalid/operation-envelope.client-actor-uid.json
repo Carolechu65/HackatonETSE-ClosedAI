@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-invalid-extra",
+  "groupId": "piso-demo",
+  "actorUid": "ana",
+  "payload": {
+    "decision": "ACCEPTED",
+    "consentScope": "THIS_OCCURRENCE"
+  }
+}

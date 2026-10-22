@@ -1,0 +1,6 @@
+{
+  "code": "RATE_LIMITED",
+  "message": "Demasiadas peticiones; espera un momento.",
+  "retryable": true,
+  "serverTimeEpochMs": 1792701000000
+}

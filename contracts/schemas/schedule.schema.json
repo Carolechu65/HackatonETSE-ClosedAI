@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/schedule.schema.json",
+  "title": "recipients/{uid}/schedules/{occurrenceId} v1",
+  "description": "Acuse de programación local por ocurrencia. Un acuse de una revisión o epoch anteriores no reactiva un aviso cancelado.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "occurrenceId",
+    "deviceId",
+    "deviceEpoch",
+    "requestVersion",
+    "decisionRevision",
+    "mode",
+    "mechanism",
+    "status",
+    "effectiveAtEpochMs",
+    "reportedAtEpochMs",
+    "statusUpdatedAtEpochMs"
+  ],
+  "properties": {
+    "occurrenceId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "deviceId": { "$ref": "./common.schema.json#/$defs/deviceId" },
+    "deviceEpoch": { "$ref": "./common.schema.json#/$defs/deviceEpoch" },
+    "requestVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "decisionRevision": { "$ref": "./common.schema.json#/$defs/decisionRevision" },
+    "mode": { "$ref": "./common.schema.json#/$defs/mode" },
+    "mechanism": { "enum": ["ALARM_RUNTIME", "EXPO_NOTIFICATIONS"] },
+    "status": { "$ref": "./common.schema.json#/$defs/schedulingStatus" },
+    "effectiveAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "reportedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "statusUpdatedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 200 }
+  }
+}

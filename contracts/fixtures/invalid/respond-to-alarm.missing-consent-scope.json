@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-invalid-consent",
+  "groupId": "piso-demo",
+  "entityId": "req-001",
+  "expectedRequestVersion": 1,
+  "expectedDecisionRevision": 1,
+  "payload": {
+    "decision": "ACCEPTED"
+  }
+}

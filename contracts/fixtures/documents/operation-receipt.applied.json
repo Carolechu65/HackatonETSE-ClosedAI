@@ -1,0 +1,7 @@
+{
+  "operationId": "op-respond-0001",
+  "status": "APPLIED",
+  "serverTimeEpochMs": 1792701000000,
+  "requestVersion": 1,
+  "decisionRevision": 2
+}

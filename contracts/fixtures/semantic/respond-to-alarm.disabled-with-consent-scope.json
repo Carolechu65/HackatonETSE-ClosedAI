@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op-semantic-disabled",
+  "groupId": "piso-demo",
+  "entityId": "req-001",
+  "expectedRequestVersion": 1,
+  "expectedDecisionRevision": 2,
+  "payload": {
+    "decision": "DISABLED",
+    "consentScope": "SERIES"
+  }
+}

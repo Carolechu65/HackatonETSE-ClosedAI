@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/common.schema.json",
+  "title": "alarmaT · tipos comunes del contrato v1",
+  "description": "Definiciones compartidas por app, backend y runtime Android. Cambiar un nombre o un valor exige actualizar esquemas, fixtures, src/domain y functions en el mismo cambio (ver contracts/README.md).",
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_:.-]+$"
+    },
+    "uid": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_:.-]+$"
+    },
+    "epochMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4102444800000,
+      "description": "Instante UTC en milisegundos enteros. Nunca ISO 8601 en el transporte."
+    },
+    "timeZone": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9_+.-]*(/[A-Za-z0-9_+.-]+)*$",
+      "description": "Identificador IANA, p. ej. Europe/Madrid."
+    },
+    "localDate": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "localTime": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+      "description": "Hora civil HH:mm de 24 horas."
+    },
+    "timeSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timeZone", "localDate", "localTime", "effectiveAtEpochMs"],
+      "properties": {
+        "timeZone": { "$ref": "#/$defs/timeZone" },
+        "localDate": { "$ref": "#/$defs/localDate" },
+        "localTime": { "$ref": "#/$defs/localTime" },
+        "effectiveAtEpochMs": { "$ref": "#/$defs/epochMs" }
+      },
+      "description": "Se conserva la hora civil propuesta además del instante resuelto; el instante no se reinterpreta al viajar."
+    },
+    "weeklyRecurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "isoWeekday", "localTime"],
+      "properties": {
+        "kind": { "const": "WEEKLY" },
+        "isoWeekday": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "localTime": { "$ref": "#/$defs/localTime" },
+        "untilEpochMs": { "$ref": "#/$defs/epochMs" }
+      },
+      "description": "P0 solo admite repetición semanal de un día/hora. La serie queda ligada a la zona del grupo."
+    },
+    "mode": {
+      "enum": ["ALARM", "NOTIFICATION"],
+      "description": "ALARM exige runtime nativo audible; NOTIFICATION usa expo-notifications. Una misma ocurrencia nunca se programa en ambos mecanismos."
+    },
+    "consentScope": {
+      "enum": ["THIS_OCCURRENCE", "SERIES"],
+      "description": "Autorización solo para esta ocurrencia o para futuras ocurrencias con la misma configuración versionada."
+    },
+    "proposalStatus": {
+      "enum": ["ACTIVE", "WITHDRAWN", "EXPIRED"]
+    },
+    "receptionStatus": {
+      "enum": ["NOT_ACKNOWLEDGED", "RECEIVED"]
+    },
+    "decision": {
+      "enum": ["PENDING", "ACCEPTED", "REJECTED", "DISABLED", "NEEDS_REVIEW"]
+    },
+    "schedulingStatus": {
+      "enum": [
+        "NOT_SCHEDULED",
+        "PENDING_PERMISSION",
+        "SCHEDULING",
+        "SCHEDULED",
+        "CANCEL_PENDING",
+        "CANCELLED",
+        "FIRED",
+        "FAILED",
+        "EXPIRED"
+      ]
+    },
+    "scheduleReportStatus": {
+      "enum": [
+        "PENDING_PERMISSION",
+        "SCHEDULING",
+        "SCHEDULED",
+        "CANCEL_PENDING",
+        "CANCELLED",
+        "FIRED",
+        "FAILED",
+        "EXPIRED"
+      ],
+      "description": "Estados que el dispositivo puede declarar en un acuse. NOT_SCHEDULED no se comunica: la ausencia de acuse ya lo representa."
+    },
+    "syncStatus": {
+      "enum": ["QUEUED", "SENDING", "CONFIRMED", "CONFLICT", "FAILED_PERMANENT"]
+    },
+    "deviceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "deviceEpoch": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Aumenta al cambiar el dispositivo principal. Un acuse de un epoch anterior se rechaza."
+    },
+    "requestVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "decisionRevision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "appErrorCode": {
+      "enum": [
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "INVALID_ARGUMENT",
+        "VERSION_CONFLICT",
+        "EXPIRED",
+        "DEVICE_NOT_PRIMARY",
+        "RATE_LIMITED",
+        "TEMPORARY_UNAVAILABLE"
+      ]
+    }
+  }
+}

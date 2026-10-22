@@ -1,0 +1,10 @@
+{
+  "session": {
+    "token": "corto",
+    "expiresAtEpochMs": 1795300000000
+  },
+  "user": {
+    "uid": "ana",
+    "email": "ana@example.invalid"
+  }
+}

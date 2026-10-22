@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/sync-page.schema.json",
+  "title": "GET /v1/sync · página v1",
+  "description": "Cambios autorizados para la sesión actual. El cursor es opaco, se valida en servidor y no concede acceso. `nextCursor: null` indica fin del feed conocido.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["changes", "nextCursor"],
+  "properties": {
+    "changes": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sequence", "entityType", "entityId", "kind", "version", "updatedAtEpochMs"],
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "entityType": {
+            "enum": ["ALARM_REQUEST", "RECIPIENT", "SCHEDULE", "TASK", "GROUP_MEMBERSHIP"]
+          },
+          "entityId": { "$ref": "./common.schema.json#/$defs/identifier" },
+          "kind": { "enum": ["UPSERT", "DELETE"] },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updatedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" }
+        }
+      }
+    },
+    "nextCursor": {
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 512 },
+        { "type": "null" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/recipient.schema.json",
+  "title": "alarmRequests/{requestId}/recipients/{uid} v1",
+  "description": "Decisión individual. Responder aquí no altera la decisión ni la programación de otros destinatarios.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "uid",
+    "receivedVersion",
+    "reception",
+    "decision",
+    "decisionRevision",
+    "updatedAtEpochMs"
+  ],
+  "properties": {
+    "uid": { "$ref": "./common.schema.json#/$defs/uid" },
+    "receivedVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "reception": { "$ref": "./common.schema.json#/$defs/receptionStatus" },
+    "decision": { "$ref": "./common.schema.json#/$defs/decision" },
+    "decisionRevision": { "$ref": "./common.schema.json#/$defs/decisionRevision" },
+    "acceptedRequestVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "chosenTimeSpec": { "$ref": "./common.schema.json#/$defs/timeSpec" },
+    "consentScope": { "$ref": "./common.schema.json#/$defs/consentScope" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "updatedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" }
+  }
+}

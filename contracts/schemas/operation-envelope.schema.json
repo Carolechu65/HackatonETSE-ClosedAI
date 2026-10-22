@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/operation-envelope.schema.json",
+  "title": "Sobre común de operaciones v1",
+  "description": "Toda callable recibe este sobre. Un reintento conserva operationId y payload; reutilizar el identificador con otro contenido se rechaza. El servidor obtiene uid de Auth, nunca del cuerpo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "operationId", "groupId", "payload"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "operationId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "groupId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "entityId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "expectedRequestVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "expectedDecisionRevision": { "$ref": "./common.schema.json#/$defs/decisionRevision" },
+    "payload": { "type": "object" }
+  }
+}

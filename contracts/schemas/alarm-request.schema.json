@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alarmat.local/contracts/alarm-request.schema.json",
+  "title": "groups/{groupId}/alarmRequests/{requestId} v1",
+  "description": "Documento compartido. Lo escribe solo el servidor; el cliente lo lee si es creador o destinatario activo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "creatorUid",
+    "title",
+    "recipientUids",
+    "requestVersion",
+    "status",
+    "timeSpec",
+    "mode",
+    "createdAtEpochMs",
+    "updatedAtEpochMs"
+  ],
+  "properties": {
+    "creatorUid": { "$ref": "./common.schema.json#/$defs/uid" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "note": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "taskId": { "$ref": "./common.schema.json#/$defs/identifier" },
+    "recipientUids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": { "$ref": "./common.schema.json#/$defs/uid" }
+    },
+    "requestVersion": { "$ref": "./common.schema.json#/$defs/requestVersion" },
+    "status": { "$ref": "./common.schema.json#/$defs/proposalStatus" },
+    "timeSpec": { "$ref": "./common.schema.json#/$defs/timeSpec" },
+    "mode": { "$ref": "./common.schema.json#/$defs/mode" },
+    "recurrence": { "$ref": "./common.schema.json#/$defs/weeklyRecurrence" },
+    "createdAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "updatedAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "withdrawnAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" },
+    "expiredAtEpochMs": { "$ref": "./common.schema.json#/$defs/epochMs" }
+  }
+}

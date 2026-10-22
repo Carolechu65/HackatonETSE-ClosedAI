@@ -1,15 +1,15 @@
 # Contribuir a alarmaT
 
-Este repositorio contiene el diseño y una estructura inicial. Los comandos disponibles y límites del scaffold están en [START_HERE](docs/START_HERE.md). El stack acordado es Expo, React Native, TypeScript, Expo Router y Firebase. Consulta el [TDD](docs/TDD.md) antes de programar y el [plan de seis personas](docs/TEAM_PLAN.md) para identificar responsables.
+Este repositorio contiene el diseño y una estructura inicial. Los comandos disponibles y límites del scaffold están en [START_HERE](docs/START_HERE.md). El stack acordado es Expo, React Native, TypeScript, Expo Router, API propia y SQLite en el VPS. Consulta el [TDD](docs/TDD.md) antes de programar y el [plan de seis personas](docs/TEAM_PLAN.md) para identificar responsables.
 
 ## Organización y dependencias
 
-- Las rutas Expo Router delegan en funcionalidades dentro de `src/`. El backend vive en `functions/` y el módulo local de alarmas, cuando se implemente, en `modules/alarm-runtime/`.
-- La UI tramita acciones mediante hooks/controladores y representa estados explícitos. No llama directamente a Firestore ni programa alarmas desde los componentes.
+- Las rutas Expo Router delegan en funcionalidades dentro de `src/`. El backend objetivo vive en `server/`; `functions/` es el scaffold legado pendiente de migrar y el módulo local de alarmas, cuando se implemente, en `modules/alarm-runtime/`.
+- La UI tramita acciones mediante hooks/controladores y representa estados explícitos. No accede a SQLite del servidor ni salta el repositorio HTTP ni programa alarmas desde los componentes.
 - Los repositorios separan datos compartidos, proyecciones SQLite y lógica de presentación. El adaptador Android implementa la programación del sistema detrás de una interfaz.
 - Mantener DTO de red, filas SQLite y modelos de dominio separados cuando sus ciclos de vida difieran. El registro nativo de alarmas tiene una única autoridad y se consulta mediante su interfaz; no modificar su almacenamiento desde JS en paralelo.
 - Inyectar reloj, zona horaria, repositorios y programador para probar cambios de hora y fallos de forma determinista.
-- Mantener Cloud Functions en TypeScript y contratos compartidos mediante esquemas y ejemplos versionados. Android y backend deben aceptar los mismos estados, versiones y códigos de error.
+- Mantener el servidor HTTP en TypeScript y contratos compartidos mediante esquemas y ejemplos versionados. Android y backend deben aceptar los mismos estados, versiones y códigos de error.
 
 Las rutas concretas y sus propietarios están en TEAM_PLAN; no crear una estructura alternativa en paralelo.
 
@@ -23,7 +23,7 @@ Las rutas concretas y sus propietarios están en TEAM_PLAN; no crear una estruct
 - Estado remoto, consentimiento y programación local son conceptos distintos. No utilizar un único booleano `active` para todos ellos.
 - Reintentos con identificadores estables y versiones. Una excepción no equivale a éxito; mostrar o conservar el estado pendiente.
 - Limitar registros a identificadores de operación y resultados; no registrar tokens, credenciales ni contenido privado completo.
-- Fijar dependencias y herramientas con lockfile y versiones compatibles con Expo. Usar una sola familia de SDK Firebase cliente: React Native Firebase. No sobreescribir versiones nativas administradas por sus plugins sin validar compatibilidad.
+- Fijar dependencias y herramientas con lockfile y versiones compatibles con Expo. P5 mantiene un cliente HTTP y sesión única en SecureStore. No añadir RNFirebase ni duplicar clientes o colas de mutaciones.
 
 ## Trabajo en paralelo
 
@@ -47,15 +47,15 @@ La estrategia detallada y los escenarios están en el [TDD](docs/TDD.md). Priori
 Para cada PR de código:
 
 - Compilar y ejecutar formato, análisis estático y pruebas del área afectada.
-- Probar reglas y funciones contra Emulator Suite cuando cambien datos, permisos o contratos.
+- Probar endpoints, autorización y migraciones con SQLite temporal real cuando cambien datos, permisos o contratos.
 - Aportar evidencia en dispositivo cuando cambie sonido, notificaciones, widgets o ciclo de vida. Un test unitario no demuestra que una alarma suene.
 - Actualizar documentación y ejemplos de contratos si cambia el comportamiento.
 - Explicar limitaciones conocidas y distinguir resultados reales de simulaciones.
 
-La persona de integración incorporará a CI TypeScript, lint, tests, emuladores y compilación de development builds. Ya existen scripts de typecheck, build del backend y export Android; todavía faltan workflow y suites de tests. Los cambios nativos requieren reconstruir la app; una recarga JS no basta. No presentar comprobaciones pendientes como ejecutadas.
+La CI actual comprueba TypeScript, contratos, tests y export Android, y aún compila `functions/`. P1/P3 deben sustituir ese paso por build/tests del servidor HTTP y migraciones SQLite al implementarlo. Un check del legado no acredita la migración. Los cambios nativos requieren reconstruir la app; una recarga JS no basta. No presentar comprobaciones pendientes como ejecutadas.
 
 ## Definición de terminado
 
 Una entrega está terminada cuando cumple su criterio observable, tiene revisión, supera las comprobaciones aplicables, está integrada y conserva un recorrido funcional de la demo. Aceptar un aviso en la pantalla no basta para terminar la programación: debe existir evidencia del registro local, la llamada al sistema y el estado comunicado al emisor.
 
-El push de documentación no despliega Firebase. Las credenciales de Admin SDK y secretos de IA se configuran en el entorno de servidor. La configuración cliente no sustituye Security Rules ni la autorización de las funciones.
+El push de documentación no despliega el VPS. Contraseñas de infraestructura, secretos de IA y credenciales push permanecen en el entorno de servidor. Cada endpoint valida sesión, pertenencia, recurso y transición; ocultar un botón o conocer un ID no autoriza acceso.

@@ -4,7 +4,7 @@ Nombre propuesto del producto: **alarmaT**. Repositorio: **HackatonETSE-ClosedAI
 
 **Estado:** listado de alcance previsto; todas las funcionalidades están pendientes de implementación. Arquitectura y decisiones tecnológicas en [README.md](README.md).
 
-**Tecnología acordada:** Expo, React Native, TypeScript, Expo Router y expo-widgets; Firebase Authentication, Firestore, Cloud Functions y FCM mediante React Native Firebase. expo-sqlite para datos locales y expo-notifications para recordatorios. La modalidad de alarma sonora se valida con un módulo Android específico cuando sea necesario.
+**Tecnología acordada:** Expo, React Native, TypeScript, Expo Router y expo-widgets; API HTTPS propia Node.js/Fastify con SQLite en el VPS y autenticación propia. expo-sqlite conserva datos locales del móvil; expo-notifications gestiona avisos. Push remoto opcional mediante Expo Push Service (FCM como transporte Android), sin Firebase Auth/Firestore/Functions ni RNFirebase. El runtime nativo mantiene las alarmas sonoras. La migración del código del backend sigue pendiente.
 
 ## Prioridades
 

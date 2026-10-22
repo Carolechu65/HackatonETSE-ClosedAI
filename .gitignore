@@ -5,9 +5,13 @@ functions/lib/
 android/
 ios/
 !modules/**/android/
+
+# Artefactos de compilación del módulo nativo (su código sí se versiona)
 modules/**/android/build/
 modules/**/android/.gradle/
 modules/**/android/.cxx/
+modules/**/android/local.properties
+
 .env
 .env.*
 !.env.example
@@ -22,3 +26,9 @@ GoogleService-Info.plist
 *.keystore
 *.jks
 .DS_Store
+
+# Backend P3: datos privados y artefactos de compilación
+server/data/
+*.db
+*.db-wal
+*.db-shm

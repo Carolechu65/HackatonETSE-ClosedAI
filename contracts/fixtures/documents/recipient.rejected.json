@@ -1,0 +1,9 @@
+{
+  "uid": "ana",
+  "receivedVersion": 1,
+  "reception": "RECEIVED",
+  "decision": "REJECTED",
+  "decisionRevision": 2,
+  "reason": "Esa noche no estoy en casa.",
+  "updatedAtEpochMs": 1792701000000
+}

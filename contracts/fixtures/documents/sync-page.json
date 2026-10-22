@@ -1,0 +1,29 @@
+{
+  "changes": [
+    {
+      "sequence": 41,
+      "entityType": "ALARM_REQUEST",
+      "entityId": "req-001",
+      "kind": "UPSERT",
+      "version": 2,
+      "updatedAtEpochMs": 1792704000000
+    },
+    {
+      "sequence": 42,
+      "entityType": "RECIPIENT",
+      "entityId": "req-001:ana",
+      "kind": "UPSERT",
+      "version": 2,
+      "updatedAtEpochMs": 1792704000000
+    },
+    {
+      "sequence": 43,
+      "entityType": "GROUP_MEMBERSHIP",
+      "entityId": "piso-demo:carla",
+      "kind": "DELETE",
+      "version": 3,
+      "updatedAtEpochMs": 1792704600000
+    }
+  ],
+  "nextCursor": "cur-demo-2"
+}
