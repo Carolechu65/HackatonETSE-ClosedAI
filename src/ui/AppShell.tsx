@@ -1,12 +1,13 @@
 import { useEffect, type ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, typography, paper } from './theme.ts';
 import { fontFamily } from './fonts.ts';
 import { useProduct } from '../composition/ProductProvider.tsx';
 import { Action, Avatar, Message } from './Controls.tsx';
 
+const brandLogo = require('../../assets/brand/alarmat-logo.png');
 const destinations = [{ path: '/', label: 'Tablón', number: '01' }, { path: '/alarms', label: 'Alarmas', number: '02' }, { path: '/tasks', label: 'Tareas', number: '03' }, { path: '/group', label: 'Mi piso', number: '04' }] as const;
 export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', action }: { children: ReactNode; title: string; eyebrow?: string; action?: ReactNode }) {
   const { state, group } = useProduct();
@@ -23,7 +24,7 @@ export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', 
   });
   return <SafeAreaView style={styles.root} edges={['top', 'left', 'right', 'bottom']}>
     {desktop ? <View style={styles.sidebar}>
-      <Pressable accessibilityRole="link" onPress={() => router.push('/')}><Text style={styles.brand}>alarmaT<Text style={{ color: colors.acDecorative }}>.</Text></Text><Text style={typography.label}>LA VIDA, COMPARTIDA</Text></Pressable>
+      <Pressable accessibilityRole="link" accessibilityLabel="alarmaT, ir al tablón" onPress={() => router.push('/')} style={styles.brandLink}><Image source={brandLogo} style={styles.brandLogo} resizeMode="contain" /></Pressable>
       <View style={styles.groupBadge}><View style={styles.houseMark}><Text style={[typography.noteTitle, { fontSize: 26 }]}>aT</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={typography.noteTitle}>{group?.name ?? 'Tu próximo piso'}</Text><Text style={typography.support}>{state.members.length} personas · tu espacio</Text></View></View>
       <View style={styles.sideNav}>{links}</View>
       <Pressable accessibilityRole="link" onPress={() => router.push('/assistant')} style={styles.assistantLink}><Text style={typography.label}>UN POCO DE AYUDA</Text><Text style={typography.noteTitle}>El compañero que recuerda.</Text><Text style={typography.support}>Prepara un aviso conversando →</Text></Pressable>
@@ -34,7 +35,7 @@ export function AppShell({ children, title, eyebrow = 'LA PUERTA DE LA NEVERA', 
     </View> : null}
     <View style={styles.main}>
       <View style={[styles.topbar, !desktop && { paddingHorizontal: 20 }]}>
-        <Text style={typography.label}>{desktop ? 'TU CASA, A TU RITMO' : 'alarmaT / ' + (group?.name ?? 'Tu piso')}</Text>
+        {desktop ? <Text style={typography.label}>TU CASA, A TU RITMO</Text> : <View style={styles.mobileBrand}><Image source={brandLogo} style={styles.mobileLogo} resizeMode="contain" accessibilityLabel="alarmaT" /><Text style={typography.support}>{group?.name ?? 'Tu piso'}</Text></View>}
         <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={styles.sync}><View style={[styles.dot, { backgroundColor: state.error ? colors.ac : '#2f7d6d' }]} /><Text style={typography.support}>{state.session.mode === 'demo' ? 'Modo demostración' : state.syncing ? 'Sincronizando…' : state.error ? 'Revisar estado' : state.pending ? `${state.pending} por enviar` : state.lastSync ? 'Al día' : 'Sin sincronizar'}</Text></Pressable>
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, !desktop && styles.mobileContent]}>
@@ -54,7 +55,10 @@ export function BackLink({ to = '/', label = 'Volver al tablón' }: { to?: '/' |
 const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: colors.wall }, loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: colors.wall },
   sidebar: { width: 260, borderRightWidth: 1, borderRightColor: colors.ln, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 24, backgroundColor: '#e8dabb' },
-  brand: { fontFamily: fontFamily.display, fontSize: 40, letterSpacing: -2, color: colors.tx, marginBottom: 6 },
+  brandLink: { marginBottom: 6 },
+  brandLogo: { width: 190, height: 57 },
+  mobileBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  mobileLogo: { width: 104, height: 31 },
   groupBadge: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 28, marginTop: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.ln },
   houseMark: { width: 42, height: 45, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.ln },
   sideNav: { marginVertical: 28, gap: 8 }, sideLink: { flexDirection: 'row', minHeight: 52, alignItems: 'center', gap: 18, paddingHorizontal: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },

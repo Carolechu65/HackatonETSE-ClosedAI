@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-n
 import { useProduct } from '../../composition/ProductProvider.tsx';
 import { colors, typography, paper } from '../../ui/theme.ts';
 import { fontFamily } from '../../ui/fonts.ts';
+import { BrandMark } from '../../ui/BrandMark.tsx';
 import { Sheet } from '../../ui/Sheet.tsx';
 import { Note } from '../../ui/Note.tsx';
 import { PrimaryAction } from '../../ui/PrimaryAction.tsx';
@@ -20,7 +21,7 @@ export function LoginScreen() {
   useEffect(() => { if (state.session) router.replace(returnTo?.startsWith('/') && !returnTo.startsWith('//') && returnTo !== '/login' ? returnTo as '/' : '/'); }, [state.session, returnTo]);
   return <ScrollView style={{ backgroundColor: colors.wall }} contentContainerStyle={[styles.page, desktop && { flexDirection: 'row' }]} keyboardShouldPersistTaps="handled">
     <View style={[styles.story, desktop && { width: '52%', minHeight: 760 }]}>
-      <Text style={styles.logo}>alarmaT.</Text><Text style={typography.label}>LA VIDA, COMPARTIDA</Text>
+      <BrandMark width={200} />
       <View style={{ flex: 1, minHeight: desktop ? 70 : 22 }} />
       <Text accessibilityRole="header" style={[styles.title, !desktop && { fontSize: 44, lineHeight: 49 }]}>Una casa.{`\n`}Muchas cosas.{`\n`}Menos olvidos.</Text>
       <Text style={[typography.bodyOnDoor, styles.intro]}>Un lugar para los pequeños compromisos del piso. Propón un aviso, organiza las tareas y deja que cada persona decida su hora.</Text>
