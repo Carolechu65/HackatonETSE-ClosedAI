@@ -1,4 +1,4 @@
 import { initializeBootstrap } from './index';
 
-// P5: esta entrada se evalúa antes de Router. Hoy no registra FCM real.
+// Entry point runs before Router. Demo stays explicit until services are supplied by the integrator.
 initializeBootstrap();
