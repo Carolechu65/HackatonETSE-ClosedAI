@@ -15,24 +15,38 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   icon: './assets/brand/icon.png',
-  android: {
-    package: 'com.closedai.alarmat',
-    adaptiveIcon: {
-      foregroundImage: './assets/brand/adaptive-icon.png',
-      backgroundColor: '#efe2c4',
-    },
-  },
+  android: { package: 'com.closedai.alarmat', adaptiveIcon: { foregroundImage: './assets/brand/adaptive-icon.png', backgroundColor: '#efe2c4' } },
   plugins: [
     'expo-router',
+    ['expo-splash-screen', { image: './assets/brand/splash-icon.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#efe2c4' }],
+    'expo-sqlite',
+    'expo-secure-store',
+    'expo-notifications',
+    /*
+     * P6 · widget de la próxima alarma. Requiere development build nueva:
+     * el plugin genera el receptor/launcher de Android. Ver handoff de P1.
+     */
     [
-      'expo-splash-screen',
+      'expo-widgets',
       {
-        image: './assets/brand/splash-icon.png',
-        imageWidth: 220,
-        resizeMode: 'contain',
-        backgroundColor: '#efe2c4',
+        enableAndroid: true,
+        widgets: [
+          {
+            name: 'AlarmaTWidget',
+            displayName: 'AlarmaT',
+            description: 'Próxima alarma, propuestas pendientes y estado de sincronización.',
+            ios: { supportedFamilies: ['systemSmall', 'systemMedium'] },
+            android: {
+              targetCellWidth: 4,
+              targetCellHeight: 3,
+              resizeMode: 'horizontal',
+              initialLayout: './src/widgets/AlarmaTWidget.tsx',
+            },
+          },
+        ],
       },
     ],
+    './plugins/with-widget-links.cjs',
   ],
 };
 

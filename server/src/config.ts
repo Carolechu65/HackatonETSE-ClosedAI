@@ -8,6 +8,7 @@ export type ServerConfig = {
   databasePath: string;
   sessionTtlMs: number;
   trustProxy: boolean;
+  corsOrigins: string[];
   logLevel: string;
   bodyLimitBytes: number;
   authRateLimit: { max: number; windowMs: number };
@@ -40,7 +41,7 @@ function boolFromEnv(value: string | undefined, fallback: boolean): boolean {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
-  const provider = (env.AI_PROVIDER ?? 'none').trim();
+  const provider = (env.AI_PROVIDER ?? (env.OPENROUTER_API_KEY ? 'openai' : 'none')).trim();
   if (provider !== 'none' && provider !== 'deterministic' && provider !== 'openai') {
     throw new Error('AI_PROVIDER debe ser none, deterministic u openai.');
   }
@@ -50,6 +51,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     databasePath: env.DATABASE_PATH?.trim() || './data/alarmat.db',
     sessionTtlMs: intFromEnv(env.SESSION_TTL_MS, 7 * 24 * 60 * 60 * 1000, 'SESSION_TTL_MS'),
     trustProxy: boolFromEnv(env.TRUST_PROXY, false),
+    corsOrigins:(env.CORS_ORIGINS??'').split(',').map(v=>v.trim()).filter(Boolean),
     logLevel: env.LOG_LEVEL?.trim() || 'info',
     bodyLimitBytes: intFromEnv(env.BODY_LIMIT_BYTES, 64 * 1024, 'BODY_LIMIT_BYTES'),
     authRateLimit: {
@@ -78,9 +80,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     },
     agent: {
       provider,
-      baseUrl: env.AI_BASE_URL?.trim().replace(/\/+$/, '') || null,
-      apiKey: env.AI_API_KEY?.trim() || null,
-      model: env.AI_MODEL?.trim() || null,
+      baseUrl: env.AI_BASE_URL?.trim().replace(/\/+$/, '') || (env.OPENROUTER_API_KEY?'https://openrouter.ai/api/v1':null),
+      apiKey: env.AI_API_KEY?.trim() || env.OPENROUTER_API_KEY?.trim() || null,
+      model: env.AI_MODEL?.trim() || env.OPENROUTER_MODEL?.trim() || (env.OPENROUTER_API_KEY?'deepseek/deepseek-v4.1-flash':null),
       timeoutMs: intFromEnv(env.AI_TIMEOUT_MS, 15_000, 'AI_TIMEOUT_MS'),
       sessionTtlMs: intFromEnv(env.AGENT_SESSION_TTL_MS, 30 * 60 * 1000, 'AGENT_SESSION_TTL_MS'),
     },

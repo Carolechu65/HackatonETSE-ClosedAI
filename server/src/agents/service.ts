@@ -44,6 +44,7 @@ type SessionRow = {
   status: 'OPEN' | 'COMPLETED' | 'EXPIRED';
   collected_json: string;
   expires_at_epoch_ms: number;
+  turns: number;
 };
 
 export function createAgentProvider(config: AgentConfig): AgentProvider | null {
@@ -204,6 +205,8 @@ export async function proposeAlarm(
     session = db.prepare('SELECT * FROM agent_sessions WHERE id = ?').get(sessionId) as SessionRow;
   }
 
+  if(session.turns>=6)throw new DomainError('RATE_LIMITED','La conversación alcanzó seis turnos. Inicia una nueva.');
+  db.prepare('UPDATE agent_sessions SET turns=turns+1 WHERE id=?').run(session.id);
   const conversation = input.sessionId ? [...readConversation(session), input.text].slice(-5) : [input.text];
   if (input.sessionId) {
     db.prepare('UPDATE agent_sessions SET collected_json = ?, updated_at_epoch_ms = ? WHERE id = ?')
@@ -228,7 +231,7 @@ export async function proposeAlarm(
     groupId: input.groupId,
     timeZone: group.time_zone,
     nowEpochMs,
-    members: listMembers(db, actor.uid, input.groupId),
+    members: listMembers(db, actor.uid, input.groupId).filter(member=>member.uid!==actor.uid),
     tasks: tasks.map((task) => ({
       id: task.id,
       title: task.title,
@@ -238,6 +241,23 @@ export async function proposeAlarm(
     })),
     conversation,
   };
+
+  // This is an authorization/context guard, not a simulated model response.
+  // A household with only its owner has no eligible recipients by contract.
+  if (context.members.length === 0) {
+    const clarification = {
+      question: 'Invita a otra persona al piso para proponerle un recordatorio. Cada destinatario decide si lo acepta.',
+      missingFields: ['recipient'],
+    };
+    db.prepare('UPDATE agent_sessions SET collected_json = ?, updated_at_epoch_ms = ? WHERE id = ?')
+      .run(JSON.stringify({ conversation, lastClarification: clarification }), nowEpochMs, session.id);
+    return {
+      sessionId: session.id,
+      provider: 'context-validation',
+      status: 'needs_clarification',
+      ...clarification,
+    };
+  }
 
   let feedback: string | undefined;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -254,6 +274,7 @@ export async function proposeAlarm(
       throw error;
     }
 
+    requireActiveMembership(db,input.groupId,actor.uid);
     const type = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>).type : undefined;
     try {
       if (type === 'clarification') {

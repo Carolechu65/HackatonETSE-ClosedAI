@@ -138,6 +138,7 @@ export function removeMember(
     db.prepare(
       "UPDATE memberships SET status = 'REMOVED', removed_at_epoch_ms = ? WHERE group_id = ? AND user_id = ?",
     ).run(nowEpochMs, groupId, targetUid);
+    invalidateConsent(db,groupId,targetUid,nowEpochMs);
     const memberVersion = nowEpochMs;
     appendChangeEvent(db, {
       audienceUid: targetUid,
@@ -181,6 +182,7 @@ export function leaveGroup(db: Db, uid: string, groupId: string, nowEpochMs = Da
     db.prepare(
       "UPDATE memberships SET status = 'REMOVED', removed_at_epoch_ms = ? WHERE group_id = ? AND user_id = ?",
     ).run(nowEpochMs, groupId, uid);
+    invalidateConsent(db,groupId,uid,nowEpochMs);
     appendChangeEvent(db, {
       audienceUid: uid,
       groupId,
@@ -200,4 +202,9 @@ function assertTimeZone(timeZone: string): void {
   } catch {
     throw new DomainError('INVALID_ARGUMENT', 'body.timeZone: zona IANA desconocida.');
   }
+}
+
+function invalidateConsent(db:Db,groupId:string,uid:string,now:number):void {
+ db.prepare("UPDATE alarm_recipients SET decision='NEEDS_REVIEW',decision_revision=decision_revision+1,accepted_request_version=NULL,consent_scope=NULL,chosen_time_zone=NULL,chosen_local_date=NULL,chosen_local_time=NULL,chosen_effective_at_epoch_ms=NULL,updated_at_epoch_ms=? WHERE uid=? AND decision='ACCEPTED' AND request_id IN (SELECT id FROM alarm_requests WHERE group_id=?)").run(now,uid,groupId);
+ db.prepare("UPDATE device_schedules SET status='CANCEL_PENDING',status_updated_at_epoch_ms=? WHERE uid=? AND request_id IN (SELECT id FROM alarm_requests WHERE group_id=?) AND status IN ('SCHEDULED','SCHEDULING','PENDING_PERMISSION')").run(now,uid,groupId);
 }

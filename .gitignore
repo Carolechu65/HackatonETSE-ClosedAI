@@ -24,6 +24,12 @@ GoogleService-Info.plist
 *.jks
 .DS_Store
 
+modules/**/android/.cxx/
+server/dist/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
 # Backend P3: datos privados y artefactos de compilación
 server/data/
 *.db

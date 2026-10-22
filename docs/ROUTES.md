@@ -8,10 +8,14 @@
 
 | Ruta | Contenido | Owner |
 |---|---|---|
+| `/preview` | Esqueleto visual conservado, con datos de ejemplo | P1 |
 | `/` | Tablón con propuestas y próximas alarmas | P2 |
 | `/alarm/[requestId]` | Detalle de una propuesta: quién la propone, hora, estado por eje y acciones | P2 |
 | `/alarm/[requestId]/respond` | Formulario de aceptar / otra hora / rechazar (opcional; puede ser un modal) | P2 |
 | `/group/invite/[inviteId]` | Aceptar invitación al piso | P2 + P3 |
+| `/gastos` | Redirección a `/preview/gastos` (solo ejemplo) | P1 |
+| `/tasks` (`/tareas` redirige) | Tareas del piso real, alta y detalle | P6 |
+| `/group` (`/piso` redirige) | Piso, miembros e invitaciones reales | P2 |
 | `/task/[taskId]` | Detalle de tarea vinculada | P6 |
 | `/design` | Catálogo de componentes del estilo (solo referencia; no es producto) | P1 |
 | `/+not-found` | Enlace roto o entidad ya no visible | P1 |
@@ -26,8 +30,9 @@ Las rutas de gastos y huchas se añadirán con su contrato P1; no se crean carpe
 4. **El widget abre la ruta del detalle**, no un formulario que responda solo. Las acciones directas se habilitan cuando P4/P5 puedan ejecutar el contrato completo.
 5. Las rutas son finas: validan el parámetro y delegan en `src/features/*`. No contienen reglas de negocio ni llamadas directas a la API o a SQLite del servidor.
 
-## Pendiente de acuerdo con P2/P6
+## Acuerdos de integración P2/P6
 
-- Si `/alarm/[requestId]/respond` será modal o ruta propia.
-- Enlace del widget a propuestas pendientes frente a próximas alarmas (`?tab=…` si hace falta).
-- Nombre definitivo de la ruta de tareas cuando P6 integre el widget.
+- Las decisiones se presentan dentro del detalle de alarma, con confirmación explícita.
+- El widget enlaza al tablón o al detalle; no modifica decisiones.
+- `/login`, `/settings`, `/assistant`, `/alarm/new` y `/task/new` completan el recorrido.
+- Detalles inaccesibles muestran un mensaje genérico sin datos privados; una retirada visible conserva su estado para comprobar cancelaciones.

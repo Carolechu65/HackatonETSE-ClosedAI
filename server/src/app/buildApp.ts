@@ -20,6 +20,8 @@ import { registerDevice, setPrimaryDevice } from '../devices/service.ts';
 import { proposeAlarm } from '../agents/service.ts';
 import type { AgentProvider } from '../agents/types.ts';
 import { installErrorHandler } from './errors.ts';
+import { listAlarmRecords, readAlarmProjection } from '../compat/alarms.ts';
+import { createTask, listTasks, updateTask } from '../tasks/service.ts';
 
 export type BuildAppOptions = {
   config: ServerConfig;
@@ -54,7 +56,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
       redact: ['req.headers.authorization', 'req.headers.cookie'],
       serializers: {
         req(request: { method: string; url: string }) {
-          return { method: request.method, url: request.url };
+          return { method: request.method, url: request.url.replace(/(\/v1\/invitations\/)[^/]+(\/accept)/, '$1[REDACTED]$2').split('?')[0] };
         },
       },
     },
@@ -84,12 +86,12 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     }
   });
 
-  app.addHook('onSend', async (_request, reply) => {
+  app.addHook('onSend', async (request, reply) => {
     reply.header('cache-control', 'no-store');
     reply.header('x-content-type-options', 'nosniff');
-    reply.header('access-control-allow-origin', '*');
+    if (request.headers.origin && config.corsOrigins.includes(request.headers.origin)) { reply.header('access-control-allow-origin', request.headers.origin); reply.header('vary', 'Origin'); }
     reply.header('access-control-allow-headers', 'content-type, authorization');
-    reply.header('access-control-allow-methods', 'GET, POST, DELETE, OPTIONS');
+    reply.header('access-control-allow-methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   });
 
   app.options('/*', async (_request, reply) => reply.status(204).send());
@@ -250,7 +252,8 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.get('/v1/sync', async (request) => {
     const actor = requireAuth(db, request);
-    const query = request.query as { cursor?: string; limit?: string };
+    const query = request.query as { cursor?: string; limit?: string; projection?: string };
+    if (query.projection === 'alarms') return readAlarmProjection(db,actor.uid,query.cursor??null,queryInt(query.limit,100));
     return readSyncPage(db, actor.uid, query.cursor ?? null, query.limit ? queryInt(query.limit, 50) : null);
   });
 
@@ -290,5 +293,13 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     return proposeAlarm(db, actor, request.body, config.agent, options.agentProvider);
   });
 
+
+  app.get('/v1/groups/:groupId/alarms',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return listAlarmRecords(db,actor.uid,readIdentifier(groupId,'groupId'));});
+  app.post('/v1/invitations/accept',async request=>{const actor=requireAuth(db,request);return acceptInvitation(db,actor.uid,readToken(asRecord(request.body).token));});
+  app.route({method:['POST','PUT'],url:'/v1/devices/primary',handler:async request=>{const actor=requireAuth(db,request);return setPrimaryDevice(db,actor,{deviceId:asRecord(request.body).deviceId});}});
+  app.get('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return listTasks(db,actor.uid,readIdentifier(groupId,'groupId'));});
+  app.post('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);operationLimiter.check(`task:${actor.uid}`);const {groupId}=request.params as {groupId:string};return createTask(db,actor.uid,readIdentifier(groupId,'groupId'),request.body);});
+  app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);operationLimiter.check(`task:${actor.uid}`);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});
+  app.post('/v1/agent/draft',async request=>{const actor=requireAuth(db,request);agentLimiter.check(`agent:${actor.uid}`);const body=asRecord(request.body);if(Object.keys(body).some(key=>!['groupId','text','conversationId'].includes(key)))throw new DomainError('INVALID_ARGUMENT','Campos del asistente inválidos.');const result=await proposeAlarm(db,actor,{groupId:body.groupId,text:body.text,...(body.conversationId?{sessionId:body.conversationId}:{})},config.agent,options.agentProvider);requireAuth(db,request);if(result.status==='needs_clarification')return {conversationId:result.sessionId,status:result.status,question:result.question,missingFields:result.missingFields};return {conversationId:result.sessionId,status:'draft',draft:{title:result.draft.title,recipientUids:result.draft.recipientUids,timeSpec:result.draft.timeSpec,mode:result.draft.mode},requiresSenderReview:true,requiresRecipientConsent:true};});
   return app;
 }

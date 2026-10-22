@@ -12,8 +12,8 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
   try {
     const db = openDatabase(path);
     const first = migrate(db);
-    assert.equal(first.schemaVersion, 1);
-    assert.equal(first.applied.length, 1);
+    assert.equal(first.schemaVersion, 2);
+    assert.equal(first.applied.length, 2);
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
     assert.equal(db.pragma('busy_timeout', { simple: true }), 5000);
     assert.equal(db.pragma('synchronous', { simple: true }), 2);
@@ -22,7 +22,7 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
 
     const second = migrate(db);
     assert.equal(second.applied.length, 0);
-    assert.equal(second.alreadyApplied, 1);
+    assert.equal(second.alreadyApplied, 2);
 
     db.prepare(
       `INSERT INTO users (id, email, password_hash, display_name, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)

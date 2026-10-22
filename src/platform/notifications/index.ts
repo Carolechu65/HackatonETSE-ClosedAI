@@ -1,4 +1,4 @@
-/** P4: presentación local. P5 recibe FCM y recupera la propuesta vigente. */
+/** P4 owns local presentation. P5 alone receives remote hints and syncs server state. */
 export interface ProposalNotification {
   groupId: string;
   requestId: string;
@@ -12,14 +12,15 @@ export interface NotificationPort {
   dismissProposal(requestId: string): Promise<void>;
 }
 
-function notImplemented(): never {
-  throw Object.assign(new Error('P4: integrar canales y presentación de avisos.'), {
-    code: 'E_NOT_IMPLEMENTED',
-  });
+export interface NotificationControls extends NotificationPort {
+  requestPermission(): Promise<boolean>;
+  openSettings(): Promise<boolean>;
 }
 
-export const unavailableNotifications: NotificationPort = {
+export const unavailableNotifications: NotificationControls = {
   async getPermission() { return 'UNAVAILABLE'; },
-  async showProposal() { notImplemented(); },
-  async dismissProposal() { notImplemented(); },
+  async requestPermission() { return false; },
+  async openSettings() { return false; },
+  async showProposal() { throw Object.assign(new Error('Notificaciones no disponibles en esta plataforma.'), { code: 'E_UNAVAILABLE' }); },
+  async dismissProposal() { throw Object.assign(new Error('Notificaciones no disponibles en esta plataforma.'), { code: 'E_UNAVAILABLE' }); },
 };

@@ -79,6 +79,7 @@ function TabItem({
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: focused }}
+      aria-selected={focused}
       onPress={onPress}
       style={styles.item}
     >

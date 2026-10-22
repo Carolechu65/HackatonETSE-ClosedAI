@@ -45,9 +45,9 @@ export function installErrorHandler(app: FastifyInstance): void {
       return reply.status(413).send(appErrorBody('INVALID_ARGUMENT', 'Cuerpo de la petición demasiado grande.'));
     }
     request.log.error({
-      err: error,
+      code: error.code,
       method: request.method,
-      url: request.url,
+      url: request.url.replace(/(\/v1\/invitations\/)[^/]+(\/accept)/, '$1[REDACTED]$2').split('?')[0],
     }, 'request failed');
     return reply.status(500).send(appErrorBody('TEMPORARY_UNAVAILABLE', 'Fallo temporal del servidor.'));
   });

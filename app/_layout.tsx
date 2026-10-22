@@ -1,33 +1,38 @@
+import { NotificationNavigation } from '../src/composition/NotificationNavigation';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SkeletonProvider } from '../src/features/skeleton/store.tsx';
+import { ProductProvider } from '../src/composition/ProductProvider.tsx';
+import { productClient } from '../src/composition/app.ts';
 import { colors, useNeveraFonts } from '../src/ui/index.ts';
 
 /**
  * Layout raíz (P1): puerta de nevera de fondo, tipografías del estilo y estado
- * compartido del esqueleto. Las rutas delegan en `app/(tabs)`; aquí no hay reglas
- * de negocio ni llamadas a Firebase.
+ * compartido del producto. Las rutas delegan en features; la composición
+ * mantiene una única sesión y repositorio.
  */
 export default function RootLayout() {
   const { loaded } = useNeveraFonts();
 
   return (
     <SafeAreaProvider>
-      <SkeletonProvider>
+      <ProductProvider client={productClient}>
         <StatusBar style="dark" />
         <View style={{ flex: 1, backgroundColor: colors.wall }}>
           {loaded ? (
+            <>
             <Stack
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: colors.wall },
               }}
             />
+            <NotificationNavigation />
+            </>
           ) : null}
         </View>
-      </SkeletonProvider>
+      </ProductProvider>
     </SafeAreaProvider>
   );
 }

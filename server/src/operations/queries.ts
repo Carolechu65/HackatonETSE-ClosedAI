@@ -83,8 +83,11 @@ export function listSchedules(
   const creator = detail.request.creatorUid === actorUid;
   const rows = db
     .prepare(
-      `SELECT * FROM device_schedules WHERE request_id = ? ${creator ? '' : 'AND uid = ?'}
-       ORDER BY effective_at_epoch_ms, occurrence_id`,
+      `SELECT schedules.* FROM device_schedules schedules
+       JOIN users recipient ON recipient.id = schedules.uid
+         AND recipient.primary_device_id = schedules.device_id AND recipient.device_epoch = schedules.device_epoch
+       WHERE schedules.request_id = ? ${creator ? '' : 'AND schedules.uid = ?'}
+       ORDER BY schedules.effective_at_epoch_ms, schedules.occurrence_id`,
     )
     .all(...(creator ? [requestId] : [requestId, actorUid])) as Array<Record<string, unknown>>;
   return rows;

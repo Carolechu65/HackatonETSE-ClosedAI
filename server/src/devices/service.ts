@@ -112,7 +112,8 @@ export function setPrimaryDevice(
     throw new DomainError('NOT_FOUND', 'Dispositivo no encontrado.');
   }
   return db.transaction(() => {
-    const user = db.prepare('SELECT device_epoch FROM users WHERE id = ?').get(actor.uid) as { device_epoch: number };
+    const user = db.prepare('SELECT device_epoch,primary_device_id FROM users WHERE id = ?').get(actor.uid) as { device_epoch: number; primary_device_id: string|null };
+    if(user.primary_device_id===deviceId)return {deviceId,deviceEpoch:user.device_epoch,primary:true};
     const deviceEpoch = user.device_epoch + 1;
     db.prepare('UPDATE users SET primary_device_id = ?, device_epoch = ?, updated_at_epoch_ms = ? WHERE id = ?')
       .run(deviceId, deviceEpoch, nowEpochMs, actor.uid);

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { USE_NATIVE_DRIVER } from './animation.ts';
 import { Icon } from './Icon.tsx';
 import { colors, layout } from './tokens.ts';
 
@@ -23,7 +24,7 @@ export function Checkbox({
   useEffect(() => {
     Animated.spring(progress, {
       toValue: checked ? 1 : 0,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 22,
       bounciness: 9,
     }).start();
@@ -34,6 +35,7 @@ export function Checkbox({
       accessibilityRole="checkbox"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked }}
+      aria-checked={checked}
       hitSlop={10}
       onPress={onToggle}
       style={styles.hit}

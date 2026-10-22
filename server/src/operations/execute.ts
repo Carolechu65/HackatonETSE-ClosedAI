@@ -15,7 +15,7 @@ import type {
   WithdrawAlarmRequest,
 } from '../../../src/domain/contracts/types.ts';
 import { occurrenceIdFromEpochMs } from '../../../src/domain/ids.ts';
-import { isPast } from '../../../src/domain/time.ts';
+import { isPast, nextWeeklyOccurrence } from '../../../src/domain/time.ts';
 import type { AuthUser } from '../auth/service.ts';
 import { isActiveMember, requireActiveMembership } from '../groups/service.ts';
 import { canonicalJson, sha256Hex } from '../lib/crypto.ts';
@@ -128,7 +128,7 @@ function createAlarmRequest(
   }
   if (payload.taskId !== undefined) {
     const task = db
-      .prepare('SELECT 1 AS ok FROM tasks WHERE id = ? AND group_id = ?')
+      .prepare("SELECT 1 AS ok FROM tasks WHERE id = ? AND group_id = ? AND status='PENDING'")
       .get(payload.taskId, groupId);
     if (!task) throw new DomainError('NOT_FOUND', 'Tarea no encontrada en el piso.');
   }
@@ -167,7 +167,7 @@ function createAlarmRequest(
   const insertRecipient = db.prepare(
     `INSERT INTO alarm_recipients
       (request_id, uid, received_version, reception, decision, decision_revision, updated_at_epoch_ms)
-     VALUES (?, ?, 0, 'NOT_ACKNOWLEDGED', 'PENDING', 1, ?)`,
+     VALUES (?, ?, 1, 'NOT_ACKNOWLEDGED', 'PENDING', 1, ?)`,
   );
   for (const recipientUid of payload.recipientUids) insertRecipient.run(requestId, recipientUid, nowEpochMs);
 
@@ -228,11 +228,12 @@ function respondToAlarm(
   const accepted = payload.decision === 'ACCEPTED';
   db.prepare(
     `UPDATE alarm_recipients SET
-      decision = ?, decision_revision = ?, accepted_request_version = ?, consent_scope = ?,
+      reception='RECEIVED',received_version=?,decision = ?, decision_revision = ?, accepted_request_version = ?, consent_scope = ?,
       chosen_time_zone = ?, chosen_local_date = ?, chosen_local_time = ?, chosen_effective_at_epoch_ms = ?,
       reason = ?, updated_at_epoch_ms = ?
      WHERE request_id = ? AND uid = ?`,
   ).run(
+    request.request_version,
     payload.decision,
     revision,
     accepted ? request.request_version : null,
@@ -297,11 +298,12 @@ function withdrawAlarmRequest(
   for (const recipient of recipients) {
     if (recipient.decision === 'ACCEPTED') {
       db.prepare(
-        "UPDATE alarm_recipients SET decision = 'NEEDS_REVIEW', decision_revision = ?, accepted_request_version = NULL, updated_at_epoch_ms = ? WHERE request_id = ? AND uid = ?",
+        "UPDATE alarm_recipients SET decision = 'NEEDS_REVIEW', decision_revision = ?, accepted_request_version = NULL, consent_scope=NULL,chosen_time_zone=NULL,chosen_local_date=NULL,chosen_local_time=NULL,chosen_effective_at_epoch_ms=NULL, updated_at_epoch_ms = ? WHERE request_id = ? AND uid = ?",
       ).run(nextDecisionRevision(recipient.decision_revision), nowEpochMs, request.id, recipient.uid);
     }
   }
 
+  db.prepare("UPDATE device_schedules SET status='CANCEL_PENDING',status_updated_at_epoch_ms=? WHERE request_id=? AND status IN ('SCHEDULED','SCHEDULING','PENDING_PERMISSION')").run(nowEpochMs,request.id);
   const updated = getAlarmRequest(db, request.id);
   if (!updated) throw new Error('La propuesta no se guardó.');
   const audiences = [actor.uid, ...recipients.map((recipient) => recipient.uid)];
@@ -338,15 +340,16 @@ function reportSchedule(
   const recipient = getRecipient(db, request.id, actor.uid);
   if (!recipient) throw new DomainError('FORBIDDEN', 'Solo el destinatario reporta su programación.');
 
-  if (request.status !== 'ACTIVE') throw new DomainError('EXPIRED', 'La propuesta ya no está activa.');
+  const cancellation=payload.status==='CANCELLED'||payload.status==='CANCEL_PENDING';
+  if (!cancellation && request.status !== 'ACTIVE') throw new DomainError('EXPIRED', 'La propuesta ya no está activa.');
   if (payload.requestVersion !== request.request_version) {
     throw new DomainError('VERSION_CONFLICT', 'La propuesta cambió: no revivas una decisión antigua.', {
       expectedRequestVersion: payload.requestVersion,
       currentRequestVersion: request.request_version,
     });
   }
-  if (payload.decisionRevision !== recipient.decision_revision || recipient.decision !== 'ACCEPTED'
-    || recipient.accepted_request_version !== request.request_version) {
+  if (payload.decisionRevision !== recipient.decision_revision || (!cancellation && (recipient.decision !== 'ACCEPTED'
+    || recipient.accepted_request_version !== request.request_version))) {
     throw new DomainError('VERSION_CONFLICT', 'El consentimiento vigente no coincide con el acuse.', {
       decisionRevision: recipient.decision_revision,
       decision: recipient.decision,
@@ -360,12 +363,20 @@ function reportSchedule(
   }
 
   const consentTime = recipient.chosen_effective_at_epoch_ms ?? request.effective_at_epoch_ms;
-  if (payload.effectiveAtEpochMs !== consentTime) {
+  const recurrence=alarmRequestDto(request).recurrence;
+  const seriesOccurrence = recurrence && recipient.consent_scope === 'SERIES'
+    && payload.effectiveAtEpochMs > consentTime
+    && nextWeeklyOccurrence(
+      { ...recurrence, localTime: recipient.chosen_local_time ?? request.local_time },
+      recipient.chosen_time_zone ?? request.time_zone,
+      payload.effectiveAtEpochMs - 1,
+    ) === payload.effectiveAtEpochMs;
+  if (!cancellation && payload.effectiveAtEpochMs !== consentTime && !seriesOccurrence) {
     throw new DomainError('INVALID_ARGUMENT', 'payload.effectiveAtEpochMs no coincide con el horario consentido.', {
       expectedEffectiveAtEpochMs: consentTime,
     });
   }
-  if (payload.occurrenceId !== occurrenceIdFromEpochMs(consentTime)) {
+  if (payload.occurrenceId !== occurrenceIdFromEpochMs(payload.effectiveAtEpochMs)) {
     throw new DomainError('INVALID_ARGUMENT', 'payload.occurrenceId no corresponde al instante consentido.');
   }
 
@@ -390,9 +401,14 @@ function reportSchedule(
     payload.deviceId,
     payload.deviceEpoch,
   );
-  const terminal = new Set(['CANCELLED', 'EXPIRED', 'FAILED']);
-  if (existing && ((terminal.has(existing.status) && payload.reportedAtEpochMs <= existing.status_updated_at_epoch_ms)
-    || payload.reportedAtEpochMs < existing.reported_at_epoch_ms)) {
+  const terminal = new Set(['CANCELLED', 'EXPIRED', 'FAILED', 'FIRED']);
+  const sameRevision = existing?.request_version === payload.requestVersion
+    && existing.decision_revision === payload.decisionRevision;
+  if (existing && sameRevision && (
+    (['CANCELLED', 'EXPIRED', 'FIRED'].includes(existing.status) && payload.status !== existing.status)
+    || (terminal.has(existing.status) && payload.reportedAtEpochMs <= existing.status_updated_at_epoch_ms)
+    || payload.reportedAtEpochMs < existing.reported_at_epoch_ms
+  )) {
     return receiptWith(operationId, nowEpochMs, {
       requestVersion: request.request_version,
       decisionRevision: recipient.decision_revision,
@@ -407,13 +423,19 @@ function reportSchedule(
 
   if (existing) {
     db.prepare(
-      `UPDATE device_schedules SET status = ?, reported_at_epoch_ms = ?, status_updated_at_epoch_ms = ?, reason = ?
+      `UPDATE device_schedules SET request_version=?,decision_revision=?,status = ?, reported_at_epoch_ms = ?, status_updated_at_epoch_ms = ?, reason = ?,
+         mode = ?, mechanism = ?, effective_at_epoch_ms = ?
        WHERE request_id = ? AND uid = ? AND occurrence_id = ? AND device_id = ? AND device_epoch = ?`,
     ).run(
+      payload.requestVersion,
+      payload.decisionRevision,
       payload.status,
       payload.reportedAtEpochMs,
       payload.reportedAtEpochMs,
       payload.reason ?? null,
+      payload.mode,
+      payload.mechanism,
+      payload.effectiveAtEpochMs,
       request.id,
       actor.uid,
       payload.occurrenceId,

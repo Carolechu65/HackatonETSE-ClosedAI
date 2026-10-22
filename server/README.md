@@ -185,3 +185,7 @@ No acredita: push real en un teléfono, VPS desplegado, IA real con proveedor, n
 - SSE, receipts Expo, retención/caducidad de cursores y snapshot incremental completo.
 - Transferencia de propiedad del grupo, recuperación de contraseña, refresh de sesión y verificación de correo.
 - Prueba HTTPS desde dispositivos y despliegue real.
+
+## Integración de producto y cliente móvil
+
+La [hoja de compatibilidad P2/P5/P6](docs/PRODUCT_INTEGRATION.md) documenta tareas idempotentes, proyección `/sync?projection=alarms`, aliases de UI, CORS explícito y OpenRouter real sobre estos mismos servicios y esta misma SQLite. Se aplica la migración 002 sin modificar la migración 001 publicada.

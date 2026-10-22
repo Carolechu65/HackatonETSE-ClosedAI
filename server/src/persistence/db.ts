@@ -6,7 +6,7 @@
  */
 import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,9 +16,10 @@ const MIGRATION_FILE = /^(\d{3,})_([a-z0-9_-]+)\.sql$/i;
 
 export function openDatabase(databasePath: string): Db {
   if (databasePath !== ':memory:') {
-    mkdirSync(dirname(resolve(databasePath)), { recursive: true });
+    mkdirSync(dirname(resolve(databasePath)), { recursive: true, mode: 0o700 });
   }
   const db = new Database(databasePath);
+  if(databasePath!==':memory:')chmodSync(databasePath,0o600);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
@@ -122,7 +123,7 @@ export function assertSchemaReady(db: Db): void {
     .get();
   if (!table) throw new Error('La base no tiene migraciones aplicadas. Ejecuta npm --prefix server run migrate.');
   const row = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number | null };
-  if (!row.version) throw new Error('La base no tiene migraciones aplicadas.');
+  if (!row.version || row.version < 2) throw new Error('La base requiere migración 002. Ejecuta npm --prefix server run migrate.');
 }
 
 export function integrityCheck(db: Db): string {

@@ -136,6 +136,8 @@ test('una salida del modelo con un UID ajeno se rechaza', async () => {
   try {
     const owner = await registerUser(ctx.app, 'Luis');
     const groupId = await createGroup(ctx.app, owner);
+    const eligible = await registerUser(ctx.app, 'Ana');
+    await inviteAndJoin(ctx.app, owner, groupId, eligible);
     const response = await propose(ctx, owner.token, groupId, 'Recuérdale a alguien algo mañana');
     assert.equal(response.statusCode, 503);
     assert.equal(response.json().code, 'TEMPORARY_UNAVAILABLE');
@@ -158,4 +160,38 @@ test('sin proveedor configurado el formulario manual sigue disponible', async ()
   } finally {
     await ctx.close();
   }
+});
+
+test('piso con propietario único explica que falta invitar a alguien, sin pedir UID ni consultar al modelo', async () => {
+  let calls = 0;
+  let eligible: string[] = [];
+  const provider: AgentProvider = {
+    label: 'explicit-test-provider',
+    async next(context) {
+      calls += 1;
+      eligible = context.members.map(member => member.uid);
+      return { type: 'clarification', question: '¿A qué hora avisamos a Ana?', missingFields: ['time'] };
+    },
+  };
+  const ctx = await setupTest({ agentProvider: provider });
+  try {
+    const owner = await registerUser(ctx.app, 'Luis');
+    const groupId = await createGroup(ctx.app, owner);
+    const response = await ctx.app.inject({
+      method: 'POST', url: '/v1/agent/draft', headers: auth(owner.token),
+      payload: { groupId, text: 'Recuérdame sacar la basura mañana a las 21:00 con una notificación.' },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().status, 'needs_clarification');
+    assert.match(response.json().question, /Invita a otra persona/);
+    assert.doesNotMatch(response.json().question, /UID|identificador/);
+    assert.equal(calls, 0);
+    const ana = await registerUser(ctx.app, 'Ana');
+    await inviteAndJoin(ctx.app, owner, groupId, ana);
+    const continued = await propose(ctx, owner.token, groupId, 'Recuérdale a Ana sacar la basura', response.json().conversationId);
+    assert.equal(continued.statusCode, 200, continued.body);
+    assert.equal(calls, 1);
+    assert.deepEqual(eligible, [ana.uid]);
+    assert.equal((ctx.db.prepare('SELECT count(*) AS n FROM alarm_requests').get() as { n: number }).n, 0);
+  } finally { await ctx.close(); }
 });

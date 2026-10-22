@@ -1,6 +1,6 @@
 # Empezar a implementar alarmaT
 
-Base pequeña para seis personas. La arquitectura objetivo usa API HTTPS propia y SQLite en el VPS, además de SQLite local en el móvil. El código actual conserva `functions/` y `firebase/` como scaffold legado; P3 debe migrarlo a `server/`. Esta revisión modifica especificaciones, no implementa ni despliega ese servidor. Ningún botón de demo activa alarmas reales.
+La composición del producto está en `src/composition/`, la API vigente en `server/` y la entrada real en `app/index.tsx`. El esqueleto anterior se conserva en `/preview`. [Estado integrado y evidencia](qa/PRODUCT_INTEGRATION.md). El banco `/alarm-runtime` permite pruebas nativas explícitas.
 
 ## Arranque
 
@@ -9,11 +9,11 @@ La app utiliza Expo SDK 58 y requiere Node 22.13 o posterior de la rama 22 (`.nv
 ```sh
 nvm use
 npm ci
-npm --prefix functions ci
+npm --prefix server ci
 npm run check
 ```
 
-`npm run check` encadena TypeScript, contratos, tests y la compilación del scaffold antiguo de `functions/`. Se conserva este comando porque el código aún no se ha migrado: **no verifica el futuro servidor SQLite**. P1/P3 actualizarán scripts y CI al crear `server/`. Comandos actuales:
+`npm run check` encadena TypeScript, contratos, tests anidados de app/datos y build/tests de la API SQLite. No comprueba sonido físico. Comandos actuales:
 
 ```sh
 npm run typecheck        # app + tests
@@ -93,12 +93,12 @@ No importar adaptadores concretos desde las pantallas: usar `src/composition/ind
 
 ## Qué está deliberadamente pendiente
 
-- **Cliente remoto:** P5 implementará HTTP, sesión en SecureStore, sincronización por cursor y push Expo opcional. No instalar RNFirebase para el nuevo backend.
+- **Cliente remoto:** P5 implementa SQLite/outbox, HTTP/SecureStore, sincronización y reconciliación con pruebas en SQLite real. Integración y límites en [`src/data/README.md`](../src/data/README.md). La demo sigue activa hasta que P3 entregue API/URL y wrappers HTTP, P4 el runtime y P2 conecte las pantallas. El registro push sigue pendiente del contrato de dispositivos; no instalar RNFirebase.
 - **Backend:** las funciones antiguas siguen devolviendo `unimplemented`; las Rules antiguas deniegan todo. P3 debe reemplazarlas por API HTTP, sesiones propias, migraciones SQLite y autorización probada; después retirará el legado con P1. No hay servidor SQLite ejecutable todavía.
-- **Alarma sonora:** el módulo nativo declara sus capacidades como no disponibles y rechaza programar/cancelar. La interfaz TypeScript funciona como punto de conexión.
+- **Alarma sonora:** se integra el prototipo de dAlarmas (AlarmManager, servicio, detener/posponer y recuperación); la validación física sigue pendiente.
 - **Widgets:** hay una proyección pura; no se registra todavía un widget en el launcher. P6 instala/configura expo-widgets y valida el runtime aislado.
 - **Agente:** existe su punto de entrada y contrato de borrador/clarificación; falta conectar un modelo, herramientas autorizadas y confirmación humana.
-- **Automatizaciones:** el outbox es un contrato inicial; recurrencia, reintentos y cancelaciones por tareas están pendientes.
+- **Automatizaciones:** P5 aporta outbox durable, reintentos, barreras de cancelación y recuperación de snapshots. La recurrencia con proceso cerrado y la invalidación por tareas requieren la integración P3/P4/P6.
 
 La demo en memoria pierde cambios al reiniciar. Aceptar produce «activación pendiente», nunca un éxito de programación ficticio. No marcar las features completas hasta integrar y comprobar el flujo real.
 

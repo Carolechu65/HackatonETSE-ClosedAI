@@ -1,9 +1,9 @@
-/** P5: conectar RNFirebase una sola vez desde el entrypoint, antes de Router. */
-export function initializeBootstrap() {
-  return {
-    mode: 'demo',
-    firebaseConnected: false,
-    backgroundHandlersRegistered: false,
-    persistentStorageReady: false,
-  } as const;
+export * from './core.ts';
+
+/** Opt-in native composition. Dynamic import keeps tests/demo free of eager native side effects. */
+export async function startConfiguredMobileServices(
+  options: import('../data/mobile.ts').MobileDataClientOptions & { enablePush?: boolean },
+) {
+  const { startMobileServices } = await import('./startMobile.ts');
+  return startMobileServices(options);
 }

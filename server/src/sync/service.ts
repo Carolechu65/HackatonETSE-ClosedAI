@@ -1,6 +1,7 @@
 import { DomainError } from '../../../src/domain/errors.ts';
 import type { Db } from '../persistence/db.ts';
 import { appendChangeEvent } from '../persistence/events.ts';
+import {requireActiveMembership} from '../groups/service.ts';
 
 export type SyncEvent = {
   sequence: number;
@@ -168,14 +169,18 @@ export function acknowledgeReception(
     .prepare('SELECT received_version, reception FROM alarm_recipients WHERE request_id = ? AND uid = ?')
     .get(requestId, actorUid) as { received_version: number; reception: string } | undefined;
   if (!recipient) throw new DomainError('NOT_FOUND', 'Propuesta no encontrada.');
-  if (requestVersion <= recipient.received_version) return;
+  const request=db.prepare('SELECT group_id,request_version FROM alarm_requests WHERE id=?').get(requestId) as {group_id:string;request_version:number}|undefined;
+  if(!request)throw new DomainError('NOT_FOUND','Propuesta no encontrada.');
+  requireActiveMembership(db,request.group_id,actorUid);
+  if(requestVersion!==request.request_version)throw new DomainError('VERSION_CONFLICT','La propuesta cambió.');
+  if (requestVersion <= recipient.received_version && recipient.reception==='RECEIVED') return;
   db.prepare(
     `UPDATE alarm_recipients SET received_version = ?, reception = 'RECEIVED', updated_at_epoch_ms = ?
      WHERE request_id = ? AND uid = ?`,
   ).run(requestVersion, nowEpochMs, requestId, actorUid);
   appendChangeEvent(db, {
     audienceUid: actorUid,
-    groupId: '',
+    groupId: request.group_id,
     entityType: 'recipient',
     entityId: `${requestId}:${actorUid}`,
     entityVersion: requestVersion,
