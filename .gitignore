@@ -23,3 +23,9 @@ GoogleService-Info.plist
 *.keystore
 *.jks
 .DS_Store
+
+# Backend P3: datos privados y artefactos de compilación
+server/data/
+*.db
+*.db-wal
+*.db-shm
