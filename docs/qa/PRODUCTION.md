@@ -1,5 +1,47 @@
 # Revisión P1–P6 y producción · 22-10-2026
 
+## Estado vigente verificado · 22-10-2026
+
+La release activa es `20261022T163633Z-ocr`, esquema SQLite 8. Integra tickets OCR,
+reparto por importes y porcentajes, edición de gastos y adjuntos revisables, además
+de widgets y aceptación de asignaciones. Las fechas y versiones de las secciones
+inferiores son registros históricos, no la versión actualmente servida.
+
+La fuente integrada `cb59d37` contiene el código de la web/API publicada. Una
+compilación nueva del servidor coincide byte a byte con los 122 archivos de
+`server/dist` activos; las 8 migraciones también coinciden. Los 81 archivos de la
+exportación web de compilación, comprobados antes de limpiar temporales, coinciden
+con producción. El adaptador OCR, la unidad
+de servicio, el fragmento Caddy, la guía de instalación, el logo y la presentación
+portable corresponden a los archivos versionados. Las huellas se conservan en
+[el manifiesto del despliegue](DEPLOYMENT_SNAPSHOT.json).
+
+La presentación que sigue publicada en `/alarmat/presentation/` se conserva en
+`presentation/`. `presentacionfinal/` contiene la versión posterior del borrador;
+no sustituye automáticamente la presentación servida. La portable sigue publicada
+en `/alarmat/presentacion-portable.html`.
+
+El APK actual procede de `b236f0a`, contiene los tres widgets y asignaciones, y no
+incluye la interfaz OCR. Mantiene su firma y checksum publicados. La web y el APK
+son artefactos distintos: este push no recompila ni reemplaza el APK instalado.
+
+Validación de cierre: `npm run check` con 281 pruebas de app y 92 de servidor
+correctas, 42 fixtures y 15 esquemas válidos; solo se omite el test externo optativo
+del proveedor. La demo real con Ana y Bruno verificó propuestas, respuestas y hora
+personal, tarea vinculada y completado, lectura OCR de un ticket ficticio, reparto,
+edición y pago de cuota. Las cuatro pestañas no desbordan a 360/390/430 px.
+Google Calendar requiere autorización de las cuentas; sonido, bloqueo y launcher
+Android siguen pendientes de validación física.
+
+La limpieza de espacio afectó únicamente a cachés, herramientas descargables,
+compilaciones, dependencias de desarrollo regenerables, duplicados y releases
+antiguas de AlarmaT. Se conservan release activa y rollback inmediato, APK actual y
+anterior, código de todos los checkouts, evidencias textuales, entregables de demo,
+SQLite/WAL/SHM, tickets OCR, backups y secretos de firma. Las herramientas y
+cachés de Android se reinstalan antes de una futura compilación; las dependencias
+de desarrollo se recuperan con `npm ci` en raíz y servidor. Producción ejecuta su
+propia instalación y no depende de esos directorios de desarrollo.
+
 ## Actualización de personas, tareas, gastos y asistente
 
 Última publicación web: `347d2a5`, release `20261022T155651Z`, esquema 6.
@@ -113,3 +155,31 @@ desplazamiento vertical y bordes del navegador. Tareas muestra4filas por página
 y Gastos3, manteniendo saldos y contadores globales. Chromium con eventos táctiles
 CDP comprobó cambios en ambos sentidos, paginación/alta de tareas y menú fijo
 después de desplazar una pantalla de360×460px.
+
+
+## Widgets y asignaciones · 22-10-2026 · e8999db
+
+Web/API publicados en `/opt/alarmat/releases/20261022T162716Z`, esquema 7.
+Migración aditiva: las tareas antiguas conservan `assignment_decision=not_required`.
+Las nuevas asignaciones a otra persona requieren aceptar/rechazar, sin alterar el
+consentimiento independiente de una alarma o notificación vinculada. Crear un aviso
+con la opción predeterminada de tarea guarda ambas entidades en una transacción
+idempotente. Avisos independientes y tareas existentes siguen disponibles.
+
+`npm run check`: 277 pruebas de app + 83 de servidor correctas; una prueba opcional
+con proveedor externo omitida. QA aislada con 84 peticiones y sin errores: creación
+atómica, aprobación del destinatario, bloqueo del emisor, completar/reabrir, alarma
+propia y vistas de widgets en 360/390/430 px. QA HTTPS solo lectura de widgets,
+instalación, login y salud del API correcta.
+
+Widgets: Alarmas, Tareas y Tablón comparten la paleta de la app, muestran títulos,
+responsables/fechas y checklist con acciones versionadas. Los botones de completar
+abren la app y aplican el cambio autenticado, sin fingir éxito en el launcher.
+
+Los avisos de asignación usan `/v1/assignments` y deduplicación nativa compartida.
+Android consulta en segundo plano con JobScheduler (mínimo 15 minutos, aplazable
+por el sistema), además de la sincronización con la app abierta. No se presenta
+como push instantáneo; Expo/FCM sigue sin configuración. Falta comprobar físicamente
+el launcher, la ejecución de jobs y los permisos del fabricante.
+
+Evidencia: `/srv/mail/alarmat-build/widgets-20261022/`.

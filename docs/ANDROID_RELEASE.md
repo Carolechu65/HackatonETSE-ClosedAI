@@ -142,3 +142,21 @@ Los binarios se conservan en `/opt/alarmat/downloads`, con un enlace desde
 `current/web/downloads`. Las siguientes publicaciones deben conservar ese enlace,
 `web/install/` y `web/brand/`. La guía usa `install/index.html` explícito porque la
 ruta de directorio `install/` cae en el fallback de la SPA.
+
+
+## APK de widgets y asignaciones · 22-10-2026
+
+Publicado por petición expresa del usuario en la descarga habitual: fuente local
+`b236f0a`, ARM64, 49.365.390 bytes. La publicación inicial se hizo desde el VPS; el cierre posterior está versionado en main.
+SHA-256: `b20742aaee4515fa82405975d8f54f288c858ad0b35f2da40be6947100667606`.
+La descarga HTTPS se comparó byte a byte con el APK firmado. Pasaron las17
+verificaciones del artefacto y7 comprobaciones de presencia de las funciones
+nuevas. Evidencia: `/srv/mail/alarmat-build/artifacts/b236f0a/`.
+
+Incluye los tres widgets, checklist, aceptación de asignaciones y creación conjunta
+de alarma y tarea. Se conserva la web de tickets (schema8); el OCR de tickets no
+forma parte de este APK. Las pruebas nativas `testDebugUnitTest` finalizaron correctamente
+(`BUILD SUCCESSFUL`); su resultado queda en
+`/srv/mail/alarmat-build/widgets-20261022/native-tests.log`. La prueba en teléfono
+físico está pendiente. Los avisos con app cerrada usan sincronización periódica
+(mínimo15min, sujeta a Android), no push instantáneo.
