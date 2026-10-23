@@ -246,3 +246,22 @@ test('HTTPS transport preserves a configured application prefix without leaking 
   assert.equal(requested, 'https://api.example.test/alarmat/api/v1/calendar/google/status');
   await assert.rejects(() => http.authenticatedJson('//other.example/v1/calendar/google/status', 'GET'));
 });
+
+test('AI failures use safe actionable local messages and do not automatically retry', async () => {
+ for(const path of ['/v1/agent/draft','/v1/agent/propose','/v1/ai/connection/test','/v1/ai/connection/save']) {
+  let requests=0;const ctx=setup(async()=>{requests++;return Response.json({code:'TEMPORARY_UNAVAILABLE',message:'sk-private-provider-key'}, {status:503});});await ctx.sessions.install(credentials);
+  await assert.rejects(ctx.http.authenticatedJson(path,'POST',{}),(e:unknown)=>{assert.match((e as Error).message,/Revisa tu conexión o crea la alarma manualmente/);assert.ok(!(e as Error).message.includes('private'));return true;});assert.equal(requests,1);
+ }
+ const ctx=setup(()=>new Promise(()=>undefined),{timeoutMs:5});await ctx.sessions.install(credentials);
+ await assert.rejects(ctx.http.authenticatedJson('/v1/agent/draft','POST',{}),/Revisa tu conexión/);
+});
+
+test('AI transport permits the server call budget while ordinary requests keep their shorter timeout',async(t)=>{
+ const delays:number[]=[];const original=globalThis.setTimeout;
+ t.mock.method(globalThis,'setTimeout',((callback:()=>void,delay?:number,...args:unknown[])=>{delays.push(delay??0);return original(callback,delay);}) as typeof setTimeout);
+ const ctx=setup(async()=>Response.json({ok:true}));await ctx.sessions.install(credentials);
+ await ctx.http.authenticatedJson('/v1/agent/draft','POST',{});
+ await ctx.http.authenticatedJson('/v1/ai/connection/test','POST',{});
+ await ctx.http.authenticatedJson('/v1/groups','GET');
+ assert.deepEqual(delays,[65_000,65_000,15_000]);
+});

@@ -1,3 +1,4 @@
+import { DownloadAppButton } from '../../ui/DownloadAppButton';
 import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -37,6 +38,7 @@ export function LoginScreen() {
       <PrimaryAction style={{ marginTop: 0 }} label={busy ? 'Un momento…' : register ? 'Crear mi cuenta' : 'Entrar en casa →'} disabled={busy || state.cleanupPending || !email.trim() || !password || (register && !name.trim())} onPress={() => void run(() => client.signIn({ email: email.trim(), password, displayName: name.trim() }, register))} />
       <Action onPress={() => setRegister(!register)} disabled={busy} style={{ borderWidth: 0 }}>{register ? 'Ya tengo cuenta · Entrar' : '¿Es tu primera vez? Crea una cuenta'}</Action>
       <View style={{ borderTopWidth: 1, borderColor: colors.ln, paddingTop: 18, gap: 12 }}><Text style={typography.support}>¿Quieres echar un vistazo primero?</Text><Action onPress={() => void run(() => client.startDemo())} disabled={busy}>Abrir la casa de ejemplo →</Action><Text style={typography.support}>Una demostración sin registro ni alarmas reales.</Text></View>
+      <DownloadAppButton />
     </View>
   </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }

@@ -14,8 +14,9 @@ node node_modules/expo/bin/cli prebuild --platform android --no-install
 cd android
 ./gradlew :app:assembleRelease --no-daemon --max-workers=1 \
   -Dorg.gradle.parallel=false \
-  '-Dorg.gradle.jvmargs=-Xmx768m -XX:MaxMetaspaceSize=384m -XX:ActiveProcessorCount=2' \
+  '-Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m -XX:ActiveProcessorCount=2' \
   -Pkotlin.compiler.execution.strategy=in-process \
   -PreactNativeArchitectures=arm64-v8a \
-  -Pandroid.enableMinifyInReleaseBuilds=false
+  -Pandroid.enableMinifyInReleaseBuilds=true \
+  -Pandroid.enableShrinkResourcesInReleaseBuilds=true
 printf '\nSigned standalone APK: android/app/build/outputs/apk/release/app-release.apk\n'

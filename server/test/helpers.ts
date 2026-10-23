@@ -1,3 +1,4 @@
+import { createAgentProvider } from '../src/agents/service.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,7 +33,7 @@ export function testConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     databasePath: overrides.databasePath ?? ':memory:',
     argon2: overrides.argon2 ?? base.argon2,
     push: overrides.push ?? base.push,
-    agent: overrides.agent ?? base.agent,
+    agent: overrides.agent ?? { ...base.agent, provider: 'deterministic' },
   };
 }
 
@@ -41,6 +42,7 @@ export async function setupTest(options: {
   agentProvider?: AgentProvider;
   fileDatabase?: boolean;
   receiptConfig?: BuildAppOptions['receiptConfig'];
+  aiFetch?: typeof fetch;
   receiptFetch?: BuildAppOptions['receiptFetch'];
 } = {}): Promise<TestContext> {
   const dir = mkdtempSync(join(tmpdir(), 'alarmat-test-'));
@@ -50,7 +52,7 @@ export async function setupTest(options: {
   });
   const db = openDatabase(config.databasePath);
   migrate(db);
-  const app = buildApp({ config, db, logger: false, agentProvider: options.agentProvider, receiptConfig: options.receiptConfig ?? null, receiptFetch: options.receiptFetch });
+  const app = buildApp({ config, db, logger: false, agentProvider: options.agentProvider ?? (config.agent.provider === 'deterministic' ? createAgentProvider(config.agent) ?? undefined : undefined), aiFetch: options.aiFetch, receiptConfig: options.receiptConfig ?? null, receiptFetch: options.receiptFetch });
   await app.ready();
   return {
     app,

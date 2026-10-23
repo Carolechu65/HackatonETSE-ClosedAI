@@ -48,8 +48,7 @@ Copiar `server/.env.example` como referencia. Nunca subir el `.env` real.
 | `SESSION_TTL_MS` | Duración de sesión; sin refresh en este corte. |
 | `AUTH_RATE_LIMIT`, `OPERATION_RATE_LIMIT`, `AGENT_RATE_LIMIT` | Ventanas fijas en memoria por IP/actor. |
 | `EXPO_PUSH_TOKEN`, `PUSH_WORKER_ENABLED` | Push opcional. Sin token la outbox queda persistida y no se promete entrega cerrada. |
-| `AI_PROVIDER` | `none` (503), `deterministic` (solo demo/pruebas, etiquetado) u `openai`. |
-| `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | Proveedor compatible OpenAI, solo en el proceso del VPS. |
+| `AI_CREDENTIAL_KEY_FILE` | Fichero privado separado con clave maestra de cifrado de32bytes hexadecimales. Cada usuario conecta su propia API key. |
 | `TRUST_PROXY` | `true` detrás de nginx para que `request.ip` use `X-Forwarded-For`. |
 
 ## API
@@ -121,7 +120,7 @@ Dentro de la misma transacción SQLite se escribe el efecto, el recibo idempoten
 ```json
 {
   "sessionId": "ags-...",
-  "provider": "deterministic-demo",
+  "provider": "deepseek:deepseek-flash",
   "status": "needs_clarification",
   "question": "¿A qué hora...?",
   "missingFields": ["time"]
@@ -130,9 +129,10 @@ Dentro de la misma transacción SQLite se escribe el efecto, el recibo idempoten
 
 o un `draft` con `title`, `recipientUids`, `timeSpec` IANA/UTC, `mode`, `reason`, `requiresSenderReview` y `requiresRecipientConsent`. El emisor revisa y usa la operación ordinaria `createAlarmRequest`; Ana responde con `respondToAlarm`.
 
-- `AI_PROVIDER=none`: 503 explícito y formulario manual disponible.
-- `AI_PROVIDER=deterministic`: adapter de demo/pruebas, claramente etiquetado; no es IA real.
-- `AI_PROVIDER=openai`: cliente compatible OpenAI configurable. La clave vive solo en el entorno del VPS; no se registran prompts ni salidas completas.
+- Cada usuario conecta su proveedor desde Ajustes → Conectar mi IA. Prueba, guarda, sustituye y elimina su conexión cifrada.
+- Sin conexión propia, el asistente devuelve503 y mantiene disponible el formulario manual. Nunca usa claves globales ni de otros usuarios.
+- OpenAI/GPT de OpenCode: Responses. DeepSeek/OpenRouter: Chat Completions. Los adapters deterministas se inyectan únicamente en pruebas.
+- Configuración, pruebas y recuperación: [IA personal](../docs/PERSONAL_AI.md).
 - Las herramientas son lectura de miembros/tareas del grupo autorizado. Los nombres y textos son datos no confiables. La salida del modelo se valida con el contrato `createAlarmRequest` y pertenencia activa; un UID ajeno o un horario pasado se rechaza.
 - Cada conversación queda aislada por propietario/grupo, caduca y solo guarda lo mínimo para continuar. Un borrador cierra la sesión; editar exige una nueva revisión.
 

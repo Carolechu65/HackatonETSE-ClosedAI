@@ -1,3 +1,4 @@
+import type { AiClient } from '../features/ai/client.ts';
 import type { FinanceClient } from '../features/expenses/client.ts';
 import type { CalendarClient } from '../features/calendar/client.ts';
 import type { AlarmRequestDocument, RecipientDocument, ScheduleDocument, CreateAlarmRequestPayload, RespondToAlarmPayload } from '../domain/contracts/types.ts';
@@ -40,6 +41,7 @@ export type ProductState = {
   error: string | null;
 };
 export interface ProductClient {
+  ai: AiClient;
   calendar: CalendarClient;
   finance: FinanceClient;
   getSnapshot(): ProductState;

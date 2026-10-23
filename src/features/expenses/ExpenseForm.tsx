@@ -35,7 +35,10 @@ export function ExpenseForm({expense,onSaved,onCancel}:{expense?:Expense;onSaved
   if(!euros)setError(`El ticket indica ${currency}. Introduce el importe en euros antes de guardar.`);
   const previewSequence=sequence.current;void client.finance.previewReceipt(groupId,receipt.id).then(p=>{if(alive.current&&previewSequence===sequence.current&&p)setPreview(p);}).catch(()=>{});
  },[receipt,client,groupId]);
- async function upload(file:PickedReceipt){if(!alive.current)return;const seq=++sequence.current;setUploading(true);setError(null);setReviewed(false);setPreview(file.preview??null);
+ async function upload(file:PickedReceipt){
+  // A native picker may finish between a session change and React's unmount.
+  const current=client.getSnapshot();if(!alive.current||current.session?.mode!=='live'||current.session.userId!==uid||current.groupId!==groupId)return;
+  const seq=++sequence.current;setUploading(true);setError(null);setReviewed(false);setPreview(file.preview??null);
   try{const r=await client.finance.uploadReceipt(groupId,{filename:file.filename,base64:file.base64});if(alive.current&&seq===sequence.current){applied.current=null;setReceipt(r);}}
   catch(e){if(alive.current&&seq===sequence.current){setPreview(null);setError(e instanceof Error?e.message:'No se pudo subir el ticket.');}}
   finally{if(alive.current&&seq===sequence.current)setUploading(false);}}

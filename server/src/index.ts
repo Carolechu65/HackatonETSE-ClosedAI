@@ -3,7 +3,6 @@ import { buildApp } from './app/buildApp.ts';
 import { openDatabase, assertSchemaReady } from './persistence/db.ts';
 import { OutboxWorker } from './messaging/outboxWorker.ts';
 import { ExpoPushSender } from './messaging/push.ts';
-import { createAgentProvider } from './agents/service.ts';
 
 const config = loadConfig();
 const db = openDatabase(config.databasePath);
@@ -16,10 +15,7 @@ try {
 }
 
 const app = buildApp({ config, db });
-const agent = createAgentProvider(config.agent);
-if (config.agent.provider === 'openai' && !agent) {
-  app.log.warn('AI_PROVIDER=openai sin AI_BASE_URL/AI_API_KEY/AI_MODEL: el agente responderá 503 y queda el formulario manual.');
-}
+if (!config.aiCredentialKey) app.log.warn('Conexiones personales de IA no disponibles: falta AI_CREDENTIAL_KEY_FILE.');
 
 const worker = new OutboxWorker(
   db,

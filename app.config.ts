@@ -10,7 +10,7 @@ import type { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'alarmaT',
   slug: 'alarmat',
-  version: '0.1.0',
+  version: '0.2.0',
   scheme: 'alarmat',
   // A subdirectory is only used by the VPS web export, never native deep links.
   experiments: { baseUrl: process.env.ALARMAT_WEB_BASE_PATH || undefined },
@@ -20,6 +20,7 @@ const config: ExpoConfig = {
   icon: './assets/brand/icon.png',
   android: {
     package: 'com.closedai.alarmat',
+    versionCode: 2,
     // A restored native alarm store must never execute an old device's consent.
     allowBackup: false,
     adaptiveIcon: { foregroundImage: './assets/brand/adaptive-icon.png', backgroundColor: '#efe2c4' },
@@ -30,6 +31,8 @@ const config: ExpoConfig = {
     'expo-sqlite',
     'expo-secure-store',
     'expo-notifications',
+    ['expo-image-picker', { cameraPermission: 'AlarmaT necesita la cámara para fotografiar tus tickets.', microphonePermission: false }],
+    'expo-document-picker',
     /*
      * P6 · widget de la próxima alarma. Requiere development build nueva:
      * el plugin genera el receptor/launcher de Android. Ver handoff de P1.

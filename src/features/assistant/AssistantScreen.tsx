@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useProduct } from '../../composition/ProductProvider.tsx';
@@ -41,6 +42,8 @@ export function AssistantScreen() {
       {sameGroup && reply?.kind === 'draft' && reply.draft ? <Sheet><Text style={typography.labelOnNote}>BORRADOR · AÚN SIN ENVIAR</Text><Text style={typography.noteTitle}>{reply.draft.title}</Text><Text style={typography.support}>Revisa destinatarios, hora, modo y repetición antes de enviarlo. Preparar el borrador no programa alarmas.</Text><Action onPress={() => setReviewing(true)}>Revisar y editar propuesta →</Action></Sheet> : null}
       <Sheet><Field label={reply?.kind === 'needs_clarification' && sameGroup ? 'Completa el dato que falta' : '¿Qué quieres recordar?'} multiline value={text} onChangeText={setText} maxLength={2000} editable={!action.busy && state.session?.mode === 'live'} placeholder="Recuérdale a Ana sacar la basura mañana a las 21:00." hint="No se enviará ninguna propuesta hasta que la revises y confirmes." /></Sheet>
       <Message text={action.error} error />
+      <Action onPress={() => router.push('/ai-settings')}>Conectar o revisar mi IA</Action>
+      <Action onPress={() => router.push('/alarm/new')}>Crear una alarma manualmente</Action>
       <PrimaryAction label={action.busy ? 'Preparando respuesta…' : 'Consultar al compañero'} disabled={action.busy || !text.trim() || !state.groupId || state.session?.mode !== 'live'} onPress={send} />
       {turns.length ? <Action disabled={action.busy} onPress={() => { setTurns([]); setReply(null); setText(''); setConversationGroup(scope); }}>Empezar otra conversación</Action> : null}
     </View>

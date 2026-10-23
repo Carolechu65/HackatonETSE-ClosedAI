@@ -1,3 +1,4 @@
+import { DownloadAppButton } from '../../ui/DownloadAppButton';
 import { useEffect, type ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
@@ -14,7 +15,7 @@ export function Frame({title,eyebrow,children}:{title:string;eyebrow:string;chil
   if(!state.ready||!state.session)return <View style={styles.loading}><ActivityIndicator color={colors.tx}/></View>;
   return <View ref={swipeSurface} nativeID={TAB_SWIPE_SURFACE} style={styles.root}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={styles.root}>
     <Screen scroll contentStyle={styles.page}><View style={styles.header}><View style={{flex:1}}><ScreenHeader title={title} eyebrow={eyebrow} brand={path==='/'}/></View><View style={styles.actions}><IconButton name="calendar" tone="plain" onPress={()=>router.push('/calendar')} accessibilityLabel="Abrir calendario"/><IconButton name="settings" tone="plain" onPress={()=>router.push('/settings')} accessibilityLabel="Cuenta y permisos"/></View></View>
-      {state.session.mode==='demo'?<Text style={typography.label}>DEMO · DATOS DE EJEMPLO</Text>:null}<Message text={state.error} error/>{children}
+      {state.session.mode==='demo'?<Text style={typography.label}>DEMO · DATOS DE EJEMPLO</Text>:null}<Message text={state.error} error/>{children}{path==='/' ? <DownloadAppButton /> : null}
     </Screen>
     <View style={styles.nav}><RetroTabBar state={{index:tabs.findIndex(x=>x.key===path),routes:tabs}} descriptors={{}} emitter={{emit:()=>({defaultPrevented:false})}} navigateToTab={key=>router.push(key as '/')} insets={{bottom:insets.bottom}}/></View>
   </KeyboardAvoidingView></View>;

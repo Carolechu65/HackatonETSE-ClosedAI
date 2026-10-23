@@ -22,6 +22,19 @@ const messages: Record<AppErrorCode, string> = {
 };
 export function remoteError(code: AppErrorCode): DomainError { return new DomainError(code, messages[code]); }
 
+function aiRoute(path: string): boolean {
+  return /^\/v1\/(?:agent\/(?:draft|propose)|ai\/connection(?:\/(?:test|save|delete))?)$/.test(path);
+}
+function requestErrorMessage(path: string, code: AppErrorCode): string {
+  if (aiRoute(path)) {
+    if (code === 'TEMPORARY_UNAVAILABLE') return 'Tu proveedor no está disponible. Revisa tu conexión o crea la alarma manualmente.';
+    if (code === 'INVALID_ARGUMENT') return 'Revisa el proveedor, el modelo y la clave. Vuelve a probar la conexión antes de guardarla.';
+    if (code === 'VERSION_CONFLICT' || code === 'EXPIRED') return 'Tu conexión ha cambiado o la prueba ha caducado. Vuelve a probarla antes de guardar.';
+  }
+  return messages[code];
+}
+
+
 function errorCode(status: number, body: unknown): AppErrorCode {
   // HTTP authorization takes precedence over an untrusted/malformed response body.
   if (status === 401) return 'UNAUTHENTICATED';
@@ -85,12 +98,15 @@ export class HttpClient {
     let encoded: string | undefined;
     try { encoded = body === undefined ? undefined : JSON.stringify(body); } catch { throw remoteError('INVALID_ARGUMENT'); }
     if (encoded && new TextEncoder().encode(encoded).byteLength > (method === 'POST' && /^\/v1\/groups\/[^/]+\/receipts$/.test(path) ? 12 * 1024 * 1024 : this.maxBytes)) throw remoteError('INVALID_ARGUMENT');
+    // A draft may make two bounded 30-second provider calls. No automatic retries.
+    const requestTimeout = this.options.timeoutMs ?? (aiRoute(path) ? 65_000 : this.timeoutMs);
+    const unavailable = () => new DomainError('TEMPORARY_UNAVAILABLE', requestErrorMessage(path, 'TEMPORARY_UNAVAILABLE'));
     const controller = new AbortController();
     let rejectCancellation: (error: DomainError) => void = () => undefined;
     const cancelled = new Promise<never>((_, reject) => { rejectCancellation = reject; });
     const onAbort = () => { controller.abort(); rejectCancellation(remoteError('UNAUTHENTICATED')); };
     guard.signal.addEventListener('abort', onAbort, { once: true });
-    const timer = setTimeout(() => { controller.abort(); rejectCancellation(remoteError('TEMPORARY_UNAVAILABLE')); }, this.timeoutMs);
+    const timer = setTimeout(() => { controller.abort(); rejectCancellation(unavailable()); }, requestTimeout);
     const run = async (): Promise<unknown> => {
       const headers: Record<string, string> = { Accept: 'application/json' };
       if (encoded !== undefined) headers['Content-Type'] = 'application/json';
@@ -99,7 +115,7 @@ export class HttpClient {
         method, headers, body: encoded, signal: controller.signal, redirect: 'error', credentials: 'omit', cache: 'no-store',
       };
       const response = await (this.options.fetch ?? globalThis.fetch)(`${this.origin}${this.basePath}${path}`, request);
-      if (controller.signal.aborted) throw remoteError('TEMPORARY_UNAVAILABLE');
+      if (controller.signal.aborted) throw unavailable();
       guard.assertCurrent();
       if (response.redirected || (response.status >= 300 && response.status < 400)) throw remoteError('INVALID_ARGUMENT');
       // Invalidate on status even if the body is oversized, malformed, or never finishes.
@@ -120,7 +136,7 @@ export class HttpClient {
         try {
           while (true) {
             const chunk = await reader.read();
-            if (controller.signal.aborted) throw remoteError('TEMPORARY_UNAVAILABLE');
+            if (controller.signal.aborted) throw unavailable();
             if (chunk.done) break;
             size += chunk.value.byteLength;
             if (size > this.maxBytes) throw remoteError('INVALID_ARGUMENT');
@@ -133,7 +149,7 @@ export class HttpClient {
         raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > this.maxBytes) throw remoteError('INVALID_ARGUMENT');
       }
-      if (controller.signal.aborted) throw remoteError('TEMPORARY_UNAVAILABLE');
+      if (controller.signal.aborted) throw unavailable();
       guard.assertCurrent();
       let value: unknown;
       try { value = raw === '' && response.status === 204 ? null : JSON.parse(raw); }
@@ -142,7 +158,7 @@ export class HttpClient {
         const code = errorCode(response.status, value);
         const retryAfter = response.status === 429 || response.status === 503
           ? retryAfterMs(response.headers.get('retry-after'), (this.options.nowEpochMs ?? Date.now)()) : undefined;
-        throw new DomainError(code, messages[code], retryAfter === undefined ? undefined : { retryAfterMs: retryAfter });
+        throw new DomainError(code, requestErrorMessage(path, code), retryAfter === undefined ? undefined : { retryAfterMs: retryAfter });
       }
       return value;
     };
@@ -151,7 +167,7 @@ export class HttpClient {
       return await Promise.race([run(), cancelled]);
     } catch (error) {
       if (error instanceof DomainError) throw error;
-      throw remoteError('TEMPORARY_UNAVAILABLE');
+      throw unavailable();
     } finally {
       clearTimeout(timer); guard.signal.removeEventListener('abort', onAbort); controller.abort();
     }

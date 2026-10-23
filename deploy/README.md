@@ -10,7 +10,7 @@ hosts conservan su configuración original.
 - `/opt/alarmat/current`: enlace al release activo; no apunta a un checkout compartido.
 - `/opt/alarmat/runtime/node`: Node 22 para este servicio.
 - `alarmat.service`, usuario de sistema `alarmat`, escucha solo `127.0.0.1:18787`.
-- `/etc/alarmat/alarmat.env`: configuración y clave del proveedor, modo0600.
+- `/etc/alarmat/alarmat.env`: configuración privada, modo0600; las API keys del asistente son personales y cifradas.
 - `/var/lib/alarmat/alarmat.db`: SQLite persistente del servicio, directorio0700.
 - `/etc/caddy/alarmat.caddy`: importado exclusivamente dentro de `gex-dashboard.hopto.org`.
 
@@ -73,3 +73,7 @@ su firma permanente externa, y no es equivalente a la consola web.
 Por instrucción del usuario, herramientas, cachés y compilación locales usan
 **solo `/srv/mail/alarmat-build/`**; no modificar ni eliminar otros datos de
 `/srv/mail/`. El directorio está en un volumen distinto al disco del sistema.
+
+## IA por usuario
+
+Provisionar el fichero maestro separado y el drop-in descritos en [IA personal](../docs/PERSONAL_AI.md) antes de desplegar la migración009. No generar otra clave al actualizar el release.

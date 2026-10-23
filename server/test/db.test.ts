@@ -12,9 +12,9 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
   try {
     const db = openDatabase(path);
     const first = migrate(db);
-    assert.equal(first.schemaVersion, 8);
-    assert.equal(db.pragma('user_version', { simple: true }), 8);
-    assert.equal(first.applied.length, 8);
+    assert.equal(first.schemaVersion, 9);
+    assert.equal(db.pragma('user_version', { simple: true }), 9);
+    assert.equal(first.applied.length, 9);
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
     assert.equal(db.pragma('busy_timeout', { simple: true }), 5000);
     assert.equal(db.pragma('synchronous', { simple: true }), 2);
@@ -23,7 +23,7 @@ test('migraciones idempotentes, PRAGMA efectivas y persistencia tras reinicio', 
 
     const second = migrate(db);
     assert.equal(second.applied.length, 0);
-    assert.equal(second.alreadyApplied, 8);
+    assert.equal(second.alreadyApplied, 9);
 
     db.prepare(
       `INSERT INTO users (id, email, password_hash, display_name, device_epoch, created_at_epoch_ms, updated_at_epoch_ms)
@@ -64,8 +64,8 @@ test('migration 003 preserves existing tasks and requires migration before servi
       INSERT INTO tasks(id,group_id,title,status,version,created_at_epoch_ms,updated_at_epoch_ms,created_by_uid)
         VALUES('task-legacy','grp-legacy','Tarea anterior','PENDING',1,1,1,'usr-legacy');
     `);
-    assert.throws(() => assertSchemaReady(db), /008/);
-    assert.equal(migrate(db).applied.length, 6);
+    assert.throws(() => assertSchemaReady(db), /009/);
+    assert.equal(migrate(db).applied.length, 7);
     assertSchemaReady(db);
     assert.deepEqual(db.prepare('SELECT title,description,category FROM tasks WHERE id=?').get('task-legacy'),
       { title: 'Tarea anterior', description: null, category: null });
@@ -140,8 +140,8 @@ test('receipt migration refuses schema 7 and preserves existing expense balances
       INSERT INTO expense_participants(expense_id,uid,share_cents,settled_at_epoch_ms)
       VALUES('expense-old','usr-old',1299,2);`);
     const before = db.prepare('SELECT * FROM expense_participants').all();
-    assert.throws(() => assertSchemaReady(db), /008/);
-    assert.deepEqual(migrate(db).applied.map(m => m.version), [8]);
+    assert.throws(() => assertSchemaReady(db), /009/);
+    assert.deepEqual(migrate(db).applied.map(m => m.version), [8, 9]);
     assertSchemaReady(db);
     assert.deepEqual(db.prepare('SELECT title,amount_cents,version,due_date,receipt_id,split_json FROM shared_expenses').get(), {
       title: 'Compra anterior', amount_cents: 1299, version: 2, due_date: '2026-10-30', receipt_id: null, split_json: null,

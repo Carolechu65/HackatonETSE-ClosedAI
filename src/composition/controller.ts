@@ -1,3 +1,4 @@
+import { createAiClient } from '../features/ai/client.ts';
 import { createFinanceClient } from '../features/expenses/client.ts';
 import { createCalendarClient } from '../features/calendar/client.ts';
 import type { CreateAlarmRequestPayload, RespondToAlarmPayload, AlarmCommand } from '../domain/contracts/types.ts';
@@ -115,6 +116,11 @@ export function createProductController(backendFactory: () => Promise<ProductBac
     return flight;
   }
   return {
+    ai: createAiClient(async (path, method, body) => {
+      if (!state.session || isDemo()) throw new DomainError('UNAUTHENTICATED', 'Entra con tu cuenta para conectar tu IA.');
+      const expected = generation; const api = await ensureBackend(); assertGeneration(expected);
+      const result = await api.request(path, method, body); assertGeneration(expected); return result;
+    }),
     finance: createFinanceClient(async (path, method, body) => {
       if (!state.session || isDemo()) throw new DomainError('UNAUTHENTICATED', 'Entra con tu cuenta para gestionar gastos reales.');
       const expected = generation; const api = await ensureBackend();

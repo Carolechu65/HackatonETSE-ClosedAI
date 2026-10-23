@@ -1,3 +1,4 @@
+import { AiConnections, aiConnectionRoutes } from '../agents/connections.ts';
 import { listAssignments } from '../tasks/assignments.ts';
 import { createTaskAlarm } from '../tasks/createTaskAlarm.ts';
 import { calendarRoutes } from '../calendar/routes.ts';
@@ -33,6 +34,7 @@ export type BuildAppOptions = {
   db: Db;
   logger?: boolean;
   agentProvider?: AgentProvider;
+  aiFetch?: typeof fetch;
   calendarFetch?: typeof fetch;
   receiptConfig?: ReceiptConfig;
   receiptFetch?: typeof fetch;
@@ -61,7 +63,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const app = Fastify({
     logger: options.logger === false ? false : {
       level: config.logLevel,
-      redact: ['req.headers.authorization', 'req.headers.cookie'],
+      redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body.apiKey', 'req.body.testToken'],
       serializers: {
         req(request: { method: string; url: string }) {
           return { method: request.method, url: request.url.replace(/(\/v1\/invitations\/)[^/]+(\/accept)/, '$1[REDACTED]$2').split('?')[0] };
@@ -73,6 +75,8 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   installErrorHandler(app);
+  const aiConnections = new AiConnections(db, config.aiCredentialKey, 30_000, options.aiFetch);
+  aiConnectionRoutes(app, db, aiConnections);
 
   // Acepta POST sin cuerpo (logout, aceptar invitación, marcar principal):
   // clientes reales no siempre envían content-type. JSON vacío = sin cuerpo.
@@ -107,6 +111,14 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const authLimiter = new FixedWindowLimiter(config.authRateLimit.max, config.authRateLimit.windowMs);
   const operationLimiter = new FixedWindowLimiter(config.operationRateLimit.max, config.operationRateLimit.windowMs);
   const agentLimiter = new FixedWindowLimiter(config.agentRateLimit.max, config.agentRateLimit.windowMs);
+  const agentInFlight = new Set<string>();
+  async function personalProposal(actor: AuthUser, input: unknown) {
+    if (agentInFlight.has(actor.uid)) throw new DomainError('RATE_LIMITED', 'Ya hay una consulta del asistente en curso.');
+    agentInFlight.add(actor.uid);
+    try { return await proposeAlarm(db, actor, input, config.agent, options.agentProvider ?? aiConnections.provider(actor.uid)); }
+    finally { agentInFlight.delete(actor.uid); }
+  }
+
 
   // Cover all authenticated writes, including groups/invitations/devices and
   // aliases. Endpoint-specific checks alone left cheap unbounded DB writes.
@@ -308,7 +320,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.post('/v1/agent/propose', async (request) => {
     const actor = requireAuth(db, request);
     agentLimiter.check(`agent:${actor.uid}`);
-    return proposeAlarm(db, actor, request.body, config.agent, options.agentProvider);
+    return personalProposal(actor, request.body);
   });
 
 
@@ -321,7 +333,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.get('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return listTasks(db,actor.uid,readIdentifier(groupId,'groupId'));});
   app.post('/v1/groups/:groupId/tasks',async request=>{const actor=requireAuth(db,request);const {groupId}=request.params as {groupId:string};return createTask(db,actor.uid,readIdentifier(groupId,'groupId'),request.body);});
   app.route({method:['POST','PATCH'],url:'/v1/groups/:groupId/tasks/:taskId',handler:async request=>{const actor=requireAuth(db,request);const {groupId,taskId}=request.params as {groupId:string;taskId:string};return updateTask(db,actor.uid,readIdentifier(groupId,'groupId'),readIdentifier(taskId,'taskId'),request.body);}});
-  app.post('/v1/agent/draft',async request=>{const actor=requireAuth(db,request);agentLimiter.check(`agent:${actor.uid}`);const body=asRecord(request.body);if(Object.keys(body).some(key=>!['groupId','text','conversationId'].includes(key)))throw new DomainError('INVALID_ARGUMENT','Campos del asistente inválidos.');const result=await proposeAlarm(db,actor,{groupId:body.groupId,text:body.text,...(body.conversationId?{sessionId:body.conversationId}:{})},config.agent,options.agentProvider);requireAuth(db,request);if(result.status==='needs_clarification')return {conversationId:result.sessionId,status:result.status,question:result.question,missingFields:result.missingFields};return {conversationId:result.sessionId,status:'draft',draft:{title:result.draft.title,recipientUids:result.draft.recipientUids,timeSpec:result.draft.timeSpec,mode:result.draft.mode,...(result.draft.taskId?{taskId:result.draft.taskId}:{})},requiresSenderReview:true,requiresRecipientConsent:true};});
+  app.post('/v1/agent/draft',async request=>{const actor=requireAuth(db,request);agentLimiter.check(`agent:${actor.uid}`);const body=asRecord(request.body);if(Object.keys(body).some(key=>!['groupId','text','conversationId'].includes(key)))throw new DomainError('INVALID_ARGUMENT','Campos del asistente inválidos.');const result=await personalProposal(actor,{groupId:body.groupId,text:body.text,...(body.conversationId?{sessionId:body.conversationId}:{})});requireAuth(db,request);if(result.status==='needs_clarification')return {conversationId:result.sessionId,status:result.status,question:result.question,missingFields:result.missingFields};return {conversationId:result.sessionId,status:'draft',draft:{title:result.draft.title,recipientUids:result.draft.recipientUids,timeSpec:result.draft.timeSpec,mode:result.draft.mode,...(result.draft.taskId?{taskId:result.draft.taskId}:{})},requiresSenderReview:true,requiresRecipientConsent:true};});
   expenseRoutes(app, db);
   receiptRoutes(app, db, options.receiptConfig === undefined ? (process.env.ALARMAT_OCR_URL && process.env.ALARMAT_OCR_TOKEN ? {url:process.env.ALARMAT_OCR_URL,token:process.env.ALARMAT_OCR_TOKEN} : null) : options.receiptConfig, options.receiptFetch);
   calendarRoutes(app, db, config.calendar, options.calendarFetch);

@@ -5,6 +5,9 @@ import os
 import re
 import secrets
 import threading
+import shutil
+import subprocess
+import time
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import datetime
@@ -19,8 +22,12 @@ from app.features.ingestion.service import ExtractionService
 from app.features.ingestion.documents import as_pdf, PDF_LOCK
 from app.features.ingestion.ocr import vision
 import pymupdf
+from local_receipt import parse_receipt_text
 
 TOKEN = os.environ['ALARMAT_OCR_TOKEN']
+READER = os.environ.get('ALARMAT_OCR_READER', 'local')
+if READER not in ('local', 'remote'):
+    raise RuntimeError('Invalid ALARMAT_OCR_READER')
 # Receipt separators are legitimate observations, not model repetition. Keep the
 # upstream guard for all substantive text; customize only this sidecar's reader.
 _transcript_warnings = vision.transcript_warnings
@@ -53,7 +60,8 @@ busy = threading.Lock()
 
 @app.get('/health')
 def health():
-    return {'status':'ok','engine':'trace-it','mode':settings.ocr_mode}
+    return {'status': 'ok' if READER != 'local' or shutil.which('tesseract') else 'unavailable',
+            'engine': 'tesseract' if READER == 'local' else 'trace-it', 'mode': READER}
 
 def preview(content):
     with PDF_LOCK, pymupdf.open(stream=as_pdf(content, settings), filetype='pdf') as document:
@@ -80,10 +88,47 @@ def date_proposal(reading):
                 return None
     return None
 
+def local_extract(content):
+    if not content.startswith((b'%PDF-', b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff')):
+        raise ValueError('Unsupported document')
+    pages = []
+    started = time.monotonic()
+    with PDF_LOCK, pymupdf.open(stream=as_pdf(content, settings), filetype='pdf') as document:
+        if document.needs_pass or not 1 <= document.page_count <= settings.max_pages:
+            raise ValueError('Invalid page count or encrypted document')
+        for page in document:
+            native = page.get_text('text')[:20000]
+            if len(native.strip()) >= 20:
+                pages.append(native)
+                continue
+            if page.rect.width <= 0 or page.rect.height <= 0:
+                raise ValueError('Invalid page geometry')
+            scale = min(2.5, 2000 / max(page.rect.width, page.rect.height))
+            pixels = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), colorspace=pymupdf.csGRAY, alpha=False)
+            remaining = 40 - (time.monotonic() - started)
+            if remaining <= 0:
+                raise HTTPException(503, 'Local reading timed out')
+            try:
+                reading = subprocess.run(['tesseract', 'stdin', 'stdout', '-l', 'spa+eng', '--psm', '6'],
+                                         input=pixels.tobytes('png'), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                         check=True, timeout=min(12, remaining), env={**os.environ, 'OMP_THREAD_LIMIT': '1'})
+            except (subprocess.SubprocessError, OSError):
+                raise HTTPException(503, 'Local reading unavailable')
+            pages.append(reading.stdout[:80000].decode('utf-8', errors='replace'))
+    text = '\n'.join(pages)[:20000]
+    fields, warnings = parse_receipt_text(text)
+    if not any(fields[name]['value'] for name in ('total', 'purchased_on')):
+        raise HTTPException(503, 'No receipt fields could be read; enter manually or retry with a clearer image')
+    return {'fields': fields, 'text': text, 'warnings': warnings, 'engine': 'tesseract',
+            'pipelineVersion': 'alarmat-local-receipt-v1', 'previewDataUrl': preview(content)}
+
+
 def extract(content, filename):
     if not busy.acquire(blocking=False):
         raise HTTPException(429, 'Reader busy; retry shortly')
     try:
+        if READER == 'local':
+            return local_extract(content)
         item = engine.ingest(io.BytesIO(content), filename)
         result = engine.extract_schema(item, ExtractOptions(mode=settings.ocr_mode).normalized(settings), PLAN)
     finally:

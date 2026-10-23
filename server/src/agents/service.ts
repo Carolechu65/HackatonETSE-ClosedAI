@@ -297,7 +297,7 @@ export async function proposeAlarm(
       if (error instanceof AgentProviderError) {
         throw new DomainError(
           'TEMPORARY_UNAVAILABLE',
-          'El asistente no está disponible ahora. Usa el formulario manual.',
+          'Tu proveedor no está disponible. Revisa tu conexión o crea la alarma manualmente.',
         );
       }
       throw error;
