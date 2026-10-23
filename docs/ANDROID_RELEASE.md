@@ -1,29 +1,58 @@
 # Android de producción
 
-## APK actual · 22-10-2026 · 347d2a5
+## APK actual · 24-10-2026 · 0.2.0 · 11bce03
 
 La descarga pública [alarmat.apk](https://gex-dashboard.hopto.org/alarmat/downloads/alarmat.apk)
-apunta a `alarmat-347d2a5.apk`, que sustituye como versión actual a `14653a4`
-(conservada para recuperación). Incluye alarmas propias, fichas de miembros,
-reapertura de tareas, participantes/fecha de gastos y su historial plegable.
-Las alarmas sonoras vinculadas a una tarea pendiente repiten a los diez minutos;
-completar la tarea solicita su retirada y el móvil la aplica al sincronizar.
+apunta al release ARM64 de AlarmaT 0.2.0, `versionCode=2`, construido desde
+`11bce03`. Conserva el paquete `com.closedai.alarmat` y el certificado permanente,
+por lo que permite actualizar la instalación anterior sin borrar sus datos.
 
-Build release ARM64 correcto; 17 verificaciones de APK correctas, firma permanente
-coincidente y 220 archivos de fuente comparados con el snapshot previo al build.
-También se comprobó la presencia en DEX de la política de repetición y del enlace
-a tarea, y en el bundle de las nuevas pantallas. La descarga HTTPS es idéntica al
-artefacto firmado. SHA-256:
-`94c283038f1b5e061cadc185539a9b4de485d40641cfdaf2d56d1625ec011b75`.
+Incluye «Conectar mi IA» con credenciales individuales y el flujo nativo de tickets:
+cámara, selección de fotos o PDF y revisión del resultado OCR antes de guardar el
+gasto. Mantiene alarmas, tareas, gastos, propuestas y los tres widgets del launcher.
+El APK contiene el bundle Hermes de producción y funciona sin Metro. R8 y la
+reducción de recursos están habilitados.
 
-Evidencia: `/srv/mail/alarmat-build/artifacts/347d2a5/` y
-`/srv/mail/alarmat-build/member-details-20261022/`. Falta comprobación física de
-sonido, pantalla bloqueada y comportamiento específico del fabricante. La web
-no sustituye la instalación de este APK para la ejecución sonora en segundo plano.
+Artefacto: `alarmat-0.2.0-11bce03.apk`, 36.487.610 bytes (un 26 % menos que el
+APK anterior de 49.365.390 bytes). SHA-256:
+`5c4c4380886dc0f55f4a424a2d76797e8ad750a5ce47249f6eed057e21805708`.
+La descarga HTTPS completa de la URL estable coincide con el artefacto firmado.
 
-La web pública permite gestionar el piso, propuestas, tareas y asistente. El sonido
-local sin JavaScript y los widgets necesitan el APK Android; Expo Go y añadir la
-web a inicio no instalan estos componentes.
+Pasaron 20 comprobaciones del APK, seis comprobaciones de presencia de funciones
+y las ocho pruebas nativas de políticas de alarma y acciones del widget. Los 245
+archivos del snapshot coinciden con el commit de origen. La firma permanente
+coincide con el APK anterior; se comprobaron versión, permisos, backup desactivado,
+ABI ARM64, bundle Hermes, API de producción, módulos de tickets, tres widgets y
+alineación ZIP de 16 KiB. El análisis individual de las 15.974 cadenas de Hermes
+no encontró el patrón de claves de proveedor; la búsqueda sobre bytes concatenados
+daba cinco falsos positivos documentados. Esto no sustituye la revisión de claves
+y secretos en el código y el servidor.
+
+Evidencia de compilación y verificación:
+`/srv/mail/alarmat-build/user-ai-android/artifacts/`, con `verification.json`,
+`provider-key-scan.json`, resultados XML nativos y `mapping.txt.gz` de R8.
+
+Los APK anteriores se retiran a petición del usuario para recuperar espacio. Se
+mantiene la URL estable de descarga; los nombres y hashes históricos de esta guía
+son referencias de auditoría, no enlaces de descarga vigentes.
+
+La compilación se ejecutó aislada bajo `/srv/mail/alarmat-build/`, con un worker de
+Gradle, un worker de Metro, Ninja limitado a `-j1` en el SDK privado de esta tarea,
+heap Java de 1536 MiB para R8, metaspace de 384 MiB y límite total del grupo de
+2300 MiB. Tras completar R8, el ensamblado final se reanudó incrementalmente con
+un daemon nuevo y heap de 1024 MiB, conservando los resultados de minificación,
+para dejar memoria al lint y al empaquetado.
+Los intentos con heap de 1024 MiB agotaron la memoria de R8; el ajuste se aplicó al
+comando privado de compilación y después se reflejó en la receta versionada. SDK, wrappers y caches temporales se eliminan tras
+validar y publicar el artefacto; se conservan la evidencia y el mapping de R8 para
+diagnóstico.
+
+La verificación física está pendiente: cámara y selector en un dispositivo real,
+sonido con pantalla bloqueada, permisos, launcher, reinicio y restricciones del
+fabricante. Las comprobaciones del artefacto y las pruebas automatizadas no
+sustituyen esas comprobaciones. La web permite gestionar la app, pero los widgets
+y el sonido nativo con la app cerrada requieren el APK; Expo Go y añadir la web al
+inicio no instalan esos componentes.
 
 ## Compilar el APK
 
@@ -48,12 +77,15 @@ source /ruta/privada/android-signing.env
 
 El API predeterminado es `https://gex-dashboard.hopto.org/alarmat/api`. Puede
 sobrescribirse con `EXPO_PUBLIC_API_URL` antes de compilar. El cliente no incluye
-la clave de OpenRouter. `ALARMAT_WEB_BASE_PATH` se elimina del entorno Android
+claves de los proveedores de IA. `ALARMAT_WEB_BASE_PATH` se elimina del entorno Android
 para conservar rutas nativas independientes del prefijo web `/alarmat`.
 
 El resultado esperado es `android/app/build/outputs/apk/release/app-release.apk`.
-El bundle JavaScript está incluido y no requiere Metro. El script deja R8
-desactivado para reducir consumo de memoria; no cambia el modo release ni la firma.
+El bundle JavaScript está incluido y no requiere Metro. El script activa R8 y la
+reducción de recursos, con heap de 1536 MiB y metaspace de 384 MiB. Se pueden ajustar
+mediante `ALARMAT_ANDROID_JVMARGS`; bajo un límite total de 2300 MiB se necesitó
+reanudar la fase posterior a R8 como se documenta arriba. No se debe repetir
+`prebuild --clean` entre fases porque borraría los resultados incrementales.
 No se publica un enlace a APK hasta que el ensamblado y su firma se hayan verificado.
 
 ## Uso en un teléfono
@@ -124,7 +156,7 @@ servicios ni datos del volumen de correo.
 
 - [Guía de instalación](https://gex-dashboard.hopto.org/alarmat/install/index.html).
 - [Descarga Android actual](https://gex-dashboard.hopto.org/alarmat/downloads/alarmat.apk).
-- [APK inicial14653a4](https://gex-dashboard.hopto.org/alarmat/downloads/alarmat-14653a4.apk).
+- APK inicial retirado: `alarmat-14653a4.apk`.
 - SHA-256 inicial: `652d372ecfec0d14e85f53c78002621fb23e91ad91d73796eecd0de5d460225d`.
 
 La descarga HTTPS se comprobó byte a byte por checksum. Las16 verificaciones

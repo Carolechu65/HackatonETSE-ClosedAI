@@ -167,7 +167,7 @@ Los cálculos de dinero y las validaciones se ejecutan mediante código. El mode
 
 ## 9. Ampliaciones posteriores
 
-- [ ] **P2** Escanear recibos con OCR y mostrar de dónde se extrajo cada importe.
+- [x] **P2** Escanear recibos con OCR local, conservar el original y revisar comercio, fecha e importe antes de guardar; cámara/archivos en Android y web.
 - [ ] **P2** Integrar calendarios externos.
 - [ ] **P2** Publicar una versión iOS.
 
@@ -180,3 +180,14 @@ Crear grupo → invitar miembro → enviarle una propuesta de alarma → aceptar
 Después de este recorrido se incorporan coordinación avanzada de tareas, gastos, presupuestos e huchas.
 
 La demo debe mostrar al menos un aviso rechazado que no se programa, uno aceptado que sí se programa y un cambio de hora que no modifica la fecha límite de la tarea.
+
+## Conexiones personales de IA · 24-10-2026
+
+- [x] Ajustes → Conectar mi IA: OpenAI (GPT-6 Luna), OpenCode (DeepSeek), DeepSeek directo y OpenRouter, con modelo editable.
+- [x] Prueba pequeña con aviso de coste; guardado posterior sin nueva llamada al proveedor.
+- [x] API keys cifradas por usuario, máscara parcial, sustitución y eliminación; sin clave global ni uso de conexiones ajenas.
+- [x] Propuestas revisables y consentimiento independiente; el receptor no necesita conectar una IA.
+- [x] OCR local para JPG, PNG y PDF sin credenciales externas; importes ambiguos quedan pendientes de revisión.
+- [x] Descarga directa del APK desde el login y el pie del tablón web.
+
+Detalles técnicos y límites: [IA personal](docs/PERSONAL_AI.md) y [OCR](deploy/RECEIPT_OCR.md).
